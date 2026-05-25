@@ -13,7 +13,18 @@
   "scripts": {
     "dev": "pnpm --filter @brockui/docs dev",
     "build": "pnpm --filter @brockui/docs build",
-    "start": "pnpm --filter @brockui/docs start"
+    "start": "pnpm --filter @brockui/docs start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@9.0.0",
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitest/coverage-v8": "^4.1.7",
+    "happy-dom": "^20.9.0",
+    "vitest": "^4.1.7"
+  }
 }
