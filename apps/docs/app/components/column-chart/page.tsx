@@ -12,6 +12,32 @@ const heroLabels = [
 const weeklyData = [142, 168, 187, 159, 203, 178, 215];
 const weeklyLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
+// Object form — natural shape for DataFrame mapping (Python integration target)
+const objectFormData = [
+  { label: "Q1", value: 1248 },
+  { label: "Q2", value: 1587 },
+  { label: "Q3", value: 1923 },
+  { label: "Q4", value: 2104 },
+];
+
+// Edge case: all-zero data — baseline visible, no bars (honest empty signal)
+const allZeroData = [0, 0, 0, 0, 0, 0, 0];
+
+// Edge case: dense dataset — 60 bars
+const denseData = Array.from({ length: 60 }, (_, i) =>
+  Math.round(50 + Math.sin(i / 4) * 30 + Math.random() * 20),
+);
+const denseLabels = Array.from({ length: 60 }, (_, i) =>
+  String(i).padStart(2, "0"),
+);
+
+// Edge case: single bar
+const singleBarData = [{ label: "TOTAL", value: 12_847 }];
+
+// Edge case: dirty data — NaN, negative, Infinity (will be filtered + clamped)
+const dirtyData = [120, NaN, -50, 180, Infinity, 200, 145];
+const dirtyLabels = ["A", "B", "C", "D", "E", "F", "G"];
+
 const installCommand = "npx shadcn@latest add brockui.com/r/column-chart";
 
 const usageCode = `import { ColumnChart } from "@/components/charts/column-chart";
@@ -168,6 +194,81 @@ export default function ColumnChartPage() {
             data={[]}
             height={200}
             source="Brock Analytics, 2026"
+          />
+        </div>
+      </Section>
+
+      <Section title="Object form (DataFrame-style data)">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Pass <code className="font-mono">{`{ label, value }[]`}</code>{" "}
+          objects directly — natural shape when mapping from{" "}
+          <code className="font-mono">pandas.DataFrame</code> or SQL rows.
+          Useful for our upcoming Python integration.
+        </p>
+        <div className="border border-border bg-card p-8">
+          <ColumnChart
+            data={objectFormData}
+            height={200}
+            source="Brock Analytics, quarterly"
+          />
+        </div>
+      </Section>
+
+      <Section title="Edge: all-zero data">
+        <p className="mb-3 text-xs text-muted-foreground">
+          When every value is 0, bars stay invisible — baseline + X-axis
+          labels remain. Honest signal that data exists but contains zeros,
+          not missing entirely.
+        </p>
+        <div className="border border-border bg-card p-8">
+          <ColumnChart
+            data={allZeroData}
+            labels={weeklyLabels}
+            height={200}
+            source="Brock Analytics, 2026"
+          />
+        </div>
+      </Section>
+
+      <Section title="Edge: single bar">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Component handles single-bar dataset (KPI-like). Bar expands to
+          full width.
+        </p>
+        <div className="border border-border bg-card p-8">
+          <ColumnChart data={singleBarData} height={200} />
+        </div>
+      </Section>
+
+      <Section title="Edge: dense dataset (60 bars)">
+        <p className="mb-3 text-xs text-muted-foreground">
+          For dense datasets gap auto-shrinks and X-axis labels render every
+          Nth bar to avoid overlap.
+        </p>
+        <div className="border border-border bg-card p-8">
+          <ColumnChart
+            data={denseData}
+            labels={denseLabels}
+            height={200}
+            gap={2}
+            source="Brock Analytics, minute-by-minute"
+          />
+        </div>
+      </Section>
+
+      <Section title="Edge: dirty data (NaN / negative / Infinity)">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Non-finite values (NaN, Infinity) are skipped with a console
+          warning. Negative values are clamped to 0 with a warning
+          (use Diverging Bar Chart for ± data). Original array had 7 values,
+          rendered 5 (B + E filtered, C clamped to 0).
+        </p>
+        <div className="border border-border bg-card p-8">
+          <ColumnChart
+            data={dirtyData}
+            labels={dirtyLabels}
+            height={200}
+            source="Intentionally dirty input"
           />
         </div>
       </Section>
