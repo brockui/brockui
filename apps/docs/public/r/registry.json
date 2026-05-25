@@ -1,0 +1,23 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "brockui",
+  "homepage": "https://brockui.com",
+  "items": [
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "column-chart",
+      "type": "registry:component",
+      "title": "Column Chart",
+      "description": "Time-series vertical bars. Tufte data-ink discipline — one accent, no gridlines. Monospace numerics (Hack), pixel-font label badges (Departure Mono), built-in source attribution and ASCII empty state. Zero dependencies beyond React. WCAG AA accessible with roving tabindex, ARIA Graphics roles, and hidden table summary for screen readers.",
+      "author": "Almas Kasymzhanov <almaskasymzhanov@gmail.com>",
+      "files": [
+        {
+          "path": "components/charts/column-chart.tsx",
+          "type": "registry:component",
+          "target": "components/brockui/column-chart.tsx"
+        }
+      ],
+      "categories": ["charts"]
+    }
+  ]
+}

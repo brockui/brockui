@@ -5,8 +5,9 @@
   "description": "Brock UI documentation site",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "build": "pnpm registry:build && next build",
+    "start": "next start",
+    "registry:build": "shadcn build"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
