@@ -243,6 +243,69 @@ describe("ColumnChart — trend indicator", () => {
   });
 });
 
+describe("ColumnChart — goal line", () => {
+  it("renders goal line with label + value when both provided", () => {
+    render(
+      <ColumnChart
+        data={[100, 150, 200]}
+        goal={{ value: 180, label: "Q3 target" }}
+        formatValue={(v) => String(v)}
+      />,
+    );
+    expect(screen.getByText(/Q3 target · 180/)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Q3 target reference line at 180/),
+    ).toBeInTheDocument();
+  });
+
+  it("renders 'Goal: value' fallback when label omitted", () => {
+    render(
+      <ColumnChart
+        data={[100]}
+        goal={{ value: 50 }}
+        formatValue={(v) => String(v)}
+      />,
+    );
+    expect(screen.getByText(/Goal: 50/)).toBeInTheDocument();
+  });
+
+  it("includes goal in max calc so goal > data still renders bars correctly", () => {
+    render(
+      <ColumnChart
+        data={[100]}
+        goal={{ value: 500, label: "Stretch" }}
+        formatValue={(v) => String(v)}
+      />,
+    );
+    // Goal line present
+    expect(screen.getByText(/Stretch · 500/)).toBeInTheDocument();
+    // Bar still renders (would be at 100/500 = 20% height)
+    expect(screen.getByRole("graphics-symbol")).toHaveAttribute(
+      "aria-label",
+      "Bar 1: 100",
+    );
+  });
+
+  it("skips goal line when value is 0, negative, or non-finite", () => {
+    const { rerender } = render(
+      <ColumnChart data={[100]} goal={{ value: 0 }} />,
+    );
+    expect(screen.queryByText(/Goal/)).not.toBeInTheDocument();
+
+    rerender(<ColumnChart data={[100]} goal={{ value: -50 }} />);
+    expect(screen.queryByText(/Goal/)).not.toBeInTheDocument();
+
+    rerender(<ColumnChart data={[100]} goal={{ value: NaN }} />);
+    expect(screen.queryByText(/Goal/)).not.toBeInTheDocument();
+  });
+
+  it("skips goal when no data renders (empty array)", () => {
+    render(<ColumnChart data={[]} goal={{ value: 100, label: "Target" }} />);
+    // Empty state shown instead — no goal line
+    expect(screen.queryByText(/Target/)).not.toBeInTheDocument();
+  });
+});
+
 describe("ColumnChart — source line", () => {
   it("renders source attribution when source prop given", () => {
     render(<ColumnChart data={[10]} source="FT, 2026" />);

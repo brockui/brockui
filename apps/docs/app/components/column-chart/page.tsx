@@ -87,6 +87,13 @@ const props: PropRow[] = [
       "Decimal trend indicator e.g. 0.184 → +18.4%. Orange if positive.",
   },
   {
+    name: "goal",
+    type: "{ value, label? }",
+    default: "undefined",
+    description:
+      "Dashed reference line at value. Goal is included in max scale so it stays visible above bars. KPI dashboard pattern.",
+  },
+  {
     name: "source",
     type: "string",
     default: "undefined",
@@ -201,6 +208,28 @@ export default function ColumnChartPage() {
           <ColumnChart
             data={[]}
             height={200}
+            source="Brock Analytics, 2026"
+          />
+        </div>
+      </Section>
+
+      <Section title="Goal line (KPI threshold)">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Pass a{" "}
+          <code className="font-mono text-foreground">goal</code> prop with{" "}
+          <code className="font-mono text-foreground">value</code> and
+          optional{" "}
+          <code className="font-mono text-foreground">label</code> — dashed
+          reference line spans the chart at that value. The goal joins the
+          max-scale calculation so it&rsquo;s always visible above the bars.
+          FT/Bloomberg KPI dashboard pattern.
+        </p>
+        <div className="border border-border bg-card p-8">
+          <ColumnChart
+            data={weeklyData}
+            labels={weeklyLabels}
+            height={220}
+            goal={{ value: 190, label: "Weekly target" }}
             source="Brock Analytics, 2026"
           />
         </div>

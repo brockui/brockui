@@ -31,6 +31,14 @@ export type ColumnChartDataPoint = {
   value: number;
 };
 
+/** Goal/threshold reference line drawn across the chart. */
+export type ColumnChartGoal = {
+  /** Value at which to draw the line. Included in max scale calculation. */
+  value: number;
+  /** Optional label (e.g. "Q3 target"). Rendered with the value in Hack mono. */
+  label?: string;
+};
+
 export type ColumnChartProps = {
   /**
    * Bar data. Two forms accepted:
@@ -53,6 +61,14 @@ export type ColumnChartProps = {
    * Rendered top-right above the chart.
    */
   trend?: number;
+
+  /**
+   * Goal/threshold reference line. Drawn as a dashed horizontal line across the chart
+   * at the specified value, with an optional label in Hack mono. The goal value is
+   * included in the chart's max scale calculation so bars adjust to keep the goal
+   * visible (FT/Bloomberg KPI dashboard pattern).
+   */
+  goal?: ColumnChartGoal;
 
   /** Source attribution rendered below the chart (FT/Bloomberg pattern). */
   source?: string;
@@ -151,6 +167,7 @@ export function ColumnChart({
   height = 200,
   gap = 4,
   trend,
+  goal,
   source,
   description,
   yAxisFormat = defaultFormat,
@@ -164,7 +181,12 @@ export function ColumnChart({
     return <EmptyState height={height} source={source} className={className} />;
   }
 
-  const max = points.reduce((m, p) => Math.max(m, p.value), 0);
+  const dataMax = points.reduce((m, p) => Math.max(m, p.value), 0);
+  // Goal value participates in scale so it stays visible above all bars
+  const max =
+    goal && Number.isFinite(goal.value) && goal.value > 0
+      ? Math.max(dataMax, goal.value)
+      : dataMax;
   const allZero = max === 0;
 
   const effectiveGap = points.length > 60 ? Math.max(1, gap - 2) : gap;
@@ -193,6 +215,7 @@ export function ColumnChart({
           gap={effectiveGap}
           formatValue={formatValue}
           ariaLabel={accessibleDescription}
+          goal={goal}
         />
       </div>
 
@@ -296,6 +319,7 @@ function BarsGroup({
   gap,
   formatValue,
   ariaLabel,
+  goal,
 }: {
   points: NormalizedPoint[];
   max: number;
@@ -303,6 +327,7 @@ function BarsGroup({
   gap: number;
   formatValue: (v: number) => string;
   ariaLabel: string;
+  goal?: ColumnChartGoal;
 }) {
   const [focusIndex, setFocusIndex] = useState(0);
   const barRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -346,9 +371,12 @@ function BarsGroup({
     return "center";
   }
 
+  const showGoal =
+    goal && Number.isFinite(goal.value) && goal.value > 0 && max > 0;
+
   return (
     <div
-      className="brock-bars flex flex-1 items-end border-b border-white/10"
+      className="brock-bars relative flex flex-1 items-end border-b border-white/10"
       style={{ gap }}
       role="img"
       aria-label={ariaLabel}
@@ -370,6 +398,38 @@ function BarsGroup({
           onFocus={() => setFocusIndex(i)}
         />
       ))}
+
+      {showGoal && (
+        <GoalLine goal={goal} max={max} formatValue={formatValue} />
+      )}
+    </div>
+  );
+}
+
+function GoalLine({
+  goal,
+  max,
+  formatValue,
+}: {
+  goal: ColumnChartGoal;
+  max: number;
+  formatValue: (v: number) => string;
+}) {
+  const bottomPercent = (goal.value / max) * 100;
+  const labelText = goal.label
+    ? `${goal.label} · ${formatValue(goal.value)}`
+    : `Goal: ${formatValue(goal.value)}`;
+
+  return (
+    <div
+      className="pointer-events-none absolute right-0 left-0 z-[5] border-t border-dashed border-white/40"
+      style={{ bottom: `${bottomPercent}%` }}
+      role="img"
+      aria-label={`${goal.label ?? "Goal"} reference line at ${formatValue(goal.value)}`}
+    >
+      <span className="absolute right-0 -top-2.5 bg-background px-1 font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground">
+        {labelText}
+      </span>
     </div>
   );
 }
