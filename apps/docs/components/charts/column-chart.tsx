@@ -5,13 +5,23 @@
  *  1. Hack mono Y-axis with tabular-nums
  *  2. Single --brock-accent fill (no gradient/glow)
  *  3. No gridlines, single 1px baseline (Tufte data-ink)
- *  4. Hover tooltip: Departure Mono pixel badge + Hack value
+ *  4. Hover/focus tooltip: Departure Mono pixel badge + Hack value
  *  5. Staggered entry animation (CSS only, honors prefers-reduced-motion)
  *  6. Built-in source attribution (FT/Bloomberg pattern)
  *  7. ASCII empty state in pixel font
+ *
+ * Accessibility:
+ *  - Container: role="img" with aria-label
+ *  - Bars: role="graphics-symbol", roving tabindex, Arrow/Home/End keyboard nav
+ *  - Hidden <table> summary for screen readers (sr-only)
+ *  - Focus-visible tooltip + orange focus ring
+ *  - WCAG AA contrast on all text
  */
 
-import type { CSSProperties } from "react";
+"use client";
+
+import type { CSSProperties, KeyboardEvent } from "react";
+import { useId, useRef, useState } from "react";
 
 /** One data point in object form. Easier to map from DataFrames / SQL rows. */
 export type ColumnChartDataPoint = {
@@ -35,7 +45,7 @@ export type ColumnChartProps = {
   /** Chart height in pixels for Y-axis + bars area. Default 200. */
   height?: number;
 
-  /** Pixel gap between bars. Default 4. Auto-reduced for dense datasets (100+ bars). */
+  /** Pixel gap between bars. Default 4. Auto-reduced for dense datasets (60+ bars). */
   gap?: number;
 
   /**
@@ -46,6 +56,13 @@ export type ColumnChartProps = {
 
   /** Source attribution rendered below the chart (FT/Bloomberg pattern). */
   source?: string;
+
+  /**
+   * Accessible description of the chart for screen readers.
+   * Used as `aria-label` on the chart container and the visually-hidden
+   * `<caption>` of the data table summary. Default: "Column chart with N data points".
+   */
+  description?: string;
 
   /** Custom formatter for Y-axis tick labels. Default uses `toLocaleString`. */
   yAxisFormat?: (value: number) => string;
@@ -64,17 +81,12 @@ type NormalizedPoint = {
 
 const defaultFormat = (v: number): string => v.toLocaleString();
 
-/** Detect object-form data without losing readonly typing. */
 function isObjectForm(
   data: readonly number[] | readonly ColumnChartDataPoint[],
 ): data is readonly ColumnChartDataPoint[] {
   return data.length > 0 && typeof data[0] === "object" && data[0] !== null;
 }
 
-/**
- * Normalize either input form into a single internal shape.
- * Filters NaN/Infinity (with warning), clamps negatives to 0 (with warning).
- */
 function normalize(
   data: readonly number[] | readonly ColumnChartDataPoint[],
   labels?: readonly string[],
@@ -123,6 +135,16 @@ function normalize(
   return cleaned;
 }
 
+function autoDescription(
+  points: NormalizedPoint[],
+  source?: string,
+): string {
+  const base = `Column chart with ${points.length} data point${
+    points.length === 1 ? "" : "s"
+  }`;
+  return source ? `${base}. Source: ${source}.` : `${base}.`;
+}
+
 export function ColumnChart({
   data,
   labels,
@@ -130,11 +152,13 @@ export function ColumnChart({
   gap = 4,
   trend,
   source,
+  description,
   yAxisFormat = defaultFormat,
   formatValue = defaultFormat,
   className,
 }: ColumnChartProps) {
   const points = normalize(data, labels);
+  const captionId = useId();
 
   if (points.length === 0) {
     return <EmptyState height={height} source={source} className={className} />;
@@ -149,29 +173,27 @@ export function ColumnChart({
 
   const yTicks = allZero ? [0] : [max, Math.round(max / 2), 0];
   const hasAnyLabel = points.some((p) => p.label !== undefined);
+  const accessibleDescription = description ?? autoDescription(points, source);
 
   return (
-    <div className={className}>
+    <figure
+      className={className}
+      role="figure"
+      aria-labelledby={captionId}
+    >
       {trend !== undefined && <TrendIndicator value={trend} />}
 
       <div className="flex" style={{ height }}>
         <YAxis ticks={yTicks} format={yAxisFormat} />
 
-        <div
-          className="brock-bars flex flex-1 items-end border-b border-white/10"
-          style={{ gap: effectiveGap }}
-        >
-          {points.map((point, i) => (
-            <Bar
-              key={i}
-              index={i}
-              point={point}
-              max={max}
-              allZero={allZero}
-              formatValue={formatValue}
-            />
-          ))}
-        </div>
+        <BarsGroup
+          points={points}
+          max={max}
+          allZero={allZero}
+          gap={effectiveGap}
+          formatValue={formatValue}
+          ariaLabel={accessibleDescription}
+        />
       </div>
 
       {hasAnyLabel && (
@@ -185,8 +207,18 @@ export function ColumnChart({
 
       {source && <ChartSource source={source} />}
 
+      <figcaption id={captionId} className="sr-only">
+        {accessibleDescription}
+      </figcaption>
+
+      <DataTableSummary
+        points={points}
+        formatValue={formatValue}
+        caption={accessibleDescription}
+      />
+
       <BarAnimationStyles />
-    </div>
+    </figure>
   );
 }
 
@@ -204,10 +236,10 @@ function EmptyState({
   return (
     <div className={className}>
       <div
-        className="flex items-center justify-center border-b border-l border-white/10 font-pixel text-xs tracking-wider text-muted-foreground/40"
+        className="flex items-center justify-center border-b border-l border-white/10 font-pixel text-xs tracking-wider text-muted-foreground/60"
         style={{ height }}
         role="img"
-        aria-label="No data available"
+        aria-label="No data available for this period"
       >
         ▒▒▒ no data for this period
       </div>
@@ -218,12 +250,16 @@ function EmptyState({
 
 function TrendIndicator({ value }: { value: number }) {
   const isPositive = value >= 0;
+  const label = `${isPositive ? "Trend up" : "Trend down"} ${(
+    value * 100
+  ).toFixed(1)} percent`;
   return (
-    <div className="mb-3 flex justify-end">
+    <div className="mb-3 flex justify-end" aria-label={label}>
       <span
         className={`font-mono text-xs tabular-nums ${
           isPositive ? "text-brock-accent" : "text-muted-foreground"
         }`}
+        aria-hidden
       >
         {isPositive ? "↗" : "↘"} {isPositive ? "+" : ""}
         {(value * 100).toFixed(1)}%
@@ -253,18 +289,100 @@ function YAxis({
   );
 }
 
+function BarsGroup({
+  points,
+  max,
+  allZero,
+  gap,
+  formatValue,
+  ariaLabel,
+}: {
+  points: NormalizedPoint[];
+  max: number;
+  allZero: boolean;
+  gap: number;
+  formatValue: (v: number) => string;
+  ariaLabel: string;
+}) {
+  const [focusIndex, setFocusIndex] = useState(0);
+  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  function moveFocus(target: number) {
+    const clamped = Math.max(0, Math.min(points.length - 1, target));
+    setFocusIndex(clamped);
+    barRefs.current[clamped]?.focus();
+  }
+
+  function handleKey(event: KeyboardEvent<HTMLDivElement>, currentIndex: number) {
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        event.preventDefault();
+        moveFocus(currentIndex + 1);
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        event.preventDefault();
+        moveFocus(currentIndex - 1);
+        break;
+      case "Home":
+        event.preventDefault();
+        moveFocus(0);
+        break;
+      case "End":
+        event.preventDefault();
+        moveFocus(points.length - 1);
+        break;
+    }
+  }
+
+  return (
+    <div
+      className="brock-bars flex flex-1 items-end border-b border-white/10"
+      style={{ gap }}
+      role="img"
+      aria-label={ariaLabel}
+    >
+      {points.map((point, i) => (
+        <Bar
+          key={i}
+          ref={(el) => {
+            barRefs.current[i] = el;
+          }}
+          index={i}
+          point={point}
+          max={max}
+          allZero={allZero}
+          formatValue={formatValue}
+          isTabStop={i === focusIndex}
+          onKeyDown={(e) => handleKey(e, i)}
+          onFocus={() => setFocusIndex(i)}
+        />
+      ))}
+    </div>
+  );
+}
+
 function Bar({
+  ref,
   index,
   point,
   max,
   allZero,
   formatValue,
+  isTabStop,
+  onKeyDown,
+  onFocus,
 }: {
+  ref: (el: HTMLDivElement | null) => void;
   index: number;
   point: NormalizedPoint;
   max: number;
   allZero: boolean;
   formatValue: (v: number) => string;
+  isTabStop: boolean;
+  onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
+  onFocus: () => void;
 }) {
   const barHeight = allZero
     ? 0
@@ -272,16 +390,30 @@ function Bar({
       ? 0
       : Math.max((point.value / max) * 100, 1);
 
+  const accessibleName = point.label
+    ? `${point.label}: ${formatValue(point.value)}`
+    : `Bar ${index + 1}: ${formatValue(point.value)}`;
+
   return (
-    <div className="group/bar relative flex flex-1 items-end self-stretch">
+    <div
+      ref={ref}
+      className="group/bar relative flex flex-1 items-end self-stretch rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brock-accent"
+      role="graphics-symbol"
+      aria-roledescription="bar"
+      aria-label={accessibleName}
+      tabIndex={isTabStop ? 0 : -1}
+      onKeyDown={onKeyDown}
+      onFocus={onFocus}
+    >
       <div
-        className="brock-bar w-full bg-brock-accent transition-[filter] duration-150 group-hover/bar:brightness-110"
+        className="brock-bar w-full bg-brock-accent transition-[filter] duration-150 group-hover/bar:brightness-110 group-focus-visible/bar:brightness-110"
         style={
           {
             height: `${barHeight}%`,
             animationDelay: `${index * 30}ms`,
           } as CSSProperties
         }
+        aria-hidden
       />
       {!allZero && (
         <Tooltip label={point.label} value={formatValue(point.value)} />
@@ -293,8 +425,8 @@ function Bar({
 function Tooltip({ label, value }: { label?: string; value: string }) {
   return (
     <div
-      className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 flex-col items-center gap-1 group-hover/bar:flex"
-      role="tooltip"
+      className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 flex-col items-center gap-1 group-hover/bar:flex group-focus-visible/bar:flex"
+      aria-hidden
     >
       {label && (
         <span className="bg-foreground px-1.5 py-0.5 font-pixel text-[10px] tracking-wider whitespace-nowrap text-background uppercase">
@@ -339,6 +471,36 @@ function ChartSource({ source }: { source: string }) {
     <div className="mt-4 font-mono text-[10px] tracking-wider text-muted-foreground/60 uppercase">
       Source: {source}
     </div>
+  );
+}
+
+function DataTableSummary({
+  points,
+  formatValue,
+  caption,
+}: {
+  points: NormalizedPoint[];
+  formatValue: (v: number) => string;
+  caption: string;
+}) {
+  return (
+    <table className="sr-only">
+      <caption>{caption}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Label</th>
+          <th scope="col">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {points.map((p, i) => (
+          <tr key={i}>
+            <th scope="row">{p.label ?? `Bar ${i + 1}`}</th>
+            <td>{formatValue(p.value)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
