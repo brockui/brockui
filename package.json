@@ -1,0 +1,19 @@
+{
+  "name": "brockui",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Opinionated React components for modern data and AI products. Micrographics-first, density-with-discipline, monospace where data lives.",
+  "license": "MIT",
+  "author": "Almas Kasymzhanov",
+  "homepage": "https://brockui.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brockui/brockui.git"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @brockui/docs dev",
+    "build": "pnpm --filter @brockui/docs build",
+    "start": "pnpm --filter @brockui/docs start"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
