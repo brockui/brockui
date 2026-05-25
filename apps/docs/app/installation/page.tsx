@@ -46,7 +46,7 @@ function CodeBlock({ code }: { code: string }) {
 
 export default function InstallationPage() {
   return (
-    <div className="p-10 max-w-3xl">
+    <div className="mx-auto max-w-3xl p-10">
       <div className="mb-12">
         <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
           Get Started · Installation

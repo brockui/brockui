@@ -89,7 +89,7 @@ function CodeBlock({ code }: { code: string }) {
 
 export default function SparklinePage() {
   return (
-    <div className="max-w-4xl p-10">
+    <div className="mx-auto max-w-4xl p-10">
       <div className="mb-12">
         <div className="mb-2 font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
           Charts · Sparkline
