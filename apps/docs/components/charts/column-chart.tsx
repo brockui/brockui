@@ -336,6 +336,16 @@ function BarsGroup({
     }
   }
 
+  const total = points.length;
+  // Edge zone size: first/last 15% of bars (min 1) anchor tooltip to that edge
+  const edgeZone = Math.max(1, Math.floor(total * 0.15));
+
+  function edgeFor(i: number): EdgePosition {
+    if (i < edgeZone) return "left";
+    if (i >= total - edgeZone) return "right";
+    return "center";
+  }
+
   return (
     <div
       className="brock-bars flex flex-1 items-end border-b border-white/10"
@@ -355,6 +365,7 @@ function BarsGroup({
           allZero={allZero}
           formatValue={formatValue}
           isTabStop={i === focusIndex}
+          edge={edgeFor(i)}
           onKeyDown={(e) => handleKey(e, i)}
           onFocus={() => setFocusIndex(i)}
         />
@@ -362,6 +373,8 @@ function BarsGroup({
     </div>
   );
 }
+
+type EdgePosition = "left" | "center" | "right";
 
 function Bar({
   ref,
@@ -371,6 +384,7 @@ function Bar({
   allZero,
   formatValue,
   isTabStop,
+  edge,
   onKeyDown,
   onFocus,
 }: {
@@ -381,6 +395,7 @@ function Bar({
   allZero: boolean;
   formatValue: (v: number) => string;
   isTabStop: boolean;
+  edge: EdgePosition;
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   onFocus: () => void;
 }) {
@@ -406,7 +421,7 @@ function Bar({
       onFocus={onFocus}
     >
       <div
-        className="brock-bar w-full bg-brock-accent transition-[filter] duration-150 group-hover/bar:brightness-110 group-focus-visible/bar:brightness-110"
+        className="brock-bar w-full bg-brock-accent transition-[filter] duration-150 group-hover/bar:brightness-110 group-focus/bar:brightness-110"
         style={
           {
             height: `${barHeight}%`,
@@ -416,16 +431,40 @@ function Bar({
         aria-hidden
       />
       {!allZero && (
-        <Tooltip label={point.label} value={formatValue(point.value)} />
+        <Tooltip
+          label={point.label}
+          value={formatValue(point.value)}
+          edge={edge}
+        />
       )}
     </div>
   );
 }
 
-function Tooltip({ label, value }: { label?: string; value: string }) {
+const TOOLTIP_POSITION: Record<EdgePosition, string> = {
+  left: "left-0",
+  right: "right-0",
+  center: "left-1/2 -translate-x-1/2",
+};
+
+const TOOLTIP_ALIGN: Record<EdgePosition, string> = {
+  left: "items-start",
+  right: "items-end",
+  center: "items-center",
+};
+
+function Tooltip({
+  label,
+  value,
+  edge,
+}: {
+  label?: string;
+  value: string;
+  edge: EdgePosition;
+}) {
   return (
     <div
-      className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 flex-col items-center gap-1 group-hover/bar:flex group-focus-visible/bar:flex"
+      className={`pointer-events-none absolute bottom-full z-10 mb-2 hidden flex-col gap-1 group-hover/bar:flex group-focus/bar:flex ${TOOLTIP_POSITION[edge]} ${TOOLTIP_ALIGN[edge]}`}
       aria-hidden
     >
       {label && (
