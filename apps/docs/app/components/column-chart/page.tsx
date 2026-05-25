@@ -67,16 +67,17 @@ type PropRow = {
 const props: PropRow[] = [
   {
     name: "data",
-    type: "number[]",
+    type: "number[] | DataPoint[]",
     default: "—",
-    description: "Array of values to render as bars",
+    description:
+      "Bar values. Two forms: number[] (with labels prop) or { label?, value }[] (object form for DataFrame mapping)",
   },
   {
     name: "labels",
     type: "string[]",
     default: "undefined",
     description:
-      "X-axis labels (rendered in pixel font under bars + in hover tooltip)",
+      "X-axis labels (rendered in pixel font under bars + in hover tooltip). Only used when data is number[]",
   },
   {
     name: "trend",
@@ -90,6 +91,13 @@ const props: PropRow[] = [
     type: "string",
     default: "undefined",
     description: "Attribution line rendered below the chart (FT pattern)",
+  },
+  {
+    name: "description",
+    type: "string",
+    default: "auto-generated",
+    description:
+      "Accessible description for screen readers (figcaption + table caption). Defaults to 'Column chart with N data points. Source: ...'",
   },
   {
     name: "height",
@@ -318,6 +326,95 @@ export default function ColumnChartPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </Section>
+
+      <Section title="Accessibility">
+        <div className="space-y-4 text-sm text-muted-foreground">
+          <p className="max-w-2xl">
+            WCAG AA compliant. Keyboard navigable, screen-reader friendly,
+            honors{" "}
+            <code className="font-mono text-xs text-foreground">
+              prefers-reduced-motion
+            </code>
+            .
+          </p>
+
+          <div className="max-w-2xl">
+            <div className="mb-2 font-mono text-[11px] tracking-wider text-foreground uppercase">
+              Keyboard
+            </div>
+            <table className="w-full font-mono text-xs">
+              <tbody>
+                <tr className="border-b border-border">
+                  <td className="py-2 pr-6 text-foreground">Tab</td>
+                  <td className="py-2 font-sans text-sm">
+                    Move focus into the chart (single tab stop)
+                  </td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="py-2 pr-6 text-foreground">
+                    ← → ↑ ↓
+                  </td>
+                  <td className="py-2 font-sans text-sm">
+                    Navigate between bars (roving tabindex)
+                  </td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="py-2 pr-6 text-foreground">Home</td>
+                  <td className="py-2 font-sans text-sm">
+                    Jump to first bar
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-6 text-foreground">End</td>
+                  <td className="py-2 font-sans text-sm">Jump to last bar</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="max-w-2xl">
+            <div className="mb-2 font-mono text-[11px] tracking-wider text-foreground uppercase">
+              Screen reader markup
+            </div>
+            <ul className="space-y-1.5 text-sm">
+              <li>
+                ·{" "}
+                <code className="font-mono text-xs text-foreground">
+                  &lt;figure role=&quot;figure&quot;&gt;
+                </code>{" "}
+                wraps the chart with an
+                <code className="ml-1 font-mono text-xs text-foreground">
+                  aria-labelledby
+                </code>{" "}
+                pointing to the figcaption
+              </li>
+              <li>
+                · Each bar uses{" "}
+                <code className="font-mono text-xs text-foreground">
+                  role=&quot;graphics-symbol&quot;
+                </code>{" "}
+                with
+                <code className="ml-1 font-mono text-xs text-foreground">
+                  aria-label=&quot;LABEL: value&quot;
+                </code>
+              </li>
+              <li>
+                · A visually-hidden{" "}
+                <code className="font-mono text-xs text-foreground">
+                  &lt;table class=&quot;sr-only&quot;&gt;
+                </code>{" "}
+                provides a tabular data summary (caption + rows for each
+                data point)
+              </li>
+              <li>
+                · Trend indicator gets human-readable label (
+                <em>&ldquo;Trend up 18.4 percent&rdquo;</em>) — arrows are
+                aria-hidden
+              </li>
+            </ul>
+          </div>
         </div>
       </Section>
 
