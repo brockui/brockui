@@ -74,6 +74,19 @@ export type ColumnChartProps = {
   source?: string;
 
   /**
+   * Override the accent color (any CSS color or var). Defaults to `--brock-accent`
+   * (Brock UI orange). Use for theming or playground / preview UIs.
+   */
+  accent?: string;
+
+  /**
+   * Bar top-corner radius in pixels. Default 0 (sharp).
+   * Bottom corners stay flat (column charts are anchored to baseline).
+   * Common values: 0 (sharp), 2 (subtle), 6 (rounded).
+   */
+  barRadius?: number;
+
+  /**
    * Accessible description of the chart for screen readers.
    * Used as `aria-label` on the chart container and the visually-hidden
    * `<caption>` of the data table summary. Default: "Column chart with N data points".
@@ -169,6 +182,8 @@ export function ColumnChart({
   trend,
   goal,
   source,
+  accent,
+  barRadius = 0,
   description,
   yAxisFormat = defaultFormat,
   formatValue = defaultFormat,
@@ -197,11 +212,16 @@ export function ColumnChart({
   const hasAnyLabel = points.some((p) => p.label !== undefined);
   const accessibleDescription = description ?? autoDescription(points, source);
 
+  const figureStyle = accent
+    ? ({ "--brock-accent": accent } as CSSProperties)
+    : undefined;
+
   return (
     <figure
       className={className}
       role="figure"
       aria-labelledby={captionId}
+      style={figureStyle}
     >
       {trend !== undefined && <TrendIndicator value={trend} />}
 
@@ -216,6 +236,7 @@ export function ColumnChart({
           formatValue={formatValue}
           ariaLabel={accessibleDescription}
           goal={goal}
+          barRadius={barRadius}
         />
       </div>
 
@@ -320,6 +341,7 @@ function BarsGroup({
   formatValue,
   ariaLabel,
   goal,
+  barRadius,
 }: {
   points: NormalizedPoint[];
   max: number;
@@ -328,6 +350,7 @@ function BarsGroup({
   formatValue: (v: number) => string;
   ariaLabel: string;
   goal?: ColumnChartGoal;
+  barRadius: number;
 }) {
   const [focusIndex, setFocusIndex] = useState(0);
   const barRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -394,6 +417,7 @@ function BarsGroup({
           formatValue={formatValue}
           isTabStop={i === focusIndex}
           edge={edgeFor(i)}
+          barRadius={barRadius}
           onKeyDown={(e) => handleKey(e, i)}
           onFocus={() => setFocusIndex(i)}
         />
@@ -445,6 +469,7 @@ function Bar({
   formatValue,
   isTabStop,
   edge,
+  barRadius,
   onKeyDown,
   onFocus,
 }: {
@@ -456,6 +481,7 @@ function Bar({
   formatValue: (v: number) => string;
   isTabStop: boolean;
   edge: EdgePosition;
+  barRadius: number;
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   onFocus: () => void;
 }) {
@@ -486,6 +512,8 @@ function Bar({
           {
             height: `${barHeight}%`,
             animationDelay: `${index * 30}ms`,
+            borderTopLeftRadius: barRadius > 0 ? barRadius : undefined,
+            borderTopRightRadius: barRadius > 0 ? barRadius : undefined,
           } as CSSProperties
         }
         aria-hidden

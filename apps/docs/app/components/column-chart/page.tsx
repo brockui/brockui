@@ -1,4 +1,5 @@
 import { ColumnChart } from "@/components/charts/column-chart";
+import { ColumnChartPlayground } from "@/components/playground/column-chart-playground";
 import { CopyButton } from "@/components/ui/copy-button";
 
 const heroData = [
@@ -179,16 +180,12 @@ export default function ColumnChartPage() {
         </p>
       </div>
 
-      <Section title="Preview · Weekly active users">
-        <div className="border border-border bg-card p-8">
-          <ColumnChart
-            data={weeklyData}
-            labels={weeklyLabels}
-            height={220}
-            trend={0.184}
-            source="Brock Analytics, 2026"
-          />
-        </div>
+      <Section title="Playground · Try it live">
+        <p className="mb-4 text-xs text-muted-foreground">
+          Tweak color, corner radius, density, period, and feature toggles —
+          chart updates in real time. Same component, just different props.
+        </p>
+        <ColumnChartPlayground />
       </Section>
 
       <Section title="Dense · Hourly activity (24h)">
