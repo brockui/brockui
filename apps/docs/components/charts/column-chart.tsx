@@ -280,7 +280,7 @@ function EmptyState({
   return (
     <div className={className}>
       <div
-        className="flex items-center justify-center border-b border-l border-white/10 font-pixel text-xs tracking-wider text-muted-foreground/60"
+        className="flex items-center justify-center border-b border-l border-border font-pixel text-xs tracking-wider text-muted-foreground/60"
         style={{ height }}
         role="img"
         aria-label="No data available for this period"
@@ -321,7 +321,7 @@ function YAxis({
 }) {
   return (
     <div
-      className="flex w-10 shrink-0 flex-col justify-between border-r border-white/10 pr-2 font-mono text-[10px] tabular-nums text-muted-foreground/60"
+      className="flex w-10 shrink-0 flex-col justify-between border-r border-border pr-2 font-mono text-[10px] tabular-nums text-muted-foreground/60"
       aria-hidden
     >
       {ticks.map((tick) => (
@@ -399,7 +399,7 @@ function BarsGroup({
 
   return (
     <div
-      className="brock-bars relative flex flex-1 items-end border-b border-white/10"
+      className="brock-bars relative flex flex-1 items-end border-b border-border"
       style={{ gap }}
       role="img"
       aria-label={ariaLabel}
@@ -446,7 +446,7 @@ function GoalLine({
 
   return (
     <div
-      className="pointer-events-none absolute right-0 left-0 z-[5] border-t border-dashed border-white/40"
+      className="pointer-events-none absolute right-0 left-0 z-[5] border-t border-dashed border-muted-foreground/50"
       style={{ bottom: `${bottomPercent}%` }}
       role="img"
       aria-label={`${goal.label ?? "Goal"} reference line at ${formatValue(goal.value)}`}
@@ -560,7 +560,7 @@ function Tooltip({
           {label}
         </span>
       )}
-      <span className="rounded-[2px] border border-white/10 bg-background px-2 py-1 font-mono text-xs tabular-nums whitespace-nowrap text-foreground">
+      <span className="rounded-[2px] border border-border bg-background px-2 py-1 font-mono text-xs tabular-nums whitespace-nowrap text-foreground">
         {value}
       </span>
     </div>

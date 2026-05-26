@@ -35,6 +35,19 @@ export const metadata: Metadata = {
     "Micrographics-first, density-with-discipline, monospace where data lives.",
 };
 
+// Runs synchronously in <head> before React hydrates to prevent
+// "flash of wrong theme" (FOUC). Default: light. Honors localStorage.
+const themeInitScript = `
+(function() {
+  try {
+    var stored = localStorage.getItem('brockui-theme');
+    if (stored === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  } catch (e) { /* localStorage unavailable */ }
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -43,8 +56,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${geistSans.variable} ${hack.variable} ${departureMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${hack.variable} ${departureMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground">
         <Header />
         <div className="flex min-h-0 flex-1">

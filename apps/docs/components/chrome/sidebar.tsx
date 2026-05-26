@@ -72,14 +72,14 @@ const ROW_CHEVRON =
   "hidden h-3.5 w-3.5 shrink-0 transition-transform group-hover/sidebar:block";
 const SUB_BASE =
   "flex h-9 w-full items-center border-l pr-5 pl-5 text-sm transition-colors";
-const IDLE = "text-[#A6A6A6] hover:bg-[#1A1A1A] hover:text-white";
-const ACTIVE = "bg-[#222222] text-white";
+const IDLE = "text-muted-foreground hover:bg-accent hover:text-foreground";
+const ACTIVE = "bg-secondary text-foreground";
 
 function SubItem({ item, active }: { item: ComponentItem; active: boolean }) {
   if (item.status === "SOON") {
     return (
       <span
-        className={`${SUB_BASE} cursor-not-allowed border-white/10 text-[#A6A6A6]/40`}
+        className={`${SUB_BASE} cursor-not-allowed border-border text-muted-foreground/50`}
       >
         {item.name}
       </span>
@@ -98,7 +98,7 @@ function SubItem({ item, active }: { item: ComponentItem; active: boolean }) {
   return (
     <Link
       href={item.href}
-      className={`${SUB_BASE} border-white/10 hover:border-brock-accent ${IDLE}`}
+      className={`${SUB_BASE} border-border hover:border-brock-accent ${IDLE}`}
     >
       {item.name}
     </Link>
@@ -115,7 +115,7 @@ export function Sidebar() {
 
   return (
     <aside className="group/sidebar sticky top-15 h-[calc(100vh-3.75rem)] w-12 shrink-0">
-      <div className="absolute inset-y-0 left-0 z-40 flex h-full w-12 flex-col overflow-hidden border-r border-white/10 bg-background transition-[width] duration-100 ease-linear group-hover/sidebar:w-65">
+      <div className="absolute inset-y-0 left-0 z-40 flex h-full w-12 flex-col overflow-hidden border-r border-border bg-background transition-[width] duration-100 ease-linear group-hover/sidebar:w-65">
         <nav className="flex-1 overflow-x-hidden overflow-y-auto pt-2 pb-4">
           <div className={SECTION_LABEL}>Charts</div>
           <div>

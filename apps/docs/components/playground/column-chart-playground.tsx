@@ -233,7 +233,7 @@ function SegmentedControl({
   onSelect: (index: number) => void;
 }) {
   return (
-    <div className="flex rounded-[2px] border border-white/10 bg-white/4 p-0.5">
+    <div className="flex rounded-[2px] border border-border bg-muted/40 p-0.5">
       {options.map((opt, i) => {
         const selected = i === selectedIndex;
         return (
@@ -270,7 +270,7 @@ function Toggle({
         className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[2px] border transition-colors ${
           checked
             ? "border-brock-accent bg-brock-accent"
-            : "border-white/30 bg-transparent"
+            : "border-muted-foreground/50 bg-transparent"
         }`}
       >
         {checked && (

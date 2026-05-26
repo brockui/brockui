@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { HeaderSearch } from "./header-search";
 import { Logo } from "./logo";
+import { ThemeSwitcher } from "./theme-switcher";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 flex h-15 min-h-15 w-full items-center gap-4 border-b border-white/10 bg-background px-3 md:px-6">
+    <header className="sticky top-0 z-50 flex h-15 min-h-15 w-full items-center gap-4 border-b border-border bg-background px-3 md:px-6">
       <Link
         href="/"
         aria-label="Brock UI home"
@@ -14,6 +15,9 @@ export function Header() {
       </Link>
       <div className="w-full max-w-sm">
         <HeaderSearch />
+      </div>
+      <div className="ml-auto flex shrink-0 items-center">
+        <ThemeSwitcher />
       </div>
     </header>
   );

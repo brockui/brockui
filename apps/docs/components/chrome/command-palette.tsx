@@ -67,7 +67,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
         <Dialog.Content
-          className="fixed top-[20vh] left-1/2 z-50 flex w-full max-w-xl -translate-x-1/2 flex-col overflow-hidden rounded-md border border-white/10 bg-background shadow-2xl"
+          className="fixed top-[20vh] left-1/2 z-50 flex w-full max-w-xl -translate-x-1/2 flex-col overflow-hidden rounded-md border border-border bg-background shadow-2xl"
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             inputRef.current?.focus();
@@ -78,7 +78,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             Type to search Brock UI components and pages
           </Dialog.Description>
 
-          <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
@@ -88,7 +88,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               placeholder="Search components..."
               className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
-            <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
               ESC
             </kbd>
           </div>
@@ -108,7 +108,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
                     onMouseEnter={() => setSelectedIdx(i)}
                     disabled={isSoon}
                     className={`flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                      i === selectedIdx && !isSoon ? "bg-white/5" : ""
+                      i === selectedIdx && !isSoon ? "bg-muted" : ""
                     } ${isSoon ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -134,7 +134,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t border-white/10 px-4 py-2 font-mono text-[10px] text-muted-foreground">
+          <div className="flex items-center justify-between border-t border-border px-4 py-2 font-mono text-[10px] text-muted-foreground">
             <span>↑↓ navigate · ⏎ open · ESC close</span>
             <span>
               {filtered.length} of {components.length}
