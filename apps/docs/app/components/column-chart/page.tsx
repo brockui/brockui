@@ -33,7 +33,7 @@ const props: PropRow[] = [
     type: "number[] | DataPoint[]",
     default: "—",
     description:
-      "Bar values. Two forms: number[] (with labels prop) or { label?, value }[] (object form for DataFrame mapping)",
+      "Bar values. Two forms: number[] (with labels prop) or { label?, value, pattern?, color?, highlight?, note? }[] (object form — supports per-bar overrides for color, hatching, emphasis outline, and editorial annotation)",
   },
   {
     name: "labels",

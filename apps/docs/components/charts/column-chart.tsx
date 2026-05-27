@@ -56,6 +56,23 @@ export type ColumnChartDataPoint = {
    * spending a second color.
    */
   pattern?: ColumnChartPattern;
+  /**
+   * Per-bar fill color override (any CSS color). Use sparingly — Tufte data-ink
+   * discipline says one accent should rule. Reserve this for editorial cases:
+   * a single anomaly, a "current period" marker, the peak value.
+   */
+  color?: string;
+  /**
+   * Marks this bar as visually emphasized — a darker outline + slight brightness
+   * boost. Combine with `note` for the classic "this one matters" annotation.
+   */
+  highlight?: boolean;
+  /**
+   * Short annotation rendered above the bar in Hack mono (e.g. "← peak",
+   * "anomaly", "now"). Editorial / FT-style markup that travels with the data,
+   * not with chart-level config.
+   */
+  note?: string;
 };
 
 /** Goal/threshold reference line drawn across the chart. */
@@ -244,6 +261,9 @@ type NormalizedPoint = {
   label?: string;
   value: number;
   pattern: ColumnChartPattern;
+  color?: string;
+  highlight?: boolean;
+  note?: string;
 };
 
 const defaultFormat = (v: number): string => v.toLocaleString();
@@ -290,6 +310,9 @@ function normalize(
         label: d.label,
         value: d.value,
         pattern: patternFor(i, d.pattern),
+        color: d.color,
+        highlight: d.highlight,
+        note: d.note,
       }))
     : (data as readonly number[]).map((value, i) => ({
         label: labels?.[i],
@@ -826,6 +849,14 @@ function Bar({
       onKeyDown={onKeyDown}
       onFocus={onFocus}
     >
+      {point.note && !allZero && point.value > 0 && (
+        <span
+          className="pointer-events-none absolute right-0 left-0 -top-9 text-center font-mono text-[10px] tracking-wider whitespace-nowrap text-foreground"
+          aria-hidden
+        >
+          {point.note}
+        </span>
+      )}
       {showLabel && !allZero && point.value > 0 && (
         <span
           className="pointer-events-none absolute right-0 left-0 -top-4 text-center font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground"
@@ -836,14 +867,28 @@ function Bar({
       )}
       <div
         className={`brock-bar w-full transition-[filter] duration-150 group-hover/bar:brightness-110 group-focus/bar:brightness-110 ${
-          point.pattern === "hatched" ? "brock-bar-hatched" : "bg-brock-accent"
-        }`}
+          point.pattern === "hatched"
+            ? "brock-bar-hatched"
+            : point.color
+              ? ""
+              : "bg-brock-accent"
+        } ${point.highlight ? "brock-bar-highlighted" : ""}`}
         style={
           {
             height: `${barHeight}%`,
             animationDelay: animationEnabled ? `${index * 30}ms` : undefined,
             borderTopLeftRadius: barRadius > 0 ? barRadius : undefined,
             borderTopRightRadius: barRadius > 0 ? barRadius : undefined,
+            // Per-bar color: overrides --brock-accent (so hatched fills + outline
+            // pick it up via CSS var) and sets backgroundColor for solid fills.
+            ...(point.color
+              ? ({
+                  "--brock-accent": point.color,
+                  ...(point.pattern === "hatched"
+                    ? {}
+                    : { backgroundColor: point.color }),
+                } as CSSProperties)
+              : {}),
           } as CSSProperties
         }
         aria-hidden
@@ -1016,6 +1061,13 @@ function BarAnimationStyles() {
           var(--brock-accent) 1.2px, transparent 1.5px
         );
         background-size: 6px 6px;
+      }
+      /* Per-bar emphasis: a thicker, darker outline + brightness bump. Reads on
+         top of solid, hatched, and custom-color bars equally. */
+      .brock-bar-highlighted {
+        outline: 2px solid var(--foreground, currentColor);
+        outline-offset: 1px;
+        filter: brightness(1.08);
       }
     `}</style>
   );

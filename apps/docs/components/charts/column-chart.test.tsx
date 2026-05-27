@@ -600,6 +600,78 @@ describe("ColumnChart — pattern (hatching)", () => {
   });
 });
 
+describe("ColumnChart — per-bar emphasis (color / highlight / note)", () => {
+  it("applies per-bar color as inline backgroundColor on solid bars", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 10 },
+          { label: "B", value: 20, color: "#FF0000" },
+        ]}
+      />,
+    );
+    const bars = container.querySelectorAll(".brock-bar");
+    // Bar 1: no color → no inline backgroundColor
+    expect((bars[0] as HTMLElement).style.backgroundColor).toBe("");
+    // Bar 2: color set → inline backgroundColor applied
+    expect((bars[1] as HTMLElement).style.backgroundColor).toMatch(/rgb\(255, 0, 0\)|#ff0000/i);
+  });
+
+  it("drops bg-brock-accent class when per-bar color is set on a solid bar", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[{ label: "A", value: 10, color: "#FF0000" }]}
+      />,
+    );
+    expect(container.querySelector(".bg-brock-accent")).toBeFalsy();
+  });
+
+  it("sets --brock-accent CSS variable from per-bar color for hatched bars", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 10, color: "#FF0000", pattern: "hatched" },
+        ]}
+      />,
+    );
+    const bar = container.querySelector(".brock-bar") as HTMLElement;
+    expect(bar.style.getPropertyValue("--brock-accent")).toBeTruthy();
+  });
+
+  it("applies brock-bar-highlighted class when highlight=true", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 10 },
+          { label: "B", value: 20, highlight: true },
+        ]}
+      />,
+    );
+    expect(container.querySelectorAll(".brock-bar-highlighted").length).toBe(1);
+  });
+
+  it("renders per-bar note text above the bar", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 10 },
+          { label: "B", value: 20, note: "← peak" },
+        ]}
+      />,
+    );
+    expect(screen.getByText("← peak")).toBeInTheDocument();
+  });
+
+  it("omits note span when value is zero", () => {
+    render(
+      <ColumnChart
+        data={[{ label: "A", value: 0, note: "should not render" }]}
+      />,
+    );
+    expect(screen.queryByText("should not render")).not.toBeInTheDocument();
+  });
+});
+
 describe("ColumnChart — scroll & minBarWidth", () => {
   it("default scroll='none' does not add the scroll wrapper", () => {
     const { container } = render(

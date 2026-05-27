@@ -21,7 +21,10 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { ColumnChart } from "@/components/charts/column-chart";
+import {
+  ColumnChart,
+  type ColumnChartDataPoint,
+} from "@/components/charts/column-chart";
 import { CopyButton } from "@/components/ui/copy-button";
 
 /* ─── Presets ────────────────────────────────────────────────────────── */
@@ -209,6 +212,11 @@ type StudioState = {
   // scalability
   minBarWidth: number;
   scrollEnabled: boolean;
+  // emphasis
+  emphasisMode: "none" | "peak" | "current" | "index";
+  emphasisIndex: number;
+  emphasisColor: string;
+  emphasisNote: string;
   // goal
   goalShow: boolean;
   goalValue: number;
@@ -249,6 +257,10 @@ const INITIAL_STATE: StudioState = {
   patternStyleIdx: 0,
   minBarWidth: 4,
   scrollEnabled: false,
+  emphasisMode: "none",
+  emphasisIndex: 0,
+  emphasisColor: "",
+  emphasisNote: "← peak",
   goalShow: true,
   goalValue: 190,
   goalLabel: "Weekly target",
@@ -266,27 +278,59 @@ function quote(s: string): string {
   return `"${s.replace(/"/g, '\\"')}"`;
 }
 
+/**
+ * Resolve the emphasized bar index from the current Studio state. Returns -1
+ * when emphasis is off, the data range is empty, or the user-supplied index
+ * falls outside the series.
+ */
+function emphasisIdxOf(s: StudioState, ds: { data: number[] }): number {
+  if (s.emphasisMode === "none" || ds.data.length === 0) return -1;
+  if (s.emphasisMode === "peak") {
+    let best = 0;
+    for (let i = 1; i < ds.data.length; i += 1) {
+      if (ds.data[i] > ds.data[best]) best = i;
+    }
+    return best;
+  }
+  if (s.emphasisMode === "current") return ds.data.length - 1;
+  const idx = Math.max(0, Math.min(ds.data.length - 1, s.emphasisIndex));
+  return idx;
+}
+
 function generateCode(s: StudioState): string {
   const ds = DATASETS[s.period];
   const accent = s.accentValue;
   const radius = RADII[s.radiusIdx];
   const density = DENSITIES[s.densityIdx];
+  const emphasisIdx = emphasisIdxOf(s, ds);
 
   const lines: string[] = [];
   lines.push(`import { ColumnChart } from "@/components/charts/column-chart";`);
   lines.push("");
-  lines.push(
-    `const data = [${ds.data.join(", ")}];`,
-  );
-  lines.push(
-    `const labels = [${ds.labels.map(quote).join(", ")}];`,
-  );
+  if (emphasisIdx >= 0) {
+    // Object-form data — single source of truth for value + label + emphasis.
+    const parts = ds.data.map((v, i) => {
+      const fields = [`label: ${quote(ds.labels[i] ?? "")}`, `value: ${v}`];
+      if (i === emphasisIdx) {
+        if (s.emphasisColor) fields.push(`color: ${quote(s.emphasisColor)}`);
+        fields.push(`highlight: true`);
+        if (s.emphasisNote) fields.push(`note: ${quote(s.emphasisNote)}`);
+      }
+      return `  { ${fields.join(", ")} }`;
+    });
+    lines.push(`const data = [\n${parts.join(",\n")}\n];`);
+  } else {
+    lines.push(`const data = [${ds.data.join(", ")}];`);
+    lines.push(`const labels = [${ds.labels.map(quote).join(", ")}];`);
+  }
   lines.push("");
   lines.push(`export function Example() {`);
   lines.push(`  return (`);
   lines.push(`    <ColumnChart`);
   lines.push(`      data={data}`);
-  lines.push(`      labels={labels}`);
+  if (emphasisIdx < 0) {
+    lines.push(`      labels={labels}`);
+  }
   lines.push(`      height={240}`);
   lines.push(`      gap={${density.value}}`);
 
@@ -412,6 +456,23 @@ export function ColumnChartStudio() {
     });
   }
 
+  const emphasisIdx = emphasisIdxOf(s, ds);
+  const chartData =
+    emphasisIdx >= 0
+      ? ds.data.map((value, i) => {
+          const point: ColumnChartDataPoint = {
+            label: ds.labels[i],
+            value,
+          };
+          if (i === emphasisIdx) {
+            if (s.emphasisColor) point.color = s.emphasisColor;
+            point.highlight = true;
+            if (s.emphasisNote) point.note = s.emphasisNote;
+          }
+          return point;
+        })
+      : ds.data;
+
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_260px] lg:gap-0">
       {/* ── Code panel (left) ─────────────────────────────────────── */}
@@ -429,8 +490,8 @@ export function ColumnChartStudio() {
         <PanelHeader label="Chart" />
         <div className="p-6">
           <ColumnChart
-            data={ds.data}
-            labels={ds.labels}
+            data={chartData}
+            labels={emphasisIdx >= 0 ? undefined : ds.labels}
             height={260}
             gap={density.value}
             accent={accent}
@@ -728,6 +789,58 @@ export function ColumnChartStudio() {
                   onSelect={(i) => update("patternStyleIdx", i)}
                 />
               </Field>
+            )}
+          </Accordion>
+
+          <Accordion label="Emphasis">
+            <Field label="Mode">
+              <Segmented
+                options={["None", "Peak", "Current", "Index"]}
+                selectedIndex={
+                  { none: 0, peak: 1, current: 2, index: 3 }[s.emphasisMode]
+                }
+                onSelect={(i) =>
+                  update(
+                    "emphasisMode",
+                    (["none", "peak", "current", "index"] as const)[i],
+                  )
+                }
+              />
+            </Field>
+            {s.emphasisMode === "index" && (
+              <Field label="Bar index">
+                <NumberInput
+                  value={s.emphasisIndex}
+                  onChange={(v) =>
+                    update("emphasisIndex", Math.max(0, Math.floor(v)))
+                  }
+                />
+              </Field>
+            )}
+            {s.emphasisMode !== "none" && (
+              <>
+                <Field label="Note (above bar)">
+                  <TextInput
+                    value={s.emphasisNote}
+                    onChange={(v) => update("emphasisNote", v)}
+                    placeholder="← peak"
+                  />
+                </Field>
+                <Field label="Custom color (optional)">
+                  <ColorCustomInput
+                    value={s.emphasisColor || s.accentValue}
+                    onChange={(v) => update("emphasisColor", v)}
+                  />
+                </Field>
+                {s.emphasisColor && (
+                  <button
+                    onClick={() => update("emphasisColor", "")}
+                    className="cursor-pointer font-mono text-[10px] tracking-wider text-muted-foreground/70 uppercase hover:text-foreground"
+                  >
+                    × clear color (use accent)
+                  </button>
+                )}
+              </>
             )}
           </Accordion>
 
