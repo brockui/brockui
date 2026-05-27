@@ -1,43 +1,5 @@
-import { ColumnChart } from "@/components/charts/column-chart";
 import { ColumnChartStudio } from "@/components/playground/column-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
-
-const heroData = [
-  3, 5, 12, 18, 9, 4, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 2, 5, 11, 14, 6, 3, 2, 1,
-];
-const heroLabels = [
-  "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11",
-  "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23",
-];
-
-const weeklyData = [142, 168, 187, 159, 203, 178, 215];
-const weeklyLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-
-// Object form — natural shape for DataFrame mapping (Python integration target)
-const objectFormData = [
-  { label: "Q1", value: 1248 },
-  { label: "Q2", value: 1587 },
-  { label: "Q3", value: 1923 },
-  { label: "Q4", value: 2104 },
-];
-
-// Edge case: all-zero data — baseline visible, no bars (honest empty signal)
-const allZeroData = [0, 0, 0, 0, 0, 0, 0];
-
-// Edge case: dense dataset — 60 bars
-const denseData = Array.from({ length: 60 }, (_, i) =>
-  Math.round(50 + Math.sin(i / 4) * 30 + Math.random() * 20),
-);
-const denseLabels = Array.from({ length: 60 }, (_, i) =>
-  String(i).padStart(2, "0"),
-);
-
-// Edge case: single bar
-const singleBarData = [{ label: "TOTAL", value: 12_847 }];
-
-// Edge case: dirty data — NaN, negative, Infinity (will be filtered + clamped)
-const dirtyData = [120, NaN, -50, 180, Infinity, 200, 145];
-const dirtyLabels = ["A", "B", "C", "D", "E", "F", "G"];
 
 const installCommand = "npx shadcn@latest add brockui.com/r/column-chart";
 
@@ -81,33 +43,6 @@ const props: PropRow[] = [
       "X-axis labels (rendered in pixel font under bars + in hover tooltip). Only used when data is number[]",
   },
   {
-    name: "trend",
-    type: "number",
-    default: "undefined",
-    description:
-      "Decimal trend indicator e.g. 0.184 → +18.4%. Orange if positive.",
-  },
-  {
-    name: "goal",
-    type: "{ value, label? }",
-    default: "undefined",
-    description:
-      "Dashed reference line at value. Goal is included in max scale so it stays visible above bars. KPI dashboard pattern.",
-  },
-  {
-    name: "source",
-    type: "string",
-    default: "undefined",
-    description: "Attribution line rendered below the chart (FT pattern)",
-  },
-  {
-    name: "description",
-    type: "string",
-    default: "auto-generated",
-    description:
-      "Accessible description for screen readers (figcaption + table caption). Defaults to 'Column chart with N data points. Source: ...'",
-  },
-  {
     name: "height",
     type: "number",
     default: "200",
@@ -117,19 +52,103 @@ const props: PropRow[] = [
     name: "gap",
     type: "number",
     default: "4",
-    description: "Gap between bars in pixels",
+    description:
+      "Gap between bars in pixels. Auto-shrinks for dense datasets (60+ bars)",
+  },
+  {
+    name: "accent",
+    type: "string",
+    default: "var(--brock-accent)",
+    description:
+      "Override the bar fill color (any CSS color or var). Defaults to Brock orange",
+  },
+  {
+    name: "barRadius",
+    type: "number",
+    default: "0",
+    description:
+      "Top-corner radius in px. Common values: 0 (sharp), 2 (subtle), 6 (rounded)",
+  },
+  {
+    name: "header",
+    type: "{ title?, subtitle? }",
+    default: "undefined",
+    description: "Title + subtitle block above the chart",
+  },
+  {
+    name: "xAxis",
+    type: "{ title?, hideTicks? }",
+    default: "undefined",
+    description: "X-axis configuration (title below ticks, hide tick labels)",
+  },
+  {
+    name: "yAxis",
+    type: "{ title?, min?, max?, hideTicks? }",
+    default: "undefined",
+    description:
+      "Y-axis configuration (vertical title, custom min/max, hide tick labels)",
+  },
+  {
+    name: "numberFormat",
+    type: "{ prefix?, suffix?, decimals? }",
+    default: "undefined",
+    description:
+      "Number formatter applied to Y-axis, tooltip, and data labels (e.g. $1,250k). Explicit formatValue/yAxisFormat win over this",
+  },
+  {
+    name: "dataLabels",
+    type: "{ show?, format? }",
+    default: "undefined",
+    description:
+      "Show value above each bar (Hack mono). Optional per-label formatter overrides numberFormat",
+  },
+  {
+    name: "trend",
+    type: "number",
+    default: "undefined",
+    description:
+      "Decimal trend indicator e.g. 0.184 → ↗ +18.4%. Orange if positive, muted if negative",
+  },
+  {
+    name: "goal",
+    type: "{ value, label? }",
+    default: "undefined",
+    description:
+      "Dashed reference line at value. Goal is included in max scale so it stays visible above bars. KPI dashboard pattern",
+  },
+  {
+    name: "source",
+    type: "string",
+    default: "undefined",
+    description: "Attribution line rendered below the chart (FT pattern)",
+  },
+  {
+    name: "animation",
+    type: "{ enabled?, duration? }",
+    default: "{ enabled: true, duration: 400 }",
+    description:
+      "Staggered bar-rise on mount. Disabled automatically when prefers-reduced-motion is set",
+  },
+  {
+    name: "description",
+    type: "string",
+    default: "auto-generated",
+    description:
+      "Accessible description for screen readers (figcaption + table caption). Defaults to 'Column chart with N data points. Source: ...'",
   },
   {
     name: "formatValue",
     type: "(v: number) => string",
     default: "toLocaleString",
-    description: "Format function for hover tooltip value",
+    description:
+      "Format function for hover tooltip value. Wins over numberFormat",
   },
   {
     name: "yAxisFormat",
     type: "(v: number) => string",
     default: "toLocaleString",
-    description: "Format function for Y-axis tick labels",
+    description:
+      "Format function for Y-axis tick labels. Wins over numberFormat",
   },
 ];
 
@@ -189,125 +208,6 @@ export default function ColumnChartPage() {
           paste into your app.
         </p>
         <ColumnChartStudio />
-      </Section>
-
-      <Section title="Dense · Hourly activity (24h)">
-        <div className="border border-border bg-card p-8">
-          <ColumnChart
-            data={heroData}
-            labels={heroLabels}
-            height={200}
-            gap={2}
-            source="Brock Analytics, hourly aggregation"
-          />
-        </div>
-      </Section>
-
-      <Section title="Empty state (ASCII)">
-        <div className="border border-border bg-card p-8">
-          <ColumnChart
-            data={[]}
-            height={200}
-            source="Brock Analytics, 2026"
-          />
-        </div>
-      </Section>
-
-      <Section title="Goal line (KPI threshold)">
-        <p className="mb-3 text-xs text-muted-foreground">
-          Pass a{" "}
-          <code className="font-mono text-foreground">goal</code> prop with{" "}
-          <code className="font-mono text-foreground">value</code> and
-          optional{" "}
-          <code className="font-mono text-foreground">label</code> — dashed
-          reference line spans the chart at that value. The goal joins the
-          max-scale calculation so it&rsquo;s always visible above the bars.
-          FT/Bloomberg KPI dashboard pattern.
-        </p>
-        <div className="border border-border bg-card p-8">
-          <ColumnChart
-            data={weeklyData}
-            labels={weeklyLabels}
-            height={220}
-            goal={{ value: 190, label: "Weekly target" }}
-            source="Brock Analytics, 2026"
-          />
-        </div>
-      </Section>
-
-      <Section title="Object form (DataFrame-style data)">
-        <p className="mb-3 text-xs text-muted-foreground">
-          Pass <code className="font-mono">{`{ label, value }[]`}</code>{" "}
-          objects directly — natural shape when mapping from{" "}
-          <code className="font-mono">pandas.DataFrame</code> or SQL rows.
-          Useful for our upcoming Python integration.
-        </p>
-        <div className="border border-border bg-card p-8">
-          <ColumnChart
-            data={objectFormData}
-            height={200}
-            source="Brock Analytics, quarterly"
-          />
-        </div>
-      </Section>
-
-      <Section title="Edge: all-zero data">
-        <p className="mb-3 text-xs text-muted-foreground">
-          When every value is 0, bars stay invisible — baseline + X-axis
-          labels remain. Honest signal that data exists but contains zeros,
-          not missing entirely.
-        </p>
-        <div className="border border-border bg-card p-8">
-          <ColumnChart
-            data={allZeroData}
-            labels={weeklyLabels}
-            height={200}
-            source="Brock Analytics, 2026"
-          />
-        </div>
-      </Section>
-
-      <Section title="Edge: single bar">
-        <p className="mb-3 text-xs text-muted-foreground">
-          Component handles single-bar dataset (KPI-like). Bar expands to
-          full width.
-        </p>
-        <div className="border border-border bg-card p-8">
-          <ColumnChart data={singleBarData} height={200} />
-        </div>
-      </Section>
-
-      <Section title="Edge: dense dataset (60 bars)">
-        <p className="mb-3 text-xs text-muted-foreground">
-          For dense datasets gap auto-shrinks and X-axis labels render every
-          Nth bar to avoid overlap.
-        </p>
-        <div className="border border-border bg-card p-8">
-          <ColumnChart
-            data={denseData}
-            labels={denseLabels}
-            height={200}
-            gap={2}
-            source="Brock Analytics, minute-by-minute"
-          />
-        </div>
-      </Section>
-
-      <Section title="Edge: dirty data (NaN / negative / Infinity)">
-        <p className="mb-3 text-xs text-muted-foreground">
-          Non-finite values (NaN, Infinity) are skipped with a console
-          warning. Negative values are clamped to 0 with a warning
-          (use Diverging Bar Chart for ± data). Original array had 7 values,
-          rendered 5 (B + E filtered, C clamped to 0).
-        </p>
-        <div className="border border-border bg-card p-8">
-          <ColumnChart
-            data={dirtyData}
-            labels={dirtyLabels}
-            height={200}
-            source="Intentionally dirty input"
-          />
-        </div>
       </Section>
 
       <Section title="Installation">
