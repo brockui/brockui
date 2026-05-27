@@ -92,7 +92,31 @@ const PATTERN_STYLES = [
   { name: "Dots", value: "dots" },
 ] as const;
 
-type DatasetKey = "daily" | "weekly" | "monthly";
+type DatasetKey =
+  | "weekly"
+  | "daily"
+  | "twoWeeks"
+  | "month"
+  | "fortyDays"
+  | "quarter";
+
+/**
+ * Pseudo-random but stable series — deterministic so the Studio looks the same
+ * each render. Sine-modulated with a bit of variance so the shape is readable.
+ */
+function generateSeries(n: number, base: number, amplitude: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const wave = Math.sin(i / Math.max(2, n / 6)) * amplitude;
+    const noise = ((i * 31) % 11) - 5; // -5..+5, deterministic
+    out.push(Math.max(0, Math.round(base + wave + noise * (amplitude / 10))));
+  }
+  return out;
+}
+
+function dayLabels(n: number): string[] {
+  return Array.from({ length: n }, (_, i) => String(i + 1).padStart(2, "0"));
+}
 
 const DATASETS: Record<
   DatasetKey,
@@ -104,29 +128,47 @@ const DATASETS: Record<
     suggestedGoalLabel: string;
   }
 > = {
-  daily: {
-    label: "Daily",
-    data: [42, 68, 51, 89, 73, 105, 96, 82, 119, 87, 64, 93, 110, 78],
-    labels: [
-      "01", "02", "03", "04", "05", "06", "07",
-      "08", "09", "10", "11", "12", "13", "14",
-    ],
-    suggestedGoal: 100,
-    suggestedGoalLabel: "Daily target",
-  },
   weekly: {
-    label: "Weekly",
+    label: "7d",
     data: [142, 168, 187, 159, 203, 178, 215],
     labels: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
     suggestedGoal: 190,
     suggestedGoalLabel: "Weekly target",
   },
-  monthly: {
-    label: "Monthly",
-    data: [1248, 1587, 1923, 2104, 1876, 2231],
-    labels: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN"],
-    suggestedGoal: 2000,
+  daily: {
+    label: "14d",
+    data: [42, 68, 51, 89, 73, 105, 96, 82, 119, 87, 64, 93, 110, 78],
+    labels: dayLabels(14),
+    suggestedGoal: 100,
+    suggestedGoalLabel: "Daily target",
+  },
+  twoWeeks: {
+    label: "20d",
+    data: generateSeries(20, 80, 30),
+    labels: dayLabels(20),
+    suggestedGoal: 100,
+    suggestedGoalLabel: "Target",
+  },
+  month: {
+    label: "30d",
+    data: generateSeries(30, 90, 40),
+    labels: dayLabels(30),
+    suggestedGoal: 120,
     suggestedGoalLabel: "Monthly target",
+  },
+  fortyDays: {
+    label: "40d",
+    data: generateSeries(40, 95, 45),
+    labels: dayLabels(40),
+    suggestedGoal: 130,
+    suggestedGoalLabel: "Target",
+  },
+  quarter: {
+    label: "90d",
+    data: generateSeries(90, 100, 60),
+    labels: dayLabels(90),
+    suggestedGoal: 150,
+    suggestedGoalLabel: "Quarter target",
   },
 };
 
@@ -164,6 +206,9 @@ type StudioState = {
   hatchMode: "none" | "first" | "last" | "all";
   hatchIndex: number;
   patternStyleIdx: number;
+  // scalability
+  minBarWidth: number;
+  scrollEnabled: boolean;
   // goal
   goalShow: boolean;
   goalValue: number;
@@ -202,6 +247,8 @@ const INITIAL_STATE: StudioState = {
   hatchMode: "none",
   hatchIndex: 4,
   patternStyleIdx: 0,
+  minBarWidth: 4,
+  scrollEnabled: false,
   goalShow: true,
   goalValue: 190,
   goalLabel: "Weekly target",
@@ -305,6 +352,12 @@ function generateCode(s: StudioState): string {
   const styleValue = PATTERN_STYLES[s.patternStyleIdx].value;
   if (s.hatchMode !== "none" && styleValue !== "diagonal") {
     lines.push(`      patternStyle=${quote(styleValue)}`);
+  }
+  if (s.scrollEnabled) {
+    lines.push(`      scroll="auto"`);
+  }
+  if (s.minBarWidth !== 4) {
+    lines.push(`      minBarWidth={${s.minBarWidth}}`);
   }
   if (!s.animationEnabled || s.animationDuration !== 400) {
     const parts: string[] = [];
@@ -441,6 +494,8 @@ export function ColumnChartStudio() {
                 ? PATTERN_STYLES[s.patternStyleIdx].value
                 : undefined
             }
+            scroll={s.scrollEnabled ? "auto" : "none"}
+            minBarWidth={s.minBarWidth}
             animation={{
               enabled: s.animationEnabled,
               duration: s.animationDuration,
@@ -618,6 +673,22 @@ export function ColumnChartStudio() {
                 options={DENSITIES.map((d) => d.name)}
                 selectedIndex={s.densityIdx}
                 onSelect={(i) => update("densityIdx", i)}
+              />
+            </Field>
+          </Accordion>
+
+          <Accordion label="Scalability">
+            <Toggle
+              label="Horizontal scroll when bars don't fit"
+              checked={s.scrollEnabled}
+              onChange={(v) => update("scrollEnabled", v)}
+            />
+            <Field label="Min bar width (px)">
+              <NumberInput
+                value={s.minBarWidth}
+                onChange={(v) =>
+                  update("minBarWidth", Math.max(1, Math.floor(v)))
+                }
               />
             </Field>
           </Accordion>

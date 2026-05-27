@@ -131,6 +131,20 @@ const props: PropRow[] = [
       "Visual style of hatched bars (chart-level). Per-bar pattern still controls whether a bar is hatched; this controls how each hatched bar looks. Use 'dots' for grayscale/print",
   },
   {
+    name: "scroll",
+    type: "'none' | 'auto'",
+    default: "'none'",
+    description:
+      "Overflow behavior when bars don't fit. 'auto' enables horizontal scroll; Y-axis pins to the left while bars + X-axis scroll together",
+  },
+  {
+    name: "minBarWidth",
+    type: "number",
+    default: "4",
+    description:
+      "Minimum px per bar. Used with scroll='auto' to decide chart min-width: N*minBarWidth + (N-1)*gap. Ignored when scroll='none'",
+  },
+  {
     name: "trend",
     type: "number",
     default: "undefined",

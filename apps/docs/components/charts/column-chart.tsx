@@ -20,7 +20,7 @@
 
 "use client";
 
-import type { CSSProperties, KeyboardEvent } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import { useId, useRef, useState } from "react";
 
 /** Fill pattern for a bar — solid accent fill, or hatched stripe pattern. */
@@ -219,6 +219,25 @@ export type ColumnChartProps = {
    * hatched bar looks. Default `"diagonal"`.
    */
   patternStyle?: ColumnChartPatternStyle;
+
+  /**
+   * Minimum width per bar in pixels. Used together with `scroll` to decide when
+   * bars are too thin and should overflow into a horizontal scroll area rather
+   * than collapse to a sliver. Default 4.
+   */
+  minBarWidth?: number;
+
+  /**
+   * Overflow behavior when the chart is narrower than
+   * `points.length * (minBarWidth + gap)`.
+   *
+   *  - `"none"` (default) — bars shrink to fit, ignoring `minBarWidth`. Matches
+   *    classic responsive behavior; OK for short series.
+   *  - `"auto"` — the bars area gets a hard `min-width` and scrolls horizontally
+   *    inside its container. Y-axis ticks stay pinned to the left so the chart
+   *    stays readable while you swipe through long time series.
+   */
+  scroll?: "none" | "auto";
 };
 
 type NormalizedPoint = {
@@ -349,6 +368,8 @@ export function ColumnChart({
   hatchUntilIndex,
   hatchFromIndex,
   patternStyle = "diagonal",
+  minBarWidth = 4,
+  scroll = "none",
 }: ColumnChartProps) {
   const points = normalize(
     data,
@@ -414,36 +435,55 @@ export function ColumnChart({
 
       {trend !== undefined && <TrendIndicator value={trend} />}
 
-      <div className="flex" style={{ height }}>
-        {hasYAxisTitle && <YAxisTitle title={yAxis!.title!} />}
+      <div className="flex">
+        {hasYAxisTitle && (
+          <div style={{ height }}>
+            <YAxisTitle title={yAxis!.title!} />
+          </div>
+        )}
         {showYTicks && (
-          <YAxis ticks={yTicks} format={effectiveYAxisFormat} />
+          <div style={{ height }}>
+            <YAxis ticks={yTicks} format={effectiveYAxisFormat} />
+          </div>
         )}
 
-        <BarsGroup
-          points={points}
-          max={max}
-          allZero={allZero}
-          gap={effectiveGap}
-          formatValue={effectiveFormatValue}
-          ariaLabel={accessibleDescription}
-          goal={goal}
-          barRadius={barRadius}
-          animationEnabled={animationEnabled}
-          showLabels={dataLabels?.show ?? false}
-          labelFormat={effectiveLabelFormat}
-          patternStyle={patternStyle}
-        />
+        <ScrollableBarsArea
+          scroll={scroll}
+          minWidth={
+            scroll === "auto"
+              ? points.length * minBarWidth +
+                Math.max(0, points.length - 1) * effectiveGap
+              : undefined
+          }
+        >
+          <div className="flex flex-1 flex-col">
+            <div style={{ height }} className="flex">
+              <BarsGroup
+                points={points}
+                max={max}
+                allZero={allZero}
+                gap={effectiveGap}
+                formatValue={effectiveFormatValue}
+                ariaLabel={accessibleDescription}
+                goal={goal}
+                barRadius={barRadius}
+                animationEnabled={animationEnabled}
+                showLabels={dataLabels?.show ?? false}
+                labelFormat={effectiveLabelFormat}
+                patternStyle={patternStyle}
+              />
+            </div>
+            {hasAnyLabel && showXTicks && (
+              <XAxis
+                points={points}
+                gap={effectiveGap}
+                everyNth={everyNth}
+                paddingLeft={0}
+              />
+            )}
+          </div>
+        </ScrollableBarsArea>
       </div>
-
-      {hasAnyLabel && showXTicks && (
-        <XAxis
-          points={points}
-          gap={effectiveGap}
-          everyNth={everyNth}
-          paddingLeft={yAxisTotalLeft}
-        />
-      )}
 
       {xAxis?.title && (
         <div
@@ -566,6 +606,30 @@ function YAxis({
           {format(tick)}
         </div>
       ))}
+    </div>
+  );
+}
+
+function ScrollableBarsArea({
+  scroll,
+  minWidth,
+  children,
+}: {
+  scroll: "none" | "auto";
+  minWidth: number | undefined;
+  children: ReactNode;
+}) {
+  if (scroll !== "auto") {
+    // Default path — BarsGroup uses its own flex-1 to fill the parent flex row.
+    return <>{children}</>;
+  }
+  // Scroll path — overflow wrapper takes the remaining width; the inner shim
+  // imposes the minWidth and gives BarsGroup something flex-1 can fill.
+  return (
+    <div className="brock-bars-scroll flex min-w-0 flex-1 overflow-x-auto">
+      <div className="flex flex-1" style={{ minWidth }}>
+        {children}
+      </div>
     </div>
   );
 }

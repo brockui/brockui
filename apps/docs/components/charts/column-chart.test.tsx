@@ -600,6 +600,57 @@ describe("ColumnChart — pattern (hatching)", () => {
   });
 });
 
+describe("ColumnChart — scroll & minBarWidth", () => {
+  it("default scroll='none' does not add the scroll wrapper", () => {
+    const { container } = render(
+      <ColumnChart data={[10, 20, 30]} labels={["A", "B", "C"]} />,
+    );
+    expect(container.querySelector(".brock-bars-scroll")).toBeFalsy();
+  });
+
+  it("scroll='auto' adds the overflow-x wrapper", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20, 30]}
+        labels={["A", "B", "C"]}
+        scroll="auto"
+      />,
+    );
+    const scroller = container.querySelector(".brock-bars-scroll");
+    expect(scroller).toBeTruthy();
+    expect(scroller?.className).toContain("overflow-x-auto");
+  });
+
+  it("scroll='auto' applies min-width = N*minBarWidth + (N-1)*gap to inner shim", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[1, 2, 3, 4, 5]}
+        labels={["A", "B", "C", "D", "E"]}
+        scroll="auto"
+        minBarWidth={10}
+        gap={2}
+      />,
+    );
+    // 5 * 10 + 4 * 2 = 58
+    const inner = container.querySelector(".brock-bars-scroll > div") as HTMLDivElement;
+    expect(inner?.style.minWidth).toBe("58px");
+  });
+
+  it("X-axis labels are inside the scroll area when scroll='auto'", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20]}
+        labels={["A", "B"]}
+        scroll="auto"
+      />,
+    );
+    const scroller = container.querySelector(".brock-bars-scroll");
+    // Both bars wrapper AND X-axis labels live inside the scroll container.
+    expect(scroller?.textContent).toContain("A");
+    expect(scroller?.textContent).toContain("B");
+  });
+});
+
 describe("ColumnChart — animation", () => {
   it("applies brock-bars-animated class by default", () => {
     const { container } = render(<ColumnChart data={[10]} />);
