@@ -26,13 +26,51 @@ import { CopyButton } from "@/components/ui/copy-button";
 
 /* ─── Presets ────────────────────────────────────────────────────────── */
 
-const ACCENTS = [
-  { name: "Orange", value: "#F54900" },
-  { name: "Blue", value: "#0EA5E9" },
+/**
+ * Curated 18-swatch palette in Tailwind 500-range hues. Brock orange is first
+ * so the Studio always opens on brand. Hover title shows the human name.
+ */
+const PALETTE = [
+  { name: "Brock", value: "#F54900" },
+  { name: "Red", value: "#EF4444" },
+  { name: "Amber", value: "#F59E0B" },
+  { name: "Yellow", value: "#EAB308" },
+  { name: "Lime", value: "#84CC16" },
   { name: "Green", value: "#10B981" },
-  { name: "Purple", value: "#8B5CF6" },
-  { name: "Zinc", value: "#A1A1AA" },
+  { name: "Emerald", value: "#059669" },
+  { name: "Teal", value: "#14B8A6" },
+  { name: "Cyan", value: "#06B6D4" },
+  { name: "Sky", value: "#0EA5E9" },
+  { name: "Blue", value: "#3B82F6" },
+  { name: "Indigo", value: "#6366F1" },
+  { name: "Violet", value: "#8B5CF6" },
+  { name: "Purple", value: "#A855F7" },
+  { name: "Fuchsia", value: "#D946EF" },
+  { name: "Pink", value: "#EC4899" },
+  { name: "Rose", value: "#F43F5E" },
+  { name: "Zinc", value: "#71717A" },
 ] as const;
+
+const DEFAULT_ACCENT = "#F54900";
+
+const HEX_RE = /^#([0-9a-f]{6}|[0-9a-f]{3})$/i;
+
+function normalizeHex(input: string): string | null {
+  const trimmed = input.trim();
+  const withHash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+  if (!HEX_RE.test(withHash)) return null;
+  if (withHash.length === 4) {
+    // Expand #rgb → #rrggbb
+    const [, r, g, b] = withHash;
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  return withHash.toLowerCase();
+}
+
+function isInPalette(hex: string): boolean {
+  const normalized = hex.toLowerCase();
+  return PALETTE.some((c) => c.value.toLowerCase() === normalized);
+}
 
 const RADII = [
   { name: "Sharp", value: 0 },
@@ -109,7 +147,8 @@ type StudioState = {
   // data labels
   dataLabelsShow: boolean;
   // color
-  accentIdx: number;
+  accentValue: string;
+  recentColors: string[];
   // bar style
   radiusIdx: number;
   densityIdx: number;
@@ -147,7 +186,8 @@ const INITIAL_STATE: StudioState = {
   numberSuffix: "",
   numberDecimals: 0,
   dataLabelsShow: false,
-  accentIdx: 0,
+  accentValue: DEFAULT_ACCENT,
+  recentColors: [],
   radiusIdx: 0,
   densityIdx: 1,
   hatchEnabled: false,
@@ -171,7 +211,7 @@ function quote(s: string): string {
 
 function generateCode(s: StudioState): string {
   const ds = DATASETS[s.period];
-  const accent = ACCENTS[s.accentIdx];
+  const accent = s.accentValue;
   const radius = RADII[s.radiusIdx];
   const density = DENSITIES[s.densityIdx];
 
@@ -193,8 +233,8 @@ function generateCode(s: StudioState): string {
   lines.push(`      height={240}`);
   lines.push(`      gap={${density.value}}`);
 
-  if (accent.value !== "#F54900") {
-    lines.push(`      accent=${quote(accent.value)}`);
+  if (accent.toLowerCase() !== DEFAULT_ACCENT.toLowerCase()) {
+    lines.push(`      accent=${quote(accent)}`);
   }
   if (radius.value !== 0) {
     lines.push(`      barRadius={${radius.value}}`);
@@ -283,10 +323,23 @@ export function ColumnChartStudio() {
   }
 
   const ds = DATASETS[s.period];
-  const accent = ACCENTS[s.accentIdx];
+  const accent = s.accentValue;
   const radius = RADII[s.radiusIdx];
   const density = DENSITIES[s.densityIdx];
   const code = generateCode(s);
+
+  function pickColor(hex: string) {
+    setS((prev) => {
+      const fromPalette = isInPalette(hex);
+      const cleanedRecent = prev.recentColors.filter(
+        (c) => c.toLowerCase() !== hex.toLowerCase(),
+      );
+      const nextRecent = fromPalette
+        ? prev.recentColors
+        : [hex, ...cleanedRecent].slice(0, 3);
+      return { ...prev, accentValue: hex, recentColors: nextRecent };
+    });
+  }
 
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_260px] lg:gap-0">
@@ -309,7 +362,7 @@ export function ColumnChartStudio() {
             labels={ds.labels}
             height={260}
             gap={density.value}
-            accent={accent.value}
+            accent={accent}
             barRadius={radius.value}
             header={
               s.headerTitle || s.headerSubtitle
@@ -492,35 +545,35 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label="Color">
-            <Field label="Accent">
-              <div className="flex gap-2">
-                {ACCENTS.map((c, i) => {
-                  const selected = i === s.accentIdx;
-                  return (
-                    <button
-                      key={c.name}
-                      onClick={() => update("accentIdx", i)}
-                      className={`h-6 w-6 cursor-pointer rounded-[2px] transition-all ${
-                        selected
-                          ? "ring-2 ring-offset-2 ring-offset-card"
-                          : "opacity-60 hover:opacity-100"
-                      }`}
-                      style={
-                        {
-                          backgroundColor: c.value,
-                          ...(selected
-                            ? ({ "--tw-ring-color": c.value } as React.CSSProperties)
-                            : {}),
-                        } as React.CSSProperties
-                      }
-                      aria-label={`Color ${c.name}`}
-                      aria-pressed={selected}
-                      title={c.name}
-                    />
-                  );
-                })}
-              </div>
+            <Field label="Palette">
+              <ColorPalette
+                value={s.accentValue}
+                onSelect={pickColor}
+              />
             </Field>
+            <Field label="Custom">
+              <ColorCustomInput
+                value={s.accentValue}
+                onChange={pickColor}
+              />
+            </Field>
+            {s.recentColors.length > 0 && (
+              <Field label="Recent">
+                <div className="flex gap-1.5">
+                  {s.recentColors.map((c) => (
+                    <Swatch
+                      key={c}
+                      color={c}
+                      selected={
+                        c.toLowerCase() === s.accentValue.toLowerCase()
+                      }
+                      onClick={() => pickColor(c)}
+                      title={c}
+                    />
+                  ))}
+                </div>
+              </Field>
+            )}
           </Accordion>
 
           <Accordion label="Bar style">
@@ -684,6 +737,108 @@ function Accordion({
         />
       </button>
       {open && <div className="space-y-2.5 px-3 pb-3">{children}</div>}
+    </div>
+  );
+}
+
+function Swatch({
+  color,
+  selected,
+  onClick,
+  title,
+}: {
+  color: string;
+  selected: boolean;
+  onClick: () => void;
+  title: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`h-6 w-6 cursor-pointer rounded-[2px] transition-all ${
+        selected
+          ? "ring-2 ring-offset-2 ring-offset-card"
+          : "opacity-70 hover:opacity-100"
+      }`}
+      style={
+        {
+          backgroundColor: color,
+          ...(selected
+            ? ({ "--tw-ring-color": color } as React.CSSProperties)
+            : {}),
+        } as React.CSSProperties
+      }
+      aria-label={`Color ${title}`}
+      aria-pressed={selected}
+      title={title}
+    />
+  );
+}
+
+function ColorPalette({
+  value,
+  onSelect,
+}: {
+  value: string;
+  onSelect: (hex: string) => void;
+}) {
+  const lower = value.toLowerCase();
+  return (
+    <div className="grid grid-cols-6 gap-1.5">
+      {PALETTE.map((c) => (
+        <Swatch
+          key={c.name}
+          color={c.value}
+          selected={c.value.toLowerCase() === lower}
+          onClick={() => onSelect(c.value)}
+          title={c.name}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ColorCustomInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (hex: string) => void;
+}) {
+  const [text, setText] = useState(value);
+
+  // Keep the text field in sync when accent changes from outside (palette click).
+  if (text.toLowerCase() !== value.toLowerCase() && document.activeElement?.tagName !== "INPUT") {
+    setText(value);
+  }
+
+  function commit(raw: string) {
+    const normalized = normalizeHex(raw);
+    if (normalized) onChange(normalized);
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-7 w-7 shrink-0 cursor-pointer rounded-[2px] border border-border bg-transparent p-0.5"
+        aria-label="Pick custom color"
+        title="Color picker"
+      />
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => commit(text)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+        }}
+        placeholder="#F54900"
+        spellCheck={false}
+        className="flex-1 rounded-[2px] border border-border bg-background px-2 py-1.5 font-mono text-xs uppercase text-foreground placeholder:text-muted-foreground/40 focus:border-brock-accent focus:outline-none"
+      />
     </div>
   );
 }
