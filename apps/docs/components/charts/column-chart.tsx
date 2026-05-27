@@ -23,8 +23,25 @@
 import type { CSSProperties, KeyboardEvent } from "react";
 import { useId, useRef, useState } from "react";
 
-/** Fill pattern for a bar — solid accent fill, or diagonal hatching. */
+/** Fill pattern for a bar — solid accent fill, or hatched stripe pattern. */
 export type ColumnChartPattern = "solid" | "hatched";
+
+/**
+ * Visual style of hatched fills at the chart level. Controls the *kind* of
+ * stripe, while `pattern` controls whether a given bar uses any stripe at all.
+ *
+ *  - `diagonal`         — 45° stripes (default)
+ *  - `diagonal-reverse` — −45° stripes (mirror)
+ *  - `dots`             — radial-gradient dot grid (better for print/grayscale)
+ *  - `vertical`         — 90° stripes
+ *  - `horizontal`       — 0° stripes
+ */
+export type ColumnChartPatternStyle =
+  | "diagonal"
+  | "diagonal-reverse"
+  | "dots"
+  | "vertical"
+  | "horizontal";
 
 /** One data point in object form. Easier to map from DataFrames / SQL rows. */
 export type ColumnChartDataPoint = {
@@ -185,8 +202,23 @@ export type ColumnChartProps = {
    * Convenience encoding for the historical-vs-projected pattern. When set,
    * bars with index `< hatchUntilIndex` render hatched, the rest render solid.
    * Equivalent to setting `pattern: 'hatched'` on the first N points.
+   *
+   * Combinable with `hatchFromIndex` — both ranges union into the hatched set.
    */
   hatchUntilIndex?: number;
+
+  /**
+   * Mirror of `hatchUntilIndex`: bars with index `>= hatchFromIndex` render
+   * hatched. Useful for forecast bands and "last N hatched" patterns.
+   */
+  hatchFromIndex?: number;
+
+  /**
+   * Visual style of hatched bars (chart-level). Per-bar `pattern: 'hatched'`
+   * still controls *whether* a bar is hatched; this prop controls *how* every
+   * hatched bar looks. Default `"diagonal"`.
+   */
+  patternStyle?: ColumnChartPatternStyle;
 };
 
 type NormalizedPoint = {
@@ -225,10 +257,12 @@ function normalize(
   labels: readonly string[] | undefined,
   defaultPattern: ColumnChartPattern,
   hatchUntilIndex: number | undefined,
+  hatchFromIndex: number | undefined,
 ): NormalizedPoint[] {
   const patternFor = (i: number, override?: ColumnChartPattern): ColumnChartPattern => {
     if (override) return override;
     if (hatchUntilIndex !== undefined && i < hatchUntilIndex) return "hatched";
+    if (hatchFromIndex !== undefined && i >= hatchFromIndex) return "hatched";
     return defaultPattern;
   };
 
@@ -313,8 +347,16 @@ export function ColumnChart({
   animation,
   pattern = "solid",
   hatchUntilIndex,
+  hatchFromIndex,
+  patternStyle = "diagonal",
 }: ColumnChartProps) {
-  const points = normalize(data, labels, pattern, hatchUntilIndex);
+  const points = normalize(
+    data,
+    labels,
+    pattern,
+    hatchUntilIndex,
+    hatchFromIndex,
+  );
   const captionId = useId();
 
   // Number formatting cascade: explicit overrides > numberFormat > default
@@ -390,6 +432,7 @@ export function ColumnChart({
           animationEnabled={animationEnabled}
           showLabels={dataLabels?.show ?? false}
           labelFormat={effectiveLabelFormat}
+          patternStyle={patternStyle}
         />
       </div>
 
@@ -539,6 +582,7 @@ function BarsGroup({
   animationEnabled,
   showLabels,
   labelFormat,
+  patternStyle,
 }: {
   points: NormalizedPoint[];
   max: number;
@@ -551,6 +595,7 @@ function BarsGroup({
   animationEnabled: boolean;
   showLabels: boolean;
   labelFormat: (v: number) => string;
+  patternStyle: ColumnChartPatternStyle;
 }) {
   const [focusIndex, setFocusIndex] = useState(0);
   const barRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -599,7 +644,7 @@ function BarsGroup({
 
   return (
     <div
-      className={`brock-bars relative flex flex-1 items-end border-b border-border ${
+      className={`brock-bars brock-bars-pattern-${patternStyle} relative flex flex-1 items-end border-b border-border ${
         animationEnabled ? "brock-bars-animated" : ""
       }`}
       style={{ gap }}
@@ -865,19 +910,48 @@ function BarAnimationStyles() {
       @media (prefers-reduced-motion: reduce) {
         .brock-bars-animated .brock-bar { animation: none; }
       }
-      /* Hatched fill — diagonal stripe pattern at the accent color.
-         Outline keeps the bar shape readable when stripes thin out near baseline. */
+      /* Hatched fill — stripe or dot pattern at the accent color.
+         Outline keeps the bar shape readable when stripes thin out near baseline.
+         The shape is set by the parent .brock-bars-pattern-STYLE class so every
+         hatched bar in the same chart shares one visual language. */
       .brock-bar-hatched {
         background-color: transparent;
-        background-image: repeating-linear-gradient(
-          45deg,
-          var(--brock-accent) 0,
-          var(--brock-accent) 2px,
-          transparent 2px,
-          transparent 6px
-        );
         outline: 1px solid var(--brock-accent);
         outline-offset: -1px;
+      }
+      .brock-bars-pattern-diagonal .brock-bar-hatched {
+        background-image: repeating-linear-gradient(
+          45deg,
+          var(--brock-accent) 0, var(--brock-accent) 2px,
+          transparent 2px, transparent 6px
+        );
+      }
+      .brock-bars-pattern-diagonal-reverse .brock-bar-hatched {
+        background-image: repeating-linear-gradient(
+          -45deg,
+          var(--brock-accent) 0, var(--brock-accent) 2px,
+          transparent 2px, transparent 6px
+        );
+      }
+      .brock-bars-pattern-vertical .brock-bar-hatched {
+        background-image: repeating-linear-gradient(
+          90deg,
+          var(--brock-accent) 0, var(--brock-accent) 2px,
+          transparent 2px, transparent 6px
+        );
+      }
+      .brock-bars-pattern-horizontal .brock-bar-hatched {
+        background-image: repeating-linear-gradient(
+          0deg,
+          var(--brock-accent) 0, var(--brock-accent) 2px,
+          transparent 2px, transparent 6px
+        );
+      }
+      .brock-bars-pattern-dots .brock-bar-hatched {
+        background-image: radial-gradient(
+          var(--brock-accent) 1.2px, transparent 1.5px
+        );
+        background-size: 6px 6px;
       }
     `}</style>
   );

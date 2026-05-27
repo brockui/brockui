@@ -117,6 +117,20 @@ const props: PropRow[] = [
       "Convenience: bars with index < N render hatched, the rest render solid. Classic historical-vs-projected encoding",
   },
   {
+    name: "hatchFromIndex",
+    type: "number",
+    default: "undefined",
+    description:
+      "Mirror of hatchUntilIndex: bars with index >= N render hatched. Useful for forecast bands and 'last N hatched' patterns. Combinable with hatchUntilIndex (union)",
+  },
+  {
+    name: "patternStyle",
+    type: "'diagonal' | 'diagonal-reverse' | 'dots' | 'vertical' | 'horizontal'",
+    default: "'diagonal'",
+    description:
+      "Visual style of hatched bars (chart-level). Per-bar pattern still controls whether a bar is hatched; this controls how each hatched bar looks. Use 'dots' for grayscale/print",
+  },
+  {
     name: "trend",
     type: "number",
     default: "undefined",

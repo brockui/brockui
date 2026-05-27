@@ -525,6 +525,64 @@ describe("ColumnChart — pattern (hatching)", () => {
     expect(hatched.length).toBe(2);
   });
 
+  it("hatchFromIndex hatches the last N bars (from index inclusive)", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20, 30, 40, 50]}
+        labels={["A", "B", "C", "D", "E"]}
+        hatchFromIndex={3}
+      />,
+    );
+    const hatched = container.querySelectorAll(".brock-bar-hatched");
+    expect(hatched.length).toBe(2);
+  });
+
+  it("hatchUntilIndex and hatchFromIndex combine (union)", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20, 30, 40, 50]}
+        labels={["A", "B", "C", "D", "E"]}
+        hatchUntilIndex={1}
+        hatchFromIndex={4}
+      />,
+    );
+    // bar 0 hatched (until 1), bar 4 hatched (from 4) → 2 total
+    const hatched = container.querySelectorAll(".brock-bar-hatched");
+    expect(hatched.length).toBe(2);
+  });
+
+  it("patternStyle defaults to 'diagonal' (class on wrapper)", () => {
+    const { container } = render(
+      <ColumnChart data={[10]} pattern="hatched" />,
+    );
+    expect(
+      container.querySelector(".brock-bars-pattern-diagonal"),
+    ).toBeTruthy();
+  });
+
+  it("patternStyle='dots' applies dots wrapper class", () => {
+    const { container } = render(
+      <ColumnChart data={[10]} pattern="hatched" patternStyle="dots" />,
+    );
+    expect(container.querySelector(".brock-bars-pattern-dots")).toBeTruthy();
+    expect(
+      container.querySelector(".brock-bars-pattern-diagonal"),
+    ).toBeFalsy();
+  });
+
+  it("patternStyle='diagonal-reverse' applies reverse wrapper class", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10]}
+        pattern="hatched"
+        patternStyle="diagonal-reverse"
+      />,
+    );
+    expect(
+      container.querySelector(".brock-bars-pattern-diagonal-reverse"),
+    ).toBeTruthy();
+  });
+
   it("per-point pattern wins over hatchUntilIndex", () => {
     const { container } = render(
       <ColumnChart

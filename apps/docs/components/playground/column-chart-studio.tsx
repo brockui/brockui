@@ -84,6 +84,14 @@ const DENSITIES = [
   { name: "Spacious", value: 10 },
 ] as const;
 
+const PATTERN_STYLES = [
+  { name: "Diagonal", value: "diagonal" },
+  { name: "Reverse", value: "diagonal-reverse" },
+  { name: "Vertical", value: "vertical" },
+  { name: "Horizontal", value: "horizontal" },
+  { name: "Dots", value: "dots" },
+] as const;
+
 type DatasetKey = "daily" | "weekly" | "monthly";
 
 const DATASETS: Record<
@@ -153,8 +161,9 @@ type StudioState = {
   radiusIdx: number;
   densityIdx: number;
   // pattern
-  hatchEnabled: boolean;
-  hatchUntilIndex: number;
+  hatchMode: "none" | "first" | "last" | "all";
+  hatchIndex: number;
+  patternStyleIdx: number;
   // goal
   goalShow: boolean;
   goalValue: number;
@@ -190,8 +199,9 @@ const INITIAL_STATE: StudioState = {
   recentColors: [],
   radiusIdx: 0,
   densityIdx: 1,
-  hatchEnabled: false,
-  hatchUntilIndex: 4,
+  hatchMode: "none",
+  hatchIndex: 4,
+  patternStyleIdx: 0,
   goalShow: true,
   goalValue: 190,
   goalLabel: "Weekly target",
@@ -285,8 +295,16 @@ function generateCode(s: StudioState): string {
   if (s.sourceShow && s.sourceText) {
     lines.push(`      source=${quote(s.sourceText)}`);
   }
-  if (s.hatchEnabled && s.hatchUntilIndex > 0) {
-    lines.push(`      hatchUntilIndex={${s.hatchUntilIndex}}`);
+  if (s.hatchMode === "first" && s.hatchIndex > 0) {
+    lines.push(`      hatchUntilIndex={${s.hatchIndex}}`);
+  } else if (s.hatchMode === "last" && s.hatchIndex >= 0) {
+    lines.push(`      hatchFromIndex={${s.hatchIndex}}`);
+  } else if (s.hatchMode === "all") {
+    lines.push(`      pattern="hatched"`);
+  }
+  const styleValue = PATTERN_STYLES[s.patternStyleIdx].value;
+  if (s.hatchMode !== "none" && styleValue !== "diagonal") {
+    lines.push(`      patternStyle=${quote(styleValue)}`);
   }
   if (!s.animationEnabled || s.animationDuration !== 400) {
     const parts: string[] = [];
@@ -407,9 +425,20 @@ export function ColumnChartStudio() {
                 : undefined
             }
             source={s.sourceShow ? s.sourceText : undefined}
+            pattern={s.hatchMode === "all" ? "hatched" : "solid"}
             hatchUntilIndex={
-              s.hatchEnabled && s.hatchUntilIndex > 0
-                ? s.hatchUntilIndex
+              s.hatchMode === "first" && s.hatchIndex > 0
+                ? s.hatchIndex
+                : undefined
+            }
+            hatchFromIndex={
+              s.hatchMode === "last" && s.hatchIndex >= 0
+                ? s.hatchIndex
+                : undefined
+            }
+            patternStyle={
+              s.hatchMode !== "none"
+                ? PATTERN_STYLES[s.patternStyleIdx].value
                 : undefined
             }
             animation={{
@@ -594,18 +623,38 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label="Pattern">
-            <Toggle
-              label="Hatch historical part"
-              checked={s.hatchEnabled}
-              onChange={(v) => update("hatchEnabled", v)}
-            />
-            {s.hatchEnabled && (
-              <Field label="Hatch until index">
+            <Field label="Mode">
+              <Segmented
+                options={["None", "First N", "Last N", "All"]}
+                selectedIndex={
+                  { none: 0, first: 1, last: 2, all: 3 }[s.hatchMode]
+                }
+                onSelect={(i) =>
+                  update(
+                    "hatchMode",
+                    (["none", "first", "last", "all"] as const)[i],
+                  )
+                }
+              />
+            </Field>
+            {(s.hatchMode === "first" || s.hatchMode === "last") && (
+              <Field
+                label={s.hatchMode === "first" ? "Until index" : "From index"}
+              >
                 <NumberInput
-                  value={s.hatchUntilIndex}
+                  value={s.hatchIndex}
                   onChange={(v) =>
-                    update("hatchUntilIndex", Math.max(0, Math.floor(v)))
+                    update("hatchIndex", Math.max(0, Math.floor(v)))
                   }
+                />
+              </Field>
+            )}
+            {s.hatchMode !== "none" && (
+              <Field label="Style">
+                <Segmented
+                  options={PATTERN_STYLES.map((p) => p.name)}
+                  selectedIndex={s.patternStyleIdx}
+                  onSelect={(i) => update("patternStyleIdx", i)}
                 />
               </Field>
             )}
