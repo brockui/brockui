@@ -113,6 +113,9 @@ type StudioState = {
   // bar style
   radiusIdx: number;
   densityIdx: number;
+  // pattern
+  hatchEnabled: boolean;
+  hatchUntilIndex: number;
   // goal
   goalShow: boolean;
   goalValue: number;
@@ -147,6 +150,8 @@ const INITIAL_STATE: StudioState = {
   accentIdx: 0,
   radiusIdx: 0,
   densityIdx: 1,
+  hatchEnabled: false,
+  hatchUntilIndex: 4,
   goalShow: true,
   goalValue: 190,
   goalLabel: "Weekly target",
@@ -239,6 +244,9 @@ function generateCode(s: StudioState): string {
   }
   if (s.sourceShow && s.sourceText) {
     lines.push(`      source=${quote(s.sourceText)}`);
+  }
+  if (s.hatchEnabled && s.hatchUntilIndex > 0) {
+    lines.push(`      hatchUntilIndex={${s.hatchUntilIndex}}`);
   }
   if (!s.animationEnabled || s.animationDuration !== 400) {
     const parts: string[] = [];
@@ -346,6 +354,11 @@ export function ColumnChartStudio() {
                 : undefined
             }
             source={s.sourceShow ? s.sourceText : undefined}
+            hatchUntilIndex={
+              s.hatchEnabled && s.hatchUntilIndex > 0
+                ? s.hatchUntilIndex
+                : undefined
+            }
             animation={{
               enabled: s.animationEnabled,
               duration: s.animationDuration,
@@ -525,6 +538,24 @@ export function ColumnChartStudio() {
                 onSelect={(i) => update("densityIdx", i)}
               />
             </Field>
+          </Accordion>
+
+          <Accordion label="Pattern">
+            <Toggle
+              label="Hatch historical part"
+              checked={s.hatchEnabled}
+              onChange={(v) => update("hatchEnabled", v)}
+            />
+            {s.hatchEnabled && (
+              <Field label="Hatch until index">
+                <NumberInput
+                  value={s.hatchUntilIndex}
+                  onChange={(v) =>
+                    update("hatchUntilIndex", Math.max(0, Math.floor(v)))
+                  }
+                />
+              </Field>
+            )}
           </Accordion>
 
           <Accordion label="Goal line">

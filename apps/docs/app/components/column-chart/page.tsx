@@ -103,6 +103,20 @@ const props: PropRow[] = [
       "Show value above each bar (Hack mono). Optional per-label formatter overrides numberFormat",
   },
   {
+    name: "pattern",
+    type: "'solid' | 'hatched'",
+    default: "'solid'",
+    description:
+      "Default fill pattern for all bars. Per-point pattern on a data point wins over this. Hatched encodes historical/estimated/in-progress without spending a second color (Tufte)",
+  },
+  {
+    name: "hatchUntilIndex",
+    type: "number",
+    default: "undefined",
+    description:
+      "Convenience: bars with index < N render hatched, the rest render solid. Classic historical-vs-projected encoding",
+  },
+  {
     name: "trend",
     type: "number",
     default: "undefined",

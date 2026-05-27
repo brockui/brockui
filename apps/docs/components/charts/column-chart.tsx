@@ -23,12 +23,22 @@
 import type { CSSProperties, KeyboardEvent } from "react";
 import { useId, useRef, useState } from "react";
 
+/** Fill pattern for a bar — solid accent fill, or diagonal hatching. */
+export type ColumnChartPattern = "solid" | "hatched";
+
 /** One data point in object form. Easier to map from DataFrames / SQL rows. */
 export type ColumnChartDataPoint = {
   /** X-axis label (rendered in Departure Mono pixel font). Optional. */
   label?: string;
   /** Y-axis value. Negative values are clamped to 0 (use Diverging Bar Chart for ±). */
   value: number;
+  /**
+   * Fill pattern override for this specific bar. When omitted, falls back to the
+   * chart-level `pattern` prop (default "solid"). Use "hatched" to mark
+   * historical, estimated, or in-progress values — Tufte-style encoding without
+   * spending a second color.
+   */
+  pattern?: ColumnChartPattern;
 };
 
 /** Goal/threshold reference line drawn across the chart. */
@@ -160,11 +170,29 @@ export type ColumnChartProps = {
     /** Per-bar animation duration in ms (default 400). */
     duration?: number;
   };
+
+  /**
+   * Default fill pattern for all bars. Per-point `pattern` on a data point wins
+   * over this. Default "solid".
+   *
+   * Hatched bars use a diagonal stripe pattern at the accent color — ideal for
+   * encoding *historical vs projected*, *estimated vs actual*, or
+   * *in-progress vs done* without spending a second color (Tufte data-ink).
+   */
+  pattern?: ColumnChartPattern;
+
+  /**
+   * Convenience encoding for the historical-vs-projected pattern. When set,
+   * bars with index `< hatchUntilIndex` render hatched, the rest render solid.
+   * Equivalent to setting `pattern: 'hatched'` on the first N points.
+   */
+  hatchUntilIndex?: number;
 };
 
 type NormalizedPoint = {
   label?: string;
   value: number;
+  pattern: ColumnChartPattern;
 };
 
 const defaultFormat = (v: number): string => v.toLocaleString();
@@ -194,13 +222,26 @@ function isObjectForm(
 
 function normalize(
   data: readonly number[] | readonly ColumnChartDataPoint[],
-  labels?: readonly string[],
+  labels: readonly string[] | undefined,
+  defaultPattern: ColumnChartPattern,
+  hatchUntilIndex: number | undefined,
 ): NormalizedPoint[] {
+  const patternFor = (i: number, override?: ColumnChartPattern): ColumnChartPattern => {
+    if (override) return override;
+    if (hatchUntilIndex !== undefined && i < hatchUntilIndex) return "hatched";
+    return defaultPattern;
+  };
+
   const raw: NormalizedPoint[] = isObjectForm(data)
-    ? data.map((d) => ({ label: d.label, value: d.value }))
+    ? data.map((d, i) => ({
+        label: d.label,
+        value: d.value,
+        pattern: patternFor(i, d.pattern),
+      }))
     : (data as readonly number[]).map((value, i) => ({
         label: labels?.[i],
         value,
+        pattern: patternFor(i),
       }));
 
   let negativeCount = 0;
@@ -270,8 +311,10 @@ export function ColumnChart({
   numberFormat,
   dataLabels,
   animation,
+  pattern = "solid",
+  hatchUntilIndex,
 }: ColumnChartProps) {
-  const points = normalize(data, labels);
+  const points = normalize(data, labels, pattern, hatchUntilIndex);
   const captionId = useId();
 
   // Number formatting cascade: explicit overrides > numberFormat > default
@@ -683,7 +726,9 @@ function Bar({
         </span>
       )}
       <div
-        className="brock-bar w-full bg-brock-accent transition-[filter] duration-150 group-hover/bar:brightness-110 group-focus/bar:brightness-110"
+        className={`brock-bar w-full transition-[filter] duration-150 group-hover/bar:brightness-110 group-focus/bar:brightness-110 ${
+          point.pattern === "hatched" ? "brock-bar-hatched" : "bg-brock-accent"
+        }`}
         style={
           {
             height: `${barHeight}%`,
@@ -819,6 +864,20 @@ function BarAnimationStyles() {
       }
       @media (prefers-reduced-motion: reduce) {
         .brock-bars-animated .brock-bar { animation: none; }
+      }
+      /* Hatched fill — diagonal stripe pattern at the accent color.
+         Outline keeps the bar shape readable when stripes thin out near baseline. */
+      .brock-bar-hatched {
+        background-color: transparent;
+        background-image: repeating-linear-gradient(
+          45deg,
+          var(--brock-accent) 0,
+          var(--brock-accent) 2px,
+          transparent 2px,
+          transparent 6px
+        );
+        outline: 1px solid var(--brock-accent);
+        outline-offset: -1px;
       }
     `}</style>
   );

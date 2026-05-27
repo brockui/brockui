@@ -484,6 +484,64 @@ describe("ColumnChart — dataLabels", () => {
   });
 });
 
+describe("ColumnChart — pattern (hatching)", () => {
+  it("applies brock-bar-hatched class when chart-level pattern is 'hatched'", () => {
+    const { container } = render(
+      <ColumnChart data={[10, 20, 30]} pattern="hatched" />,
+    );
+    const hatched = container.querySelectorAll(".brock-bar-hatched");
+    expect(hatched.length).toBe(3);
+  });
+
+  it("defaults to solid (bg-brock-accent) when no pattern is given", () => {
+    const { container } = render(<ColumnChart data={[10]} />);
+    expect(container.querySelector(".brock-bar-hatched")).toBeFalsy();
+    expect(container.querySelector(".bg-brock-accent")).toBeTruthy();
+  });
+
+  it("per-point pattern overrides chart-level pattern", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 10, pattern: "hatched" },
+          { label: "B", value: 20 },
+        ]}
+        pattern="solid"
+      />,
+    );
+    const hatched = container.querySelectorAll(".brock-bar-hatched");
+    expect(hatched.length).toBe(1);
+  });
+
+  it("hatchUntilIndex hatches the first N bars, solid for the rest", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20, 30, 40, 50]}
+        labels={["A", "B", "C", "D", "E"]}
+        hatchUntilIndex={2}
+      />,
+    );
+    const hatched = container.querySelectorAll(".brock-bar-hatched");
+    expect(hatched.length).toBe(2);
+  });
+
+  it("per-point pattern wins over hatchUntilIndex", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 10 },
+          { label: "B", value: 20, pattern: "solid" },
+          { label: "C", value: 30 },
+        ]}
+        hatchUntilIndex={3}
+      />,
+    );
+    // A and C hatched (idx 0, 2), B forced solid via per-point override
+    const hatched = container.querySelectorAll(".brock-bar-hatched");
+    expect(hatched.length).toBe(2);
+  });
+});
+
 describe("ColumnChart — animation", () => {
   it("applies brock-bars-animated class by default", () => {
     const { container } = render(<ColumnChart data={[10]} />);
