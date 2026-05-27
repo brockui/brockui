@@ -95,6 +95,18 @@ const PATTERN_STYLES = [
   { name: "Dots", value: "dots" },
 ] as const;
 
+const NOTATIONS = [
+  { name: "Std", value: "standard" },
+  { name: "Compact", value: "compact" },
+  { name: "Sci", value: "scientific" },
+] as const;
+
+const NUMBER_STYLES = [
+  { name: "Decimal", value: "decimal" },
+  { name: "Currency", value: "currency" },
+  { name: "Percent", value: "percent" },
+] as const;
+
 type DatasetKey =
   | "weekly"
   | "daily"
@@ -197,6 +209,14 @@ type StudioState = {
   numberPrefix: string;
   numberSuffix: string;
   numberDecimals: number;
+  numberNotationIdx: number;
+  numberStyleIdx: number;
+  numberCurrency: string;
+  // bands
+  bandsEnabled: boolean;
+  bandFrom: number;
+  bandTo: number;
+  bandLabel: string;
   // data labels
   dataLabelsShow: boolean;
   // color
@@ -247,6 +267,13 @@ const INITIAL_STATE: StudioState = {
   numberPrefix: "",
   numberSuffix: "",
   numberDecimals: 0,
+  numberNotationIdx: 0,
+  numberStyleIdx: 0,
+  numberCurrency: "USD",
+  bandsEnabled: false,
+  bandFrom: 2,
+  bandTo: 4,
+  bandLabel: "Q3 push",
   dataLabelsShow: false,
   accentValue: DEFAULT_ACCENT,
   recentColors: [],
@@ -365,11 +392,24 @@ function generateCode(s: StudioState): string {
     if (s.yAxisHideTicks) parts.push(`hideTicks: true`);
     lines.push(`      yAxis={{ ${parts.join(", ")} }}`);
   }
-  if (s.numberPrefix || s.numberSuffix || s.numberDecimals > 0) {
+  const notationVal = NOTATIONS[s.numberNotationIdx].value;
+  const styleVal = NUMBER_STYLES[s.numberStyleIdx].value;
+  const hasNumberFormat =
+    s.numberPrefix ||
+    s.numberSuffix ||
+    s.numberDecimals > 0 ||
+    notationVal !== "standard" ||
+    styleVal !== "decimal";
+  if (hasNumberFormat) {
     const parts: string[] = [];
     if (s.numberPrefix) parts.push(`prefix: ${quote(s.numberPrefix)}`);
     if (s.numberSuffix) parts.push(`suffix: ${quote(s.numberSuffix)}`);
     if (s.numberDecimals > 0) parts.push(`decimals: ${s.numberDecimals}`);
+    if (notationVal !== "standard")
+      parts.push(`notation: ${quote(notationVal)}`);
+    if (styleVal !== "decimal") parts.push(`style: ${quote(styleVal)}`);
+    if (styleVal === "currency")
+      parts.push(`currency: ${quote(s.numberCurrency || "USD")}`);
     lines.push(`      numberFormat={{ ${parts.join(", ")} }}`);
   }
   if (s.dataLabelsShow) {
@@ -402,6 +442,13 @@ function generateCode(s: StudioState): string {
   }
   if (s.minBarWidth !== 4) {
     lines.push(`      minBarWidth={${s.minBarWidth}}`);
+  }
+  if (s.bandsEnabled) {
+    const from = Math.max(0, Math.min(ds.data.length - 1, s.bandFrom));
+    const to = Math.max(from, Math.min(ds.data.length - 1, s.bandTo));
+    const fields: string[] = [`from: ${from}`, `to: ${to}`];
+    if (s.bandLabel) fields.push(`label: ${quote(s.bandLabel)}`);
+    lines.push(`      bands={[{ ${fields.join(", ")} }]}`);
   }
   if (!s.animationEnabled || s.animationDuration !== 400) {
     const parts: string[] = [];
@@ -522,15 +569,26 @@ export function ColumnChartStudio() {
                   }
                 : undefined
             }
-            numberFormat={
-              s.numberPrefix || s.numberSuffix || s.numberDecimals > 0
-                ? {
-                    prefix: s.numberPrefix || undefined,
-                    suffix: s.numberSuffix || undefined,
-                    decimals: s.numberDecimals,
-                  }
-                : undefined
-            }
+            numberFormat={(() => {
+              const notation = NOTATIONS[s.numberNotationIdx].value;
+              const style = NUMBER_STYLES[s.numberStyleIdx].value;
+              const active =
+                s.numberPrefix ||
+                s.numberSuffix ||
+                s.numberDecimals > 0 ||
+                notation !== "standard" ||
+                style !== "decimal";
+              if (!active) return undefined;
+              return {
+                prefix: s.numberPrefix || undefined,
+                suffix: s.numberSuffix || undefined,
+                decimals: s.numberDecimals,
+                notation,
+                style,
+                currency:
+                  style === "currency" ? s.numberCurrency || "USD" : undefined,
+              };
+            })()}
             dataLabels={s.dataLabelsShow ? { show: true } : undefined}
             trend={s.trendShow ? s.trendValue : undefined}
             goal={
@@ -557,6 +615,23 @@ export function ColumnChartStudio() {
             }
             scroll={s.scrollEnabled ? "auto" : "none"}
             minBarWidth={s.minBarWidth}
+            bands={
+              s.bandsEnabled
+                ? [
+                    {
+                      from: Math.max(
+                        0,
+                        Math.min(ds.data.length - 1, s.bandFrom),
+                      ),
+                      to: Math.max(
+                        Math.min(ds.data.length - 1, s.bandFrom),
+                        Math.min(ds.data.length - 1, s.bandTo),
+                      ),
+                      label: s.bandLabel || undefined,
+                    },
+                  ]
+                : undefined
+            }
             animation={{
               enabled: s.animationEnabled,
               duration: s.animationDuration,
@@ -679,6 +754,29 @@ export function ColumnChartStudio() {
                 onChange={(v) => update("numberDecimals", Math.max(0, v))}
               />
             </Field>
+            <Field label="Notation">
+              <Segmented
+                options={NOTATIONS.map((n) => n.name)}
+                selectedIndex={s.numberNotationIdx}
+                onSelect={(i) => update("numberNotationIdx", i)}
+              />
+            </Field>
+            <Field label="Style">
+              <Segmented
+                options={NUMBER_STYLES.map((n) => n.name)}
+                selectedIndex={s.numberStyleIdx}
+                onSelect={(i) => update("numberStyleIdx", i)}
+              />
+            </Field>
+            {NUMBER_STYLES[s.numberStyleIdx].value === "currency" && (
+              <Field label="Currency (ISO 4217)">
+                <TextInput
+                  value={s.numberCurrency}
+                  onChange={(v) => update("numberCurrency", v.toUpperCase())}
+                  placeholder="USD"
+                />
+              </Field>
+            )}
           </Accordion>
 
           <Accordion label="Data labels">
@@ -862,6 +960,41 @@ export function ColumnChartStudio() {
                   <TextInput
                     value={s.goalLabel}
                     onChange={(v) => update("goalLabel", v)}
+                  />
+                </Field>
+              </>
+            )}
+          </Accordion>
+
+          <Accordion label="Bands">
+            <Toggle
+              label="Show plot band"
+              checked={s.bandsEnabled}
+              onChange={(v) => update("bandsEnabled", v)}
+            />
+            {s.bandsEnabled && (
+              <>
+                <Field label="From index">
+                  <NumberInput
+                    value={s.bandFrom}
+                    onChange={(v) =>
+                      update("bandFrom", Math.max(0, Math.floor(v)))
+                    }
+                  />
+                </Field>
+                <Field label="To index">
+                  <NumberInput
+                    value={s.bandTo}
+                    onChange={(v) =>
+                      update("bandTo", Math.max(0, Math.floor(v)))
+                    }
+                  />
+                </Field>
+                <Field label="Label">
+                  <TextInput
+                    value={s.bandLabel}
+                    onChange={(v) => update("bandLabel", v)}
+                    placeholder="Q3 push"
                   />
                 </Field>
               </>

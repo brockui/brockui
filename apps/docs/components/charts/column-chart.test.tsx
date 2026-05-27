@@ -600,6 +600,115 @@ describe("ColumnChart — pattern (hatching)", () => {
   });
 });
 
+describe("ColumnChart — bands (plot bands)", () => {
+  it("renders one band element per band entry", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20, 30, 40, 50]}
+        labels={["A", "B", "C", "D", "E"]}
+        bands={[
+          { from: 1, to: 2, label: "Q1" },
+          { from: 3, to: 4 },
+        ]}
+      />,
+    );
+    expect(container.querySelectorAll(".brock-band").length).toBe(2);
+  });
+
+  it("clamps band indices to the data range (-5..99 → 0..2 of 3 bars)", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20, 30]}
+        labels={["A", "B", "C"]}
+        bands={[{ from: -5, to: 99, label: "All" }]}
+      />,
+    );
+    // happy-dom drops calc()-valued styles, so we verify clamping via the
+    // generated aria-label (1-indexed for screen readers).
+    const band = container.querySelector(".brock-band") as HTMLElement;
+    expect(band.getAttribute("aria-label")).toBe("All band, bars 1 to 3");
+  });
+
+  it("renders band label text when provided", () => {
+    render(
+      <ColumnChart
+        data={[10, 20, 30]}
+        labels={["A", "B", "C"]}
+        bands={[{ from: 0, to: 1, label: "deployment" }]}
+      />,
+    );
+    expect(screen.getByText("deployment")).toBeInTheDocument();
+  });
+
+  it("uses custom band color when provided", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20]}
+        labels={["A", "B"]}
+        bands={[{ from: 0, to: 1, color: "rgb(255, 0, 0)" }]}
+      />,
+    );
+    const band = container.querySelector(".brock-band") as HTMLElement;
+    expect(band.style.background).toMatch(/rgb\(255, 0, 0\)/);
+  });
+
+  it("does not render bands overlay when bands prop is omitted", () => {
+    const { container } = render(
+      <ColumnChart data={[10, 20]} labels={["A", "B"]} />,
+    );
+    expect(container.querySelectorAll(".brock-band").length).toBe(0);
+  });
+});
+
+describe("ColumnChart — numberFormat (notation / style / currency)", () => {
+  it("compact notation shrinks long values (1500 → ~1.5K)", () => {
+    render(
+      <ColumnChart
+        data={[1500]}
+        numberFormat={{ notation: "compact", locale: "en-US" }}
+      />,
+    );
+    // Y-axis top tick gets compact format
+    expect(
+      screen.getAllByText((_, node) => node?.textContent === "1.5K").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("percent style formats values as percentages", () => {
+    render(
+      <ColumnChart
+        data={[{ label: "A", value: 0.42 }]}
+        numberFormat={{ style: "percent", locale: "en-US" }}
+      />,
+    );
+    const bar = screen.getByRole("graphics-symbol");
+    expect(bar.getAttribute("aria-label")).toContain("42%");
+  });
+
+  it("currency style with USD wraps values in $ formatting", () => {
+    render(
+      <ColumnChart
+        data={[{ label: "A", value: 1250 }]}
+        numberFormat={{ style: "currency", currency: "USD", locale: "en-US" }}
+      />,
+    );
+    const bar = screen.getByRole("graphics-symbol");
+    expect(bar.getAttribute("aria-label")).toMatch(/\$1,250/);
+  });
+
+  it("respects explicit locale for separator", () => {
+    render(
+      <ColumnChart
+        data={[{ label: "A", value: 1250 }]}
+        numberFormat={{ locale: "de-DE" }}
+      />,
+    );
+    const bar = screen.getByRole("graphics-symbol");
+    // German uses '.' as thousand separator
+    expect(bar.getAttribute("aria-label")).toContain("1.250");
+  });
+});
+
 describe("ColumnChart — per-bar emphasis (color / highlight / note)", () => {
   it("applies per-bar color as inline backgroundColor on solid bars", () => {
     const { container } = render(

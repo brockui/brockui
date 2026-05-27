@@ -90,10 +90,10 @@ const props: PropRow[] = [
   },
   {
     name: "numberFormat",
-    type: "{ prefix?, suffix?, decimals? }",
+    type: "{ prefix?, suffix?, decimals?, locale?, notation?, style?, currency? }",
     default: "undefined",
     description:
-      "Number formatter applied to Y-axis, tooltip, and data labels (e.g. $1,250k). Explicit formatValue/yAxisFormat win over this",
+      "Number formatter applied to Y-axis, tooltip, and data labels. Supports BCP-47 locale, Intl.NumberFormat notation ('compact' → 1.2K), style ('currency' / 'percent'), and ISO 4217 currency. Explicit formatValue/yAxisFormat win",
   },
   {
     name: "dataLabels",
@@ -143,6 +143,13 @@ const props: PropRow[] = [
     default: "4",
     description:
       "Minimum px per bar. Used with scroll='auto' to decide chart min-width: N*minBarWidth + (N-1)*gap. Ignored when scroll='none'",
+  },
+  {
+    name: "bands",
+    type: "{ from, to, label?, color? }[]",
+    default: "undefined",
+    description:
+      "Plot bands — highlighted vertical zones over a range of bar indices. Editorial pattern ('Q3', 'deployment window'). Render behind bars at low opacity. Indices are clamped to the data range",
   },
   {
     name: "trend",

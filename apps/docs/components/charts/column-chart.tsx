@@ -83,6 +83,23 @@ export type ColumnChartGoal = {
   label?: string;
 };
 
+/**
+ * Highlighted vertical zone spanning a range of bar indices — FT/Bloomberg
+ * "plot band" pattern. Sits behind bars at very-low opacity so the bars stay
+ * the loudest mark. Common uses: "Q3", "deployment window", "recession",
+ * "experiment cohort".
+ */
+export type ColumnChartBand = {
+  /** Start bar index (inclusive). */
+  from: number;
+  /** End bar index (inclusive). */
+  to: number;
+  /** Optional caption rendered at the top of the band. */
+  label?: string;
+  /** Optional CSS background. Defaults to a low-opacity foreground tint. */
+  color?: string;
+};
+
 export type ColumnChartProps = {
   /**
    * Bar data. Two forms accepted:
@@ -185,6 +202,20 @@ export type ColumnChartProps = {
     suffix?: string;
     /** Decimal places (default 0). */
     decimals?: number;
+    /**
+     * BCP-47 locale tag (e.g. "en-US", "ru-RU", "de-DE"). Controls thousand
+     * and decimal separators. Defaults to the host locale.
+     */
+    locale?: string;
+    /**
+     * Number notation. `"compact"` shrinks long values ("1.2K", "1.5M") — ideal
+     * for dense dashboards. Default `"standard"`.
+     */
+    notation?: "standard" | "compact" | "scientific" | "engineering";
+    /** Numeric style — `"decimal"` (default), `"currency"`, or `"percent"`. */
+    style?: "decimal" | "currency" | "percent";
+    /** ISO 4217 currency code (e.g. "USD", "EUR"). Required when style="currency". */
+    currency?: string;
   };
 
   /**
@@ -255,6 +286,13 @@ export type ColumnChartProps = {
    *    stays readable while you swipe through long time series.
    */
   scroll?: "none" | "auto";
+
+  /**
+   * Plot bands — vertical highlighted zones spanning a range of bar indices.
+   * Editorial pattern: "Q3", "deployment window", "experiment cohort". Bands
+   * render behind bars at low opacity so they never dominate the data.
+   */
+  bands?: readonly ColumnChartBand[];
 };
 
 type NormalizedPoint = {
@@ -273,16 +311,35 @@ function makeFormatter(config?: {
   prefix?: string;
   suffix?: string;
   decimals?: number;
+  locale?: string;
+  notation?: "standard" | "compact" | "scientific" | "engineering";
+  style?: "decimal" | "currency" | "percent";
+  currency?: string;
 }): (v: number) => string {
   if (!config) return defaultFormat;
-  const decimals = config.decimals ?? 0;
-  const prefix = config.prefix ?? "";
-  const suffix = config.suffix ?? "";
-  return (v: number) =>
-    `${prefix}${v.toLocaleString(undefined, {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    })}${suffix}`;
+  const {
+    prefix = "",
+    suffix = "",
+    decimals,
+    locale,
+    notation = "standard",
+    style = "decimal",
+    currency,
+  } = config;
+
+  const options: Intl.NumberFormatOptions = {
+    notation,
+    style,
+    ...(style === "currency" && currency ? { currency } : {}),
+    ...(decimals !== undefined
+      ? {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        }
+      : {}),
+  };
+
+  return (v: number) => `${prefix}${v.toLocaleString(locale, options)}${suffix}`;
 }
 
 function isObjectForm(
@@ -393,6 +450,7 @@ export function ColumnChart({
   patternStyle = "diagonal",
   minBarWidth = 4,
   scroll = "none",
+  bands,
 }: ColumnChartProps) {
   const points = normalize(
     data,
@@ -494,6 +552,7 @@ export function ColumnChart({
                 showLabels={dataLabels?.show ?? false}
                 labelFormat={effectiveLabelFormat}
                 patternStyle={patternStyle}
+                bands={bands}
               />
             </div>
             {hasAnyLabel && showXTicks && (
@@ -670,6 +729,7 @@ function BarsGroup({
   showLabels,
   labelFormat,
   patternStyle,
+  bands,
 }: {
   points: NormalizedPoint[];
   max: number;
@@ -683,6 +743,7 @@ function BarsGroup({
   showLabels: boolean;
   labelFormat: (v: number) => string;
   patternStyle: ColumnChartPatternStyle;
+  bands: readonly ColumnChartBand[] | undefined;
 }) {
   const [focusIndex, setFocusIndex] = useState(0);
   const barRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -738,6 +799,10 @@ function BarsGroup({
       role="img"
       aria-label={ariaLabel}
     >
+      {bands && bands.length > 0 && (
+        <BandsOverlay bands={bands} total={total} gap={gap} />
+      )}
+
       {points.map((point, i) => (
         <Bar
           key={i}
@@ -764,6 +829,56 @@ function BarsGroup({
         <GoalLine goal={goal} max={max} formatValue={formatValue} />
       )}
     </div>
+  );
+}
+
+function BandsOverlay({
+  bands,
+  total,
+  gap,
+}: {
+  bands: readonly ColumnChartBand[];
+  total: number;
+  gap: number;
+}) {
+  if (total <= 0) return null;
+  return (
+    <>
+      {bands.map((band, i) => {
+        const from = Math.max(0, Math.min(total - 1, band.from));
+        const to = Math.max(from, Math.min(total - 1, band.to));
+        const span = to - from + 1;
+        // Each bar occupies (100% + gap) / total of the row (minus the trailing
+        // gap baked in). Band left = from * that share; band width = span * that
+        // share minus one trailing gap. Exact, no JS measurement required.
+        const left = `calc(${from} * (100% + ${gap}px) / ${total})`;
+        const width = `calc(${span} * (100% + ${gap}px) / ${total} - ${gap}px)`;
+        return (
+          <div
+            key={i}
+            className="brock-band pointer-events-none absolute top-0 bottom-0 z-0"
+            style={{
+              left,
+              width,
+              background:
+                band.color ?? "color-mix(in oklab, var(--foreground) 6%, transparent)",
+            }}
+            role="img"
+            aria-label={
+              band.label
+                ? `${band.label} band, bars ${from + 1} to ${to + 1}`
+                : `Band, bars ${from + 1} to ${to + 1}`
+            }
+          >
+            {band.label && (
+              <span className="absolute top-1 left-1.5 font-mono text-[10px] tracking-wider whitespace-nowrap text-muted-foreground uppercase">
+                {band.label}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </>
   );
 }
 
