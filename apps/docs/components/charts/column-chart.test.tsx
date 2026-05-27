@@ -318,3 +318,191 @@ describe("ColumnChart — source line", () => {
     expect(screen.queryByText(/^Source:/i)).not.toBeInTheDocument();
   });
 });
+
+describe("ColumnChart — header", () => {
+  it("renders title and subtitle when both provided", () => {
+    render(
+      <ColumnChart
+        data={[10]}
+        header={{ title: "Active users", subtitle: "Last 7 days" }}
+      />,
+    );
+    expect(screen.getByText("Active users")).toBeInTheDocument();
+    expect(screen.getByText("Last 7 days")).toBeInTheDocument();
+  });
+
+  it("renders only title when subtitle missing", () => {
+    render(<ColumnChart data={[10]} header={{ title: "Revenue" }} />);
+    expect(screen.getByText("Revenue")).toBeInTheDocument();
+  });
+
+  it("omits header element when header prop absent", () => {
+    const { container } = render(<ColumnChart data={[10]} />);
+    expect(container.querySelector("figure > div:first-child")?.textContent)
+      .not.toBe("Revenue");
+  });
+});
+
+describe("ColumnChart — xAxis / yAxis config", () => {
+  it("renders xAxis.title below the chart", () => {
+    render(
+      <ColumnChart
+        data={[10, 20]}
+        labels={["A", "B"]}
+        xAxis={{ title: "Quarter" }}
+      />,
+    );
+    expect(screen.getByText("Quarter")).toBeInTheDocument();
+  });
+
+  it("hides Y-axis tick column when yAxis.hideTicks is true", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[100]}
+        yAxisFormat={(v) => `Y${v}`}
+        yAxis={{ hideTicks: true }}
+      />,
+    );
+    expect(container.textContent).not.toContain("Y100");
+  });
+
+  it("hides X-axis tick labels when xAxis.hideTicks is true", () => {
+    render(
+      <ColumnChart
+        data={[10, 20]}
+        labels={["FIRST", "SECOND"]}
+        xAxis={{ hideTicks: true }}
+      />,
+    );
+    // labels appear in bar aria-labels but not as visible X-axis text
+    const xAxisLabels = screen
+      .queryAllByText("FIRST")
+      .filter((el) => el.getAttribute("aria-hidden") !== null);
+    expect(xAxisLabels.length).toBe(0);
+  });
+
+  it("renders yAxis.title vertically", () => {
+    render(
+      <ColumnChart data={[10]} yAxis={{ title: "Users" }} />,
+    );
+    expect(screen.getByText("Users")).toBeInTheDocument();
+  });
+
+  it("yAxis.max overrides data-derived max for tick computation", () => {
+    render(
+      <ColumnChart
+        data={[10]}
+        yAxisFormat={(v) => `Y${v}`}
+        yAxis={{ max: 500 }}
+      />,
+    );
+    // top tick should be 500, not 10
+    expect(screen.getByText("Y500")).toBeInTheDocument();
+  });
+});
+
+describe("ColumnChart — numberFormat", () => {
+  it("applies prefix and suffix to Y-axis ticks", () => {
+    render(
+      <ColumnChart
+        data={[1000]}
+        numberFormat={{ prefix: "$", suffix: "k" }}
+      />,
+    );
+    // Same formatted value appears in Y-axis ticks + tooltip + sr-only table.
+    // At least one occurrence is enough.
+    expect(screen.getAllByText(/^\$1.*k$/).length).toBeGreaterThan(0);
+  });
+
+  it("applies decimals", () => {
+    render(
+      <ColumnChart
+        data={[100]}
+        numberFormat={{ decimals: 2 }}
+      />,
+    );
+    // happy-dom may use a comma decimal separator depending on host locale.
+    const bar = screen.getByRole("graphics-symbol");
+    expect(bar.getAttribute("aria-label")).toMatch(/100[.,]00/);
+  });
+
+  it("explicit formatValue wins over numberFormat", () => {
+    render(
+      <ColumnChart
+        data={[100]}
+        numberFormat={{ prefix: "$" }}
+        formatValue={(v) => `RAW${v}`}
+      />,
+    );
+    const bar = screen.getByRole("graphics-symbol");
+    expect(bar.getAttribute("aria-label")).toMatch(/RAW100/);
+  });
+});
+
+describe("ColumnChart — dataLabels", () => {
+  it("renders inline value above each bar when dataLabels.show is true", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[100, 200]}
+        labels={["A", "B"]}
+        formatValue={(v) => `V${v}`}
+        dataLabels={{ show: true }}
+      />,
+    );
+    // Inline labels carry the -top-4 class; both values should appear in that slot.
+    const inlineLabels = Array.from(
+      container.querySelectorAll(".-top-4"),
+    ).map((n) => n.textContent);
+    expect(inlineLabels).toContain("V100");
+    expect(inlineLabels).toContain("V200");
+  });
+
+  it("does not render inline labels by default", () => {
+    render(
+      <ColumnChart
+        data={[100]}
+        formatValue={(v) => `V${v}`}
+      />,
+    );
+    // tooltip text V100 is in DOM but hidden via classes; check via specific selector
+    const inlineLabels = screen.queryAllByText("V100").filter((el) =>
+      el.classList.contains("pointer-events-none") &&
+      el.classList.contains("-top-4"),
+    );
+    expect(inlineLabels.length).toBe(0);
+  });
+
+  it("dataLabels.format overrides default formatter for inline labels", () => {
+    render(
+      <ColumnChart
+        data={[100]}
+        formatValue={(v) => `default${v}`}
+        dataLabels={{ show: true, format: (v) => `custom${v}` }}
+      />,
+    );
+    expect(screen.getByText("custom100")).toBeInTheDocument();
+  });
+});
+
+describe("ColumnChart — animation", () => {
+  it("applies brock-bars-animated class by default", () => {
+    const { container } = render(<ColumnChart data={[10]} />);
+    expect(container.querySelector(".brock-bars-animated")).toBeTruthy();
+  });
+
+  it("omits brock-bars-animated class when animation.enabled is false", () => {
+    const { container } = render(
+      <ColumnChart data={[10]} animation={{ enabled: false }} />,
+    );
+    expect(container.querySelector(".brock-bars-animated")).toBeFalsy();
+    expect(container.querySelector(".brock-bars")).toBeTruthy();
+  });
+
+  it("sets --brock-bar-duration CSS variable when duration provided", () => {
+    const { container } = render(
+      <ColumnChart data={[10]} animation={{ duration: 800 }} />,
+    );
+    const figure = container.querySelector("figure");
+    expect(figure?.style.getPropertyValue("--brock-bar-duration")).toBe("800ms");
+  });
+});

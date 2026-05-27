@@ -101,6 +101,65 @@ export type ColumnChartProps = {
 
   /** Pass-through className for the outer wrapper. */
   className?: string;
+
+  /**
+   * Header rendered above the chart. Title in foreground, subtitle in muted.
+   * Both optional — pass either, both, or omit `header` entirely.
+   */
+  header?: {
+    title?: string;
+    subtitle?: string;
+  };
+
+  /** X-axis configuration. */
+  xAxis?: {
+    /** Title rendered below the X-axis tick labels. */
+    title?: string;
+    /** Hide X-axis tick labels (default: show if labels are provided). */
+    hideTicks?: boolean;
+  };
+
+  /** Y-axis configuration. */
+  yAxis?: {
+    /** Title rendered rotated -90° to the left of the Y-axis. */
+    title?: string;
+    /** Override min value (default 0). */
+    min?: number;
+    /** Override max value (default = max of data). */
+    max?: number;
+    /** Hide Y-axis tick labels (default: show). */
+    hideTicks?: boolean;
+  };
+
+  /**
+   * Number formatting applied to Y-axis ticks, tooltip values, and inline data labels.
+   * If both `numberFormat` and explicit `formatValue` / `yAxisFormat` are given,
+   * the explicit ones win.
+   */
+  numberFormat?: {
+    prefix?: string;
+    suffix?: string;
+    /** Decimal places (default 0). */
+    decimals?: number;
+  };
+
+  /**
+   * Show inline value labels above each bar (Hack mono).
+   * Useful for compact dashboards where comparing exact values matters.
+   */
+  dataLabels?: {
+    show?: boolean;
+    /** Optional override of the value formatter for these labels. */
+    format?: (value: number) => string;
+  };
+
+  /** Animation configuration. */
+  animation?: {
+    /** Enable the staggered bar-rise animation on mount (default true). */
+    enabled?: boolean;
+    /** Per-bar animation duration in ms (default 400). */
+    duration?: number;
+  };
 };
 
 type NormalizedPoint = {
@@ -109,6 +168,23 @@ type NormalizedPoint = {
 };
 
 const defaultFormat = (v: number): string => v.toLocaleString();
+
+/** Build a formatter from a numberFormat config object. */
+function makeFormatter(config?: {
+  prefix?: string;
+  suffix?: string;
+  decimals?: number;
+}): (v: number) => string {
+  if (!config) return defaultFormat;
+  const decimals = config.decimals ?? 0;
+  const prefix = config.prefix ?? "";
+  const suffix = config.suffix ?? "";
+  return (v: number) =>
+    `${prefix}${v.toLocaleString(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    })}${suffix}`;
+}
 
 function isObjectForm(
   data: readonly number[] | readonly ColumnChartDataPoint[],
@@ -185,12 +261,24 @@ export function ColumnChart({
   accent,
   barRadius = 0,
   description,
-  yAxisFormat = defaultFormat,
-  formatValue = defaultFormat,
+  yAxisFormat,
+  formatValue,
   className,
+  header,
+  xAxis,
+  yAxis,
+  numberFormat,
+  dataLabels,
+  animation,
 }: ColumnChartProps) {
   const points = normalize(data, labels);
   const captionId = useId();
+
+  // Number formatting cascade: explicit overrides > numberFormat > default
+  const baseFormatter = makeFormatter(numberFormat);
+  const effectiveFormatValue = formatValue ?? baseFormatter;
+  const effectiveYAxisFormat = yAxisFormat ?? baseFormatter;
+  const effectiveLabelFormat = dataLabels?.format ?? effectiveFormatValue;
 
   if (points.length === 0) {
     return <EmptyState height={height} source={source} className={className} />;
@@ -198,10 +286,12 @@ export function ColumnChart({
 
   const dataMax = points.reduce((m, p) => Math.max(m, p.value), 0);
   // Goal value participates in scale so it stays visible above all bars
-  const max =
+  const goalBased =
     goal && Number.isFinite(goal.value) && goal.value > 0
       ? Math.max(dataMax, goal.value)
       : dataMax;
+  // yAxis.max overrides everything if provided
+  const max = yAxis?.max !== undefined ? yAxis.max : goalBased;
   const allZero = max === 0;
 
   const effectiveGap = points.length > 60 ? Math.max(1, gap - 2) : gap;
@@ -212,9 +302,19 @@ export function ColumnChart({
   const hasAnyLabel = points.some((p) => p.label !== undefined);
   const accessibleDescription = description ?? autoDescription(points, source);
 
-  const figureStyle = accent
-    ? ({ "--brock-accent": accent } as CSSProperties)
-    : undefined;
+  const figureStyle = {
+    ...(accent ? { "--brock-accent": accent } : {}),
+    ...(animation?.duration !== undefined
+      ? { "--brock-bar-duration": `${animation.duration}ms` }
+      : {}),
+  } as CSSProperties;
+  const animationEnabled = animation?.enabled !== false;
+
+  const showYTicks = !yAxis?.hideTicks;
+  const showXTicks = !xAxis?.hideTicks;
+  const hasYAxisTitle = !!yAxis?.title;
+  const yAxisPaddingLeft = showYTicks ? 40 : 0;
+  const yAxisTotalLeft = yAxisPaddingLeft + (hasYAxisTitle ? 24 : 0);
 
   return (
     <figure
@@ -223,30 +323,49 @@ export function ColumnChart({
       aria-labelledby={captionId}
       style={figureStyle}
     >
+      {(header?.title || header?.subtitle) && (
+        <Header title={header.title} subtitle={header.subtitle} />
+      )}
+
       {trend !== undefined && <TrendIndicator value={trend} />}
 
       <div className="flex" style={{ height }}>
-        <YAxis ticks={yTicks} format={yAxisFormat} />
+        {hasYAxisTitle && <YAxisTitle title={yAxis!.title!} />}
+        {showYTicks && (
+          <YAxis ticks={yTicks} format={effectiveYAxisFormat} />
+        )}
 
         <BarsGroup
           points={points}
           max={max}
           allZero={allZero}
           gap={effectiveGap}
-          formatValue={formatValue}
+          formatValue={effectiveFormatValue}
           ariaLabel={accessibleDescription}
           goal={goal}
           barRadius={barRadius}
+          animationEnabled={animationEnabled}
+          showLabels={dataLabels?.show ?? false}
+          labelFormat={effectiveLabelFormat}
         />
       </div>
 
-      {hasAnyLabel && (
+      {hasAnyLabel && showXTicks && (
         <XAxis
           points={points}
           gap={effectiveGap}
           everyNth={everyNth}
-          paddingLeft={40}
+          paddingLeft={yAxisTotalLeft}
         />
+      )}
+
+      {xAxis?.title && (
+        <div
+          className="mt-2 text-center font-mono text-[10px] tracking-wider text-muted-foreground/60 uppercase"
+          style={{ paddingLeft: yAxisTotalLeft }}
+        >
+          {xAxis.title}
+        </div>
       )}
 
       {source && <ChartSource source={source} />}
@@ -257,7 +376,7 @@ export function ColumnChart({
 
       <DataTableSummary
         points={points}
-        formatValue={formatValue}
+        formatValue={effectiveFormatValue}
         caption={accessibleDescription}
       />
 
@@ -288,6 +407,38 @@ function EmptyState({
         ▒▒▒ no data for this period
       </div>
       {source && <ChartSource source={source} />}
+    </div>
+  );
+}
+
+function Header({
+  title,
+  subtitle,
+}: {
+  title?: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="mb-3">
+      {title && (
+        <div className="text-base font-medium text-foreground">{title}</div>
+      )}
+      {subtitle && (
+        <div className="mt-0.5 text-xs text-muted-foreground">{subtitle}</div>
+      )}
+    </div>
+  );
+}
+
+function YAxisTitle({ title }: { title: string }) {
+  return (
+    <div className="flex w-6 shrink-0 items-center justify-center">
+      <span
+        className="font-mono text-[10px] tracking-wider text-muted-foreground/70 uppercase"
+        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+      >
+        {title}
+      </span>
     </div>
   );
 }
@@ -342,6 +493,9 @@ function BarsGroup({
   ariaLabel,
   goal,
   barRadius,
+  animationEnabled,
+  showLabels,
+  labelFormat,
 }: {
   points: NormalizedPoint[];
   max: number;
@@ -351,6 +505,9 @@ function BarsGroup({
   ariaLabel: string;
   goal?: ColumnChartGoal;
   barRadius: number;
+  animationEnabled: boolean;
+  showLabels: boolean;
+  labelFormat: (v: number) => string;
 }) {
   const [focusIndex, setFocusIndex] = useState(0);
   const barRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -399,7 +556,9 @@ function BarsGroup({
 
   return (
     <div
-      className="brock-bars relative flex flex-1 items-end border-b border-border"
+      className={`brock-bars relative flex flex-1 items-end border-b border-border ${
+        animationEnabled ? "brock-bars-animated" : ""
+      }`}
       style={{ gap }}
       role="img"
       aria-label={ariaLabel}
@@ -418,6 +577,9 @@ function BarsGroup({
           isTabStop={i === focusIndex}
           edge={edgeFor(i)}
           barRadius={barRadius}
+          animationEnabled={animationEnabled}
+          showLabel={showLabels}
+          labelFormat={labelFormat}
           onKeyDown={(e) => handleKey(e, i)}
           onFocus={() => setFocusIndex(i)}
         />
@@ -470,6 +632,9 @@ function Bar({
   isTabStop,
   edge,
   barRadius,
+  animationEnabled,
+  showLabel,
+  labelFormat,
   onKeyDown,
   onFocus,
 }: {
@@ -482,6 +647,9 @@ function Bar({
   isTabStop: boolean;
   edge: EdgePosition;
   barRadius: number;
+  animationEnabled: boolean;
+  showLabel: boolean;
+  labelFormat: (v: number) => string;
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   onFocus: () => void;
 }) {
@@ -506,12 +674,20 @@ function Bar({
       onKeyDown={onKeyDown}
       onFocus={onFocus}
     >
+      {showLabel && !allZero && point.value > 0 && (
+        <span
+          className="pointer-events-none absolute right-0 left-0 -top-4 text-center font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground"
+          aria-hidden
+        >
+          {labelFormat(point.value)}
+        </span>
+      )}
       <div
         className="brock-bar w-full bg-brock-accent transition-[filter] duration-150 group-hover/bar:brightness-110 group-focus/bar:brightness-110"
         style={
           {
             height: `${barHeight}%`,
-            animationDelay: `${index * 30}ms`,
+            animationDelay: animationEnabled ? `${index * 30}ms` : undefined,
             borderTopLeftRadius: barRadius > 0 ? barRadius : undefined,
             borderTopRightRadius: barRadius > 0 ? barRadius : undefined,
           } as CSSProperties
@@ -634,15 +810,15 @@ function DataTableSummary({
 function BarAnimationStyles() {
   return (
     <style>{`
-      .brock-bars .brock-bar {
-        animation: brock-bar-rise 400ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+      .brock-bars-animated .brock-bar {
+        animation: brock-bar-rise var(--brock-bar-duration, 400ms) cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
       }
       @keyframes brock-bar-rise {
         from { transform: scaleY(0); transform-origin: bottom; }
         to   { transform: scaleY(1); transform-origin: bottom; }
       }
       @media (prefers-reduced-motion: reduce) {
-        .brock-bars .brock-bar { animation: none; }
+        .brock-bars-animated .brock-bar { animation: none; }
       }
     `}</style>
   );

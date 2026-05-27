@@ -1,5 +1,5 @@
 import { ColumnChart } from "@/components/charts/column-chart";
-import { ColumnChartPlayground } from "@/components/playground/column-chart-playground";
+import { ColumnChartStudio } from "@/components/playground/column-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
 
 const heroData = [
@@ -136,12 +136,14 @@ const props: PropRow[] = [
 function Section({
   title,
   children,
+  wide = false,
 }: {
   title: string;
   children: React.ReactNode;
+  wide?: boolean;
 }) {
   return (
-    <section className="mb-12">
+    <section className={`mb-12 ${wide ? "" : "max-w-4xl"}`}>
       <h2 className="mb-4 font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
         {title}
       </h2>
@@ -165,8 +167,8 @@ function CodeBlock({ code }: { code: string }) {
 
 export default function ColumnChartPage() {
   return (
-    <div className="mx-auto max-w-4xl p-10">
-      <div className="mb-12">
+    <div className="mx-auto max-w-6xl p-10">
+      <div className="mb-12 max-w-4xl">
         <div className="mb-2 font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
           Charts · Column Chart
         </div>
@@ -180,12 +182,13 @@ export default function ColumnChartPage() {
         </p>
       </div>
 
-      <Section title="Playground · Try it live">
-        <p className="mb-4 text-xs text-muted-foreground">
-          Tweak color, corner radius, density, period, and feature toggles —
-          chart updates in real time. Same component, just different props.
+      <Section title="Studio · Code, chart, settings" wide>
+        <p className="mb-4 max-w-2xl text-xs text-muted-foreground">
+          Three-panel workbench. Tweak any setting on the right — chart in the
+          middle updates live and the code on the left regenerates ready to
+          paste into your app.
         </p>
-        <ColumnChartPlayground />
+        <ColumnChartStudio />
       </Section>
 
       <Section title="Dense · Hourly activity (24h)">
