@@ -855,7 +855,7 @@ export function ColumnChartStudio() {
           <Accordion label="Pattern">
             <Field label="Mode">
               <Segmented
-                options={["None", "First N", "Last N", "All"]}
+                options={["None", "First", "Last", "All"]}
                 selectedIndex={
                   { none: 0, first: 1, last: 2, all: 3 }[s.hatchMode]
                 }
@@ -881,7 +881,7 @@ export function ColumnChartStudio() {
             )}
             {s.hatchMode !== "none" && (
               <Field label="Style">
-                <Segmented
+                <Select
                   options={PATTERN_STYLES.map((p) => p.name)}
                   selectedIndex={s.patternStyleIdx}
                   onSelect={(i) => update("patternStyleIdx", i)}
@@ -1008,7 +1008,7 @@ export function ColumnChartStudio() {
               onChange={(v) => update("trendShow", v)}
             />
             {s.trendShow && (
-              <Field label="Value (decimal — 0.184 = +18.4%)">
+              <Field label="Value (0.184 = +18.4%)">
                 <NumberInput
                   value={s.trendValue}
                   step={0.01}
@@ -1286,7 +1286,8 @@ function Segmented({
           <button
             key={opt}
             onClick={() => onSelect(i)}
-            className={`flex-1 cursor-pointer rounded-[2px] px-2 py-1 text-[11px] transition-colors ${
+            title={opt}
+            className={`min-w-0 flex-1 cursor-pointer truncate rounded-[2px] px-1.5 py-1 text-center text-[11px] transition-colors ${
               selected
                 ? "bg-brock-accent text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -1297,6 +1298,41 @@ function Segmented({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Compact native-select dropdown for option lists too long or too wordy for a
+ * Segmented control in the 260px settings rail. Styled to match the rest of the
+ * panel (border, rounded-[2px], mono caret).
+ */
+function Select({
+  options,
+  selectedIndex,
+  onSelect,
+}: {
+  options: readonly string[];
+  selectedIndex: number;
+  onSelect: (i: number) => void;
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={selectedIndex}
+        onChange={(e) => onSelect(Number(e.target.value))}
+        className="w-full cursor-pointer appearance-none rounded-[2px] border border-border bg-background py-1.5 pr-7 pl-2 font-sans text-xs text-foreground focus:border-brock-accent focus:outline-none"
+      >
+        {options.map((opt, i) => (
+          <option key={opt} value={i}>
+            {opt}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute top-1/2 right-2 h-3 w-3 -translate-y-1/2 text-muted-foreground"
+        aria-hidden
+      />
     </div>
   );
 }
