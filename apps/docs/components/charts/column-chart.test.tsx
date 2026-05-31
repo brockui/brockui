@@ -600,6 +600,168 @@ describe("ColumnChart — pattern (hatching)", () => {
   });
 });
 
+describe("ColumnChart — state machine (loading / error / empty / ready)", () => {
+  it("loading + no data renders the full skeleton with role=status and aria-busy", () => {
+    const { container } = render(<ColumnChart data={[]} loading />);
+    const status = container.querySelector('[role="status"]') as HTMLElement;
+    expect(status).toBeTruthy();
+    expect(status.getAttribute("aria-busy")).toBe("true");
+    expect(status.getAttribute("aria-label")).toBe("Loading…");
+    // 12 skeleton bars by default
+    expect(container.querySelectorAll(".brock-skeleton-bar").length).toBe(12);
+  });
+
+  it("loading + populated data renders the chart with an overlay (not the skeleton)", () => {
+    const { container } = render(
+      <ColumnChart data={[10, 20, 30]} labels={["A", "B", "C"]} loading />,
+    );
+    // Skeleton must NOT replace the chart
+    expect(container.querySelector(".brock-skeleton-bar")).toBeFalsy();
+    // Real bars are still rendered
+    expect(container.querySelectorAll('[role="graphics-symbol"]').length).toBe(3);
+    // Overlay is layered on top
+    const overlay = container.querySelector(".brock-loading-overlay");
+    expect(overlay).toBeTruthy();
+    // Figure carries aria-busy
+    const figure = container.querySelector("figure") as HTMLElement;
+    expect(figure.getAttribute("aria-busy")).toBe("true");
+  });
+
+  it("error replaces the chart even when data is present (terminal state)", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20, 30]}
+        labels={["A", "B", "C"]}
+        error="Boom"
+      />,
+    );
+    expect(container.querySelectorAll('[role="graphics-symbol"]').length).toBe(0);
+    const alert = container.querySelector('[role="alert"]') as HTMLElement;
+    expect(alert).toBeTruthy();
+    expect(alert.getAttribute("aria-live")).toBe("assertive");
+    expect(alert.textContent).toContain("Boom");
+  });
+
+  it("accepts an Error instance and renders its message", () => {
+    render(<ColumnChart data={[]} error={new Error("Upstream timeout")} />);
+    expect(screen.getByText("Upstream timeout")).toBeInTheDocument();
+  });
+
+  it("error takes precedence over loading and empty", () => {
+    const { container } = render(
+      <ColumnChart data={[]} loading error="Failed" />,
+    );
+    expect(container.querySelector('[role="alert"]')).toBeTruthy();
+    expect(container.querySelector('[role="status"]')).toBeFalsy();
+    expect(container.querySelector(".brock-skeleton-bar")).toBeFalsy();
+  });
+
+  it("retry button appears only when onRetry is provided and fires the callback", async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+    const { rerender, container } = render(
+      <ColumnChart data={[]} error="X" />,
+    );
+    expect(
+      container.querySelector('button[type="button"]'),
+    ).toBeFalsy();
+
+    rerender(<ColumnChart data={[]} error="X" onRetry={onRetry} />);
+    const btn = container.querySelector(
+      'button[type="button"]',
+    ) as HTMLButtonElement;
+    expect(btn).toBeTruthy();
+    expect(btn.textContent).toContain("Retry");
+    await user.click(btn);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("custom loadingLabel / errorLabel / retryLabel are respected", () => {
+    const { container, rerender } = render(
+      <ColumnChart data={[]} loading loadingLabel="Загрузка…" />,
+    );
+    expect(
+      container.querySelector('[role="status"]')?.getAttribute("aria-label"),
+    ).toBe("Загрузка…");
+
+    rerender(
+      <ColumnChart
+        data={[]}
+        error="Сбой"
+        errorLabel="Ошибка"
+        onRetry={() => {}}
+        retryLabel="Повторить"
+      />,
+    );
+    expect(
+      container.querySelector('[role="alert"]')?.getAttribute("aria-label"),
+    ).toBe("Ошибка: Сбой");
+    expect(
+      container.querySelector('button[type="button"]')?.textContent,
+    ).toContain("Повторить");
+  });
+
+  it("loadingFallback overrides the default skeleton entirely", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[]}
+        loading
+        loadingFallback={<div data-testid="custom-loader">spinning…</div>}
+      />,
+    );
+    expect(container.querySelector(".brock-skeleton-bar")).toBeFalsy();
+    expect(screen.getByTestId("custom-loader")).toBeInTheDocument();
+  });
+
+  it("errorFallback as a React node overrides the default error UI", () => {
+    render(
+      <ColumnChart
+        data={[]}
+        error="X"
+        errorFallback={<div data-testid="custom-err">oh no</div>}
+      />,
+    );
+    expect(screen.getByTestId("custom-err")).toBeInTheDocument();
+    expect(screen.queryByText("Error")).not.toBeInTheDocument();
+  });
+
+  it("errorFallback as a function receives the normalized Error", () => {
+    const fn = vi.fn((err: Error) => <div data-testid="fn-err">{err.message}</div>);
+    render(<ColumnChart data={[]} error="boom-string" errorFallback={fn} />);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(fn.mock.calls[0][0].message).toBe("boom-string");
+    expect(screen.getByTestId("fn-err")).toHaveTextContent("boom-string");
+  });
+
+  it("default ready state is unchanged when loading=false and error=null", () => {
+    const { container } = render(
+      <ColumnChart data={[10, 20]} labels={["A", "B"]} />,
+    );
+    expect(container.querySelectorAll('[role="graphics-symbol"]').length).toBe(2);
+    expect(container.querySelector(".brock-skeleton-bar")).toBeFalsy();
+    expect(container.querySelector(".brock-loading-overlay")).toBeFalsy();
+    expect(container.querySelector('[role="alert"]')).toBeFalsy();
+    expect(
+      (container.querySelector("figure") as HTMLElement).getAttribute(
+        "aria-busy",
+      ),
+    ).toBeNull();
+  });
+
+  it("ready state preserves the source line in the skeleton and error states too", () => {
+    const src = "Brock Analytics, 2026";
+
+    const { rerender } = render(
+      <ColumnChart data={[]} loading source={src} />,
+    );
+    expect(screen.getAllByText(new RegExp(src))[0]).toBeInTheDocument();
+
+    rerender(<ColumnChart data={[]} error="x" source={src} />);
+    expect(screen.getAllByText(new RegExp(src))[0]).toBeInTheDocument();
+  });
+});
+
 describe("ColumnChart — bands (plot bands)", () => {
   it("renders one band element per band entry", () => {
     const { container } = render(

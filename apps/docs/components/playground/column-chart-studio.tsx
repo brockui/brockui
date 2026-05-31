@@ -192,6 +192,13 @@ const DATASETS: Record<
 type StudioState = {
   // data
   period: DatasetKey;
+  // states
+  stateMode: "ready" | "loading" | "loading-overlay" | "error";
+  errorMessage: string;
+  loadingLabel: string;
+  errorLabel: string;
+  retryLabel: string;
+  withRetry: boolean;
   // header
   headerTitle: string;
   headerSubtitle: string;
@@ -254,6 +261,12 @@ type StudioState = {
 
 const INITIAL_STATE: StudioState = {
   period: "weekly",
+  stateMode: "ready",
+  errorMessage: "Couldn't load metrics — the upstream API timed out.",
+  loadingLabel: "Loading…",
+  errorLabel: "Error",
+  retryLabel: "Retry",
+  withRetry: true,
   headerTitle: "Active users",
   headerSubtitle: "Last 7 days",
   xAxisTitle: "",
@@ -458,6 +471,27 @@ function generateCode(s: StudioState): string {
     }
     lines.push(`      animation={{ ${parts.join(", ")} }}`);
   }
+  // State machine — emit only the props matching the selected preview state.
+  if (s.stateMode === "loading" || s.stateMode === "loading-overlay") {
+    lines.push(`      loading`);
+    if (s.loadingLabel && s.loadingLabel !== "Loading…") {
+      lines.push(`      loadingLabel=${quote(s.loadingLabel)}`);
+    }
+  }
+  if (s.stateMode === "error") {
+    lines.push(
+      `      error=${quote(s.errorMessage || "Something went wrong")}`,
+    );
+    if (s.errorLabel && s.errorLabel !== "Error") {
+      lines.push(`      errorLabel=${quote(s.errorLabel)}`);
+    }
+    if (s.withRetry) {
+      lines.push(`      onRetry={() => refetch()}`);
+      if (s.retryLabel && s.retryLabel !== "Retry") {
+        lines.push(`      retryLabel=${quote(s.retryLabel)}`);
+      }
+    }
+  }
 
   lines.push(`    />`);
   lines.push(`  );`);
@@ -520,6 +554,23 @@ export function ColumnChartStudio() {
         })
       : ds.data;
 
+  // For the "loading" preview we need the chart to render the FULL skeleton
+  // (no-data + loading). Passing an empty data array triggers that path.
+  // "loading-overlay" keeps the data so the overlay variant renders on top.
+  // "error" passes the message; the chart will replace itself with ErrorState.
+  const effectiveChartData =
+    s.stateMode === "loading" ? [] : chartData;
+  const effectiveLabels =
+    s.stateMode === "loading"
+      ? undefined
+      : emphasisIdx >= 0
+        ? undefined
+        : ds.labels;
+  const effectiveLoading =
+    s.stateMode === "loading" || s.stateMode === "loading-overlay";
+  const effectiveError =
+    s.stateMode === "error" ? s.errorMessage || "Unknown error" : undefined;
+
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_260px] lg:gap-0">
       {/* ── Code panel (left) ─────────────────────────────────────── */}
@@ -537,8 +588,22 @@ export function ColumnChartStudio() {
         <PanelHeader label="Chart" />
         <div className="p-6">
           <ColumnChart
-            data={chartData}
-            labels={emphasisIdx >= 0 ? undefined : ds.labels}
+            data={effectiveChartData}
+            labels={effectiveLabels}
+            loading={effectiveLoading}
+            error={effectiveError}
+            onRetry={
+              s.stateMode === "error" && s.withRetry
+                ? () => {
+                    // In the Studio demo, "retry" simply flips back to ready
+                    // so users can see the flow end-to-end.
+                    setS((prev) => ({ ...prev, stateMode: "ready" }));
+                  }
+                : undefined
+            }
+            loadingLabel={s.loadingLabel || undefined}
+            errorLabel={s.errorLabel || undefined}
+            retryLabel={s.retryLabel || undefined}
             height={260}
             gap={density.value}
             accent={accent}
@@ -658,6 +723,77 @@ export function ColumnChartStudio() {
                 }
               />
             </Field>
+          </Accordion>
+
+          <Accordion label="States">
+            <Field label="Mode">
+              <Segmented
+                options={["Ready", "Loading", "Refresh", "Error"]}
+                selectedIndex={
+                  {
+                    ready: 0,
+                    loading: 1,
+                    "loading-overlay": 2,
+                    error: 3,
+                  }[s.stateMode]
+                }
+                onSelect={(i) =>
+                  update(
+                    "stateMode",
+                    (
+                      [
+                        "ready",
+                        "loading",
+                        "loading-overlay",
+                        "error",
+                      ] as const
+                    )[i],
+                  )
+                }
+              />
+            </Field>
+            {(s.stateMode === "loading" ||
+              s.stateMode === "loading-overlay") && (
+              <Field label="Loading label">
+                <TextInput
+                  value={s.loadingLabel}
+                  onChange={(v) => update("loadingLabel", v)}
+                  placeholder="Loading…"
+                />
+              </Field>
+            )}
+            {s.stateMode === "error" && (
+              <>
+                <Field label="Error message">
+                  <TextInput
+                    value={s.errorMessage}
+                    onChange={(v) => update("errorMessage", v)}
+                    placeholder="Couldn't load metrics…"
+                  />
+                </Field>
+                <Field label="Error label">
+                  <TextInput
+                    value={s.errorLabel}
+                    onChange={(v) => update("errorLabel", v)}
+                    placeholder="Error"
+                  />
+                </Field>
+                <Toggle
+                  label="Show retry button"
+                  checked={s.withRetry}
+                  onChange={(v) => update("withRetry", v)}
+                />
+                {s.withRetry && (
+                  <Field label="Retry label">
+                    <TextInput
+                      value={s.retryLabel}
+                      onChange={(v) => update("retryLabel", v)}
+                      placeholder="Retry"
+                    />
+                  </Field>
+                )}
+              </>
+            )}
           </Accordion>
 
           <Accordion label="Header">

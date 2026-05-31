@@ -179,6 +179,62 @@ const props: PropRow[] = [
       "Staggered bar-rise on mount. Disabled automatically when prefers-reduced-motion is set",
   },
   {
+    name: "loading",
+    type: "boolean",
+    default: "false",
+    description:
+      "Loading state. With no data → full skeleton (dashed ghost bars + LOADING badge, ARIA role=status). With data → dim overlay on top of the chart for background refresh. Honors prefers-reduced-motion",
+  },
+  {
+    name: "error",
+    type: "Error | string | null",
+    default: "null",
+    description:
+      "Terminal error state. Replaces the chart even when data is present (stale data next to an error is misleading). Accepts an Error, a string message, or null. ARIA role=alert",
+  },
+  {
+    name: "onRetry",
+    type: "() => void",
+    default: "undefined",
+    description:
+      "Callback for the retry button in the default error state. The button is rendered only when this prop is provided",
+  },
+  {
+    name: "loadingLabel",
+    type: "string",
+    default: "'Loading…'",
+    description:
+      "Label rendered next to the LOADING badge and used as the ARIA label for the skeleton state. Override for localization",
+  },
+  {
+    name: "errorLabel",
+    type: "string",
+    default: "'Error'",
+    description:
+      "Label rendered above the error message and used as the ARIA label. Override for localization",
+  },
+  {
+    name: "retryLabel",
+    type: "string",
+    default: "'Retry'",
+    description:
+      "Label of the retry button in the default error state. Override for localization",
+  },
+  {
+    name: "loadingFallback",
+    type: "ReactNode",
+    default: "undefined",
+    description:
+      "Full override of the default skeleton + overlay UI. Use for a custom-branded loading experience",
+  },
+  {
+    name: "errorFallback",
+    type: "ReactNode | (error: Error) => ReactNode",
+    default: "undefined",
+    description:
+      "Full override of the default error UI. May be a React node or a function that receives the normalized Error",
+  },
+  {
     name: "description",
     type: "string",
     default: "auto-generated",

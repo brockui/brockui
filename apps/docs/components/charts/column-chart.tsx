@@ -293,6 +293,69 @@ export type ColumnChartProps = {
    * render behind bars at low opacity so they never dominate the data.
    */
   bands?: readonly ColumnChartBand[];
+
+  /**
+   * Mark the chart as loading. Behavior depends on whether data is also present:
+   *
+   *  - `loading=true` + empty data → **full skeleton** (dashed ghost bars,
+   *    pixel-font LOADING badge, ARIA `role="status" aria-live="polite"`).
+   *    Use for initial fetch.
+   *  - `loading=true` + populated data → **dim overlay** on top of the existing
+   *    chart with a small corner spinner. Use for background refresh / polling.
+   *  - `loading=false` (default) → rendered normally.
+   *
+   * Skeleton animation honors `prefers-reduced-motion`.
+   */
+  loading?: boolean;
+
+  /**
+   * Render the error state. Accepts an `Error` instance, a string message, or
+   * any falsy value (treated as "no error"). When set, the error state replaces
+   * the chart entirely — even if data is also present — because stale data next
+   * to an error is misleading.
+   *
+   * Renders the ASCII warning pattern + the message + an optional retry button
+   * (only when `onRetry` is also provided). ARIA `role="alert"` so screen
+   * readers announce it immediately.
+   */
+  error?: Error | string | null;
+
+  /**
+   * Callback invoked when the user clicks the retry button inside the default
+   * error state. The button is shown only when this callback is provided.
+   */
+  onRetry?: () => void;
+
+  /**
+   * Label rendered next to the LOADING pixel badge and used as the ARIA label
+   * for the skeleton state. Default `"Loading…"`. Override for localization.
+   */
+  loadingLabel?: string;
+
+  /**
+   * Label rendered above the error message and used as the ARIA label for the
+   * error state. Default `"Error"`. Override for localization.
+   */
+  errorLabel?: string;
+
+  /**
+   * Label of the retry button in the default error state. Default `"Retry"`.
+   * Override for localization.
+   */
+  retryLabel?: string;
+
+  /**
+   * Full override of the default skeleton/loading UI. When provided, replaces
+   * both the full skeleton (no-data case) and the overlay (with-data case).
+   * Use this for a custom-branded loading experience.
+   */
+  loadingFallback?: ReactNode;
+
+  /**
+   * Full override of the default error UI. May be a React node or a function
+   * that receives the normalized `Error` and returns a node.
+   */
+  errorFallback?: ReactNode | ((error: Error) => ReactNode);
 };
 
 type NormalizedPoint = {
@@ -451,6 +514,14 @@ export function ColumnChart({
   minBarWidth = 4,
   scroll = "none",
   bands,
+  loading = false,
+  error,
+  onRetry,
+  loadingLabel = "Loading…",
+  errorLabel = "Error",
+  retryLabel = "Retry",
+  loadingFallback,
+  errorFallback,
 }: ColumnChartProps) {
   const points = normalize(
     data,
@@ -467,8 +538,64 @@ export function ColumnChart({
   const effectiveYAxisFormat = yAxisFormat ?? baseFormatter;
   const effectiveLabelFormat = dataLabels?.format ?? effectiveFormatValue;
 
+  // ─── State machine priority ───
+  // 1. error → terminal, replaces the chart (stale data next to an error
+  //    message is misleading).
+  // 2. loading + no data → full skeleton (initial fetch).
+  // 3. data empty → existing empty state.
+  // 4. data ready + loading → render the chart with a refresh overlay.
+  // 5. data ready, not loading → normal chart.
+  const normalizedError = toError(error);
+  if (normalizedError) {
+    if (errorFallback !== undefined) {
+      return (
+        <>
+          {typeof errorFallback === "function"
+            ? errorFallback(normalizedError)
+            : errorFallback}
+        </>
+      );
+    }
+    return (
+      <>
+        <ErrorState
+          height={height}
+          source={source}
+          label={errorLabel}
+          message={normalizedError.message}
+          onRetry={onRetry}
+          retryLabel={retryLabel}
+          className={className}
+        />
+        <BarAnimationStyles />
+      </>
+    );
+  }
+
+  if (loading && points.length === 0) {
+    if (loadingFallback !== undefined) {
+      return <>{loadingFallback}</>;
+    }
+    return (
+      <>
+        <LoadingState
+          height={height}
+          source={source}
+          label={loadingLabel}
+          className={className}
+        />
+        <BarAnimationStyles />
+      </>
+    );
+  }
+
   if (points.length === 0) {
-    return <EmptyState height={height} source={source} className={className} />;
+    return (
+      <>
+        <EmptyState height={height} source={source} className={className} />
+        <BarAnimationStyles />
+      </>
+    );
   }
 
   const dataMax = points.reduce((m, p) => Math.max(m, p.value), 0);
@@ -505,11 +632,13 @@ export function ColumnChart({
 
   return (
     <figure
-      className={className}
+      className={`relative ${className ?? ""}`}
       role="figure"
       aria-labelledby={captionId}
+      aria-busy={loading || undefined}
       style={figureStyle}
     >
+      {loading && <LoadingOverlay label={loadingLabel} />}
       {(header?.title || header?.subtitle) && (
         <Header title={header.title} subtitle={header.subtitle} />
       )}
@@ -617,6 +746,162 @@ function EmptyState({
       {source && <ChartSource source={source} />}
     </div>
   );
+}
+
+/**
+ * LoadingState — full skeleton used when `loading=true` and there is no data.
+ *
+ * Visual: a row of dashed ghost bars at varying heights (Tufte "in-progress"
+ * dashed pattern, see Brock UI design thesis) + a pixel-font LOADING badge in
+ * the top-right corner. Y-axis baseline preserved so the chart frame still
+ * suggests a chart will appear here. Honors `prefers-reduced-motion` via the
+ * `.brock-skeleton-animated` class.
+ *
+ * A11y: `role="status"` + `aria-live="polite"` + `aria-label` from
+ * `loadingLabel` prop so screen readers announce the change without
+ * interrupting the user.
+ */
+function LoadingState({
+  height,
+  source,
+  label,
+  className,
+}: {
+  height: number;
+  source?: string;
+  label: string;
+  className?: string;
+}) {
+  // Deterministic ghost-bar heights — a stable sine pattern so the skeleton
+  // doesn't visually thrash across re-renders.
+  const ghostHeights = [40, 65, 50, 80, 55, 95, 70, 60, 85, 45, 75, 55];
+  return (
+    <div className={className}>
+      <div
+        className="relative flex items-end gap-1 border-b border-border"
+        style={{ height }}
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={label}
+      >
+        {ghostHeights.map((h, i) => (
+          <div
+            key={i}
+            className="brock-skeleton-bar flex-1"
+            style={
+              {
+                height: `${h}%`,
+                animationDelay: `${i * 80}ms`,
+              } as CSSProperties
+            }
+            aria-hidden
+          />
+        ))}
+        <span
+          className="absolute top-1 right-1 bg-background px-1.5 py-0.5 font-pixel text-[10px] tracking-wider text-muted-foreground uppercase"
+          aria-hidden
+        >
+          ▒ {label}
+        </span>
+      </div>
+      {source && <ChartSource source={source} />}
+    </div>
+  );
+}
+
+/**
+ * ErrorState — terminal state. Replaces the chart even when data is present:
+ * showing stale data next to an error message is misleading.
+ *
+ * Visual: ASCII warning pattern in Departure Mono (consistent with the empty
+ * state's visual language, swapped glyph), pixel ERROR badge, the error message
+ * in body text, and an optional retry button (only when `onRetry` is given).
+ *
+ * A11y: `role="alert"` + `aria-live="assertive"` so screen readers interrupt
+ * and announce the error immediately.
+ */
+function ErrorState({
+  height,
+  source,
+  label,
+  message,
+  onRetry,
+  retryLabel,
+  className,
+}: {
+  height: number;
+  source?: string;
+  label: string;
+  message: string;
+  onRetry?: () => void;
+  retryLabel: string;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <div
+        className="flex flex-col items-center justify-center gap-2 border-b border-l border-border px-4 text-center"
+        style={{ height }}
+        role="alert"
+        aria-live="assertive"
+        aria-label={`${label}: ${message}`}
+      >
+        <div
+          className="font-pixel text-xs tracking-wider text-muted-foreground/60"
+          aria-hidden
+        >
+          ▲▲▲ {label}
+        </div>
+        <div className="max-w-md font-sans text-sm text-foreground">
+          {message}
+        </div>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="mt-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-3 py-1 font-mono text-xs tracking-wider text-foreground uppercase transition-colors hover:border-brock-accent/60 hover:bg-muted"
+            type="button"
+          >
+            ↻ {retryLabel}
+          </button>
+        )}
+      </div>
+      {source && <ChartSource source={source} />}
+    </div>
+  );
+}
+
+/**
+ * LoadingOverlay — used when `loading=true` AND data is also present. Renders
+ * a dim layer + a small corner spinner on top of the live chart, so the user
+ * keeps seeing yesterday's data while today's reload runs.
+ *
+ * A11y: the underlying chart keeps its own `role`/labels; the overlay marks
+ * the busy state via `aria-busy` on the surrounding figure (set by the parent),
+ * and the spinner span carries a polite live region.
+ */
+function LoadingOverlay({ label }: { label: string }) {
+  return (
+    <div
+      className="brock-loading-overlay pointer-events-none absolute inset-0 z-20 flex items-start justify-end p-2"
+      aria-hidden
+    >
+      <span
+        className="brock-loading-spinner bg-background px-1.5 py-0.5 font-pixel text-[10px] tracking-wider text-muted-foreground uppercase"
+        role="status"
+        aria-live="polite"
+      >
+        ▒ {label}
+      </span>
+    </div>
+  );
+}
+
+/** Normalize an error prop (Error | string | null) into a stable `Error`. */
+function toError(input: Error | string | null | undefined): Error | null {
+  if (!input) return null;
+  if (input instanceof Error) return input;
+  return new Error(String(input));
 }
 
 function Header({
@@ -1183,6 +1468,35 @@ function BarAnimationStyles() {
         outline: 2px solid var(--foreground, currentColor);
         outline-offset: 1px;
         filter: brightness(1.08);
+      }
+      /* Skeleton bars (loading state, no data). Dashed outline borrows the
+         Brock UI "in-progress" pattern (see design thesis); pulse animation
+         is on by default but disabled under prefers-reduced-motion. */
+      .brock-skeleton-bar {
+        /* Fallback for browsers without color-mix() */
+        background-color: rgba(127, 127, 127, 0.06);
+        background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
+        border: 1px dashed rgba(127, 127, 127, 0.45);
+        border: 1px dashed color-mix(in oklab, var(--foreground) 45%, transparent);
+        border-bottom: none;
+        animation: brock-skeleton-pulse 1400ms ease-in-out infinite;
+      }
+      @keyframes brock-skeleton-pulse {
+        0%, 100% { opacity: 0.75; }
+        50%      { opacity: 1; }
+      }
+      /* Loading overlay (refresh-with-data case). Dim layer over the chart so
+         the user can still see the previous numbers but knows they're stale. */
+      .brock-loading-overlay {
+        background: color-mix(in oklab, var(--background) 55%, transparent);
+        backdrop-filter: blur(0.5px);
+      }
+      .brock-loading-spinner {
+        animation: brock-skeleton-pulse 1400ms ease-in-out infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .brock-skeleton-bar,
+        .brock-loading-spinner { animation: none; }
       }
     `}</style>
   );
