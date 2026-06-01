@@ -20,8 +20,22 @@
 
 "use client";
 
-import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
-import { useId, useRef, useState } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent,
+  ReactNode,
+  Ref,
+} from "react";
+import { useId, useImperativeHandle, useRef, useState } from "react";
+import {
+  copyImageToClipboard,
+  downloadBlob,
+  pointsToCSV,
+  svgToPNG,
+  synthesizeSVG,
+  type ExportPoint,
+  type SynthesisContext,
+} from "./column-chart-export";
 
 /** Fill pattern for a bar — solid accent fill, or hatched stripe pattern. */
 export type ColumnChartPattern = "solid" | "hatched";
@@ -356,6 +370,73 @@ export type ColumnChartProps = {
    * that receives the normalized `Error` and returns a node.
    */
   errorFallback?: ReactNode | ((error: Error) => ReactNode);
+
+  /**
+   * Enable export and sharing. Three forms:
+   *
+   *  - `false` (default) — no toolbar, no exports. Imperative ref methods still
+   *    work, but the user-facing UI is hidden.
+   *  - `true` — show the toolbar with all four actions: PNG, SVG, CSV, Copy.
+   *  - object form — show the toolbar with only the chosen actions.
+   *
+   * Even when `exportable=false`, the imperative ref API (`ref.current.exportPNG()`
+   * etc.) is always available — so dashboards can wire their own export menus.
+   */
+  exportable?:
+    | boolean
+    | { png?: boolean; svg?: boolean; csv?: boolean; copy?: boolean };
+
+  /**
+   * Base file name for downloads. Pass a string for a fixed name, or a function
+   * `(format) => string` for per-format control. The right extension (.png,
+   * .svg, .csv) is appended automatically if missing.
+   * Default `"chart"`.
+   */
+  exportFileName?: string | ((format: "png" | "svg" | "csv") => string);
+
+  /**
+   * Fired AFTER an export completes (download or copy). Receives the format
+   * and the produced artifact: a `Blob` for png/copy, a `string` for svg/csv.
+   * Useful for analytics or for piping exports into a custom share flow.
+   */
+  onExport?: (
+    format: "png" | "svg" | "csv" | "copy",
+    artifact: Blob | string,
+  ) => void;
+
+  /** Ref handle for imperative exports — see `ColumnChartHandle`. */
+  ref?: Ref<ColumnChartHandle>;
+};
+
+/**
+ * Imperative API exposed via `ref`. Always available — works even while the
+ * chart is showing the loading/error/empty state, because the synthesis pulls
+ * from the same props the React render uses.
+ */
+export type ColumnChartHandle = {
+  /** Build and return a standalone SVG string. Optionally downloads it. */
+  exportSVG: (options?: {
+    fileName?: string;
+    download?: boolean;
+    width?: number;
+    height?: number;
+  }) => string;
+  /** Rasterize the SVG to PNG via Canvas. Resolves to a Blob; optionally downloads. */
+  exportPNG: (options?: {
+    fileName?: string;
+    download?: boolean;
+    scale?: number;
+    width?: number;
+    height?: number;
+  }) => Promise<Blob>;
+  /** Serialize the bars to RFC-4180 CSV. Returns the string; optionally downloads. */
+  exportCSV: (options?: { fileName?: string; download?: boolean }) => string;
+  /** Build a PNG and write it to the system clipboard via the async Clipboard API. */
+  copyImage: (options?: {
+    scale?: number;
+    width?: number;
+    height?: number;
+  }) => Promise<void>;
 };
 
 type NormalizedPoint = {
@@ -522,6 +603,10 @@ export function ColumnChart({
   retryLabel = "Retry",
   loadingFallback,
   errorFallback,
+  exportable = false,
+  exportFileName = "chart",
+  onExport,
+  ref,
 }: ColumnChartProps) {
   const points = normalize(
     data,
@@ -531,12 +616,188 @@ export function ColumnChart({
     hatchFromIndex,
   );
   const captionId = useId();
+  const figureRef = useRef<HTMLElement>(null);
 
   // Number formatting cascade: explicit overrides > numberFormat > default
   const baseFormatter = makeFormatter(numberFormat);
   const effectiveFormatValue = formatValue ?? baseFormatter;
   const effectiveYAxisFormat = yAxisFormat ?? baseFormatter;
   const effectiveLabelFormat = dataLabels?.format ?? effectiveFormatValue;
+
+  // ─── Derived values (lifted above the state machine so the imperative
+  //     export API can synthesize an SVG even from loading/error/empty). ───
+  const dataMax = points.reduce((m, p) => Math.max(m, p.value), 0);
+  const goalBased =
+    goal && Number.isFinite(goal.value) && goal.value > 0
+      ? Math.max(dataMax, goal.value)
+      : dataMax;
+  const max = yAxis?.max !== undefined ? yAxis.max : goalBased;
+  const allZero = max === 0;
+  const effectiveGap = points.length > 60 ? Math.max(1, gap - 2) : gap;
+  const yTicks = allZero ? [0] : [max, Math.round(max / 2), 0];
+  const accessibleDescription = description ?? autoDescription(points, source);
+
+  // ─── Single context-builder reused by the imperative API AND the Toolbar.
+  //     Captures the current render's props/derived values; both call sites
+  //     get exactly what's on screen at click time. ───
+  const getExportContext = (width: number, height: number): SynthesisContext => {
+    // Resolve CSS-var-driven theme colors at the figure (or document fallback)
+    // so the SVG/PNG embeds resolved hex/rgb — no CSS vars leak into the
+    // exported file. Falls back to safe defaults if running outside a browser.
+    const resolve = (varName: string, fallback: string): string => {
+      if (typeof window === "undefined") return fallback;
+      const root = figureRef.current ?? document.documentElement;
+      const v = getComputedStyle(root).getPropertyValue(varName).trim();
+      return v || fallback;
+    };
+    const resolvedAccent = accent ?? resolve("--brock-accent", "#F54900");
+    const exportPoints: ExportPoint[] = points.map((p) => ({
+      label: p.label,
+      value: p.value,
+      pattern: p.pattern,
+      color: p.color,
+      highlight: p.highlight,
+      note: p.note,
+    }));
+    return {
+      width,
+      height,
+      points: exportPoints,
+      max,
+      allZero,
+      gap: effectiveGap,
+      barRadius,
+      patternStyle,
+      accent: resolvedAccent,
+      foreground: resolve("--foreground", "#0a0a0a"),
+      muted: resolve("--muted-foreground", "#666666"),
+      border: resolve("--border", "#e5e5e5"),
+      background: resolve("--background", "#ffffff"),
+      yTicks,
+      yAxisFormat: effectiveYAxisFormat,
+      formatValue: effectiveFormatValue,
+      labelFormat: effectiveLabelFormat,
+      showLabels: dataLabels?.show ?? false,
+      showYTicks: !yAxis?.hideTicks,
+      showXTicks: !xAxis?.hideTicks,
+      yAxisTitle: yAxis?.title,
+      xAxisTitle: xAxis?.title,
+      headerTitle: header?.title,
+      headerSubtitle: header?.subtitle,
+      trend,
+      goal,
+      bands,
+      source,
+      description: accessibleDescription,
+    };
+  };
+
+  /** Use figure-rect when available; fall back to 800×400 for export-only flows. */
+  const getExportDimensions = (
+    opts?: { width?: number; height?: number },
+  ): { width: number; height: number } => {
+    const live = figureRef.current?.getBoundingClientRect();
+    const w = opts?.width ?? (live && live.width > 0 ? live.width : 800);
+    const h = opts?.height ?? (live && live.height > 0 ? live.height : 400);
+    return { width: Math.round(w), height: Math.round(h) };
+  };
+
+  /** Resolve the right file name for a format, with extension fix-up. */
+  const resolveDownloadName = (
+    format: "png" | "svg" | "csv",
+    override?: string,
+  ): string => {
+    if (override) return ensureExt(override, format);
+    const base =
+      typeof exportFileName === "function"
+        ? exportFileName(format)
+        : exportFileName;
+    return ensureExt(base, format);
+  };
+
+  // ─── Imperative export API ───
+  useImperativeHandle(
+    ref,
+    () => ({
+      exportSVG: (opts) => {
+        const { width, height: hgt } = getExportDimensions(opts);
+        const svg = synthesizeSVG(getExportContext(width, hgt));
+        if (opts?.download !== false) {
+          const blob = new Blob([svg], { type: "image/svg+xml" });
+          downloadBlob(blob, resolveDownloadName("svg", opts?.fileName));
+        }
+        onExport?.("svg", svg);
+        return svg;
+      },
+      exportPNG: async (opts) => {
+        const { width, height: hgt } = getExportDimensions(opts);
+        const ctx = getExportContext(width, hgt);
+        const svg = synthesizeSVG(ctx);
+        const blob = await svgToPNG(svg, opts?.scale ?? 2, ctx.background);
+        if (opts?.download !== false) {
+          downloadBlob(blob, resolveDownloadName("png", opts?.fileName));
+        }
+        onExport?.("png", blob);
+        return blob;
+      },
+      exportCSV: (opts) => {
+        const csv = pointsToCSV(
+          points.map((p) => ({
+            label: p.label,
+            value: p.value,
+            pattern: p.pattern,
+            color: p.color,
+            highlight: p.highlight,
+            note: p.note,
+          })),
+        );
+        if (opts?.download !== false) {
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+          downloadBlob(blob, resolveDownloadName("csv", opts?.fileName));
+        }
+        onExport?.("csv", csv);
+        return csv;
+      },
+      copyImage: async (opts) => {
+        const { width, height: hgt } = getExportDimensions(opts);
+        const ctx = getExportContext(width, hgt);
+        const svg = synthesizeSVG(ctx);
+        const blob = await svgToPNG(svg, opts?.scale ?? 2, ctx.background);
+        await copyImageToClipboard(blob);
+        onExport?.("copy", blob);
+      },
+    }),
+    // Closure captures the latest props/derived values on every render —
+    // intentional, so exports always reflect the current chart state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      accent,
+      barRadius,
+      bands,
+      dataLabels?.show,
+      effectiveFormatValue,
+      effectiveGap,
+      effectiveLabelFormat,
+      effectiveYAxisFormat,
+      exportFileName,
+      goal,
+      header?.subtitle,
+      header?.title,
+      max,
+      allZero,
+      onExport,
+      patternStyle,
+      points,
+      source,
+      trend,
+      xAxis?.hideTicks,
+      xAxis?.title,
+      yAxis?.hideTicks,
+      yAxis?.title,
+      yTicks,
+      accessibleDescription,
+    ],
+  );
 
   // ─── State machine priority ───
   // 1. error → terminal, replaces the chart (stale data next to an error
@@ -598,23 +859,10 @@ export function ColumnChart({
     );
   }
 
-  const dataMax = points.reduce((m, p) => Math.max(m, p.value), 0);
-  // Goal value participates in scale so it stays visible above all bars
-  const goalBased =
-    goal && Number.isFinite(goal.value) && goal.value > 0
-      ? Math.max(dataMax, goal.value)
-      : dataMax;
-  // yAxis.max overrides everything if provided
-  const max = yAxis?.max !== undefined ? yAxis.max : goalBased;
-  const allZero = max === 0;
-
-  const effectiveGap = points.length > 60 ? Math.max(1, gap - 2) : gap;
+  // Layout-time values that aren't needed for export synthesis:
   const showAllLabels = points.length <= 24;
   const everyNth = showAllLabels ? 1 : Math.ceil(points.length / 12);
-
-  const yTicks = allZero ? [0] : [max, Math.round(max / 2), 0];
   const hasAnyLabel = points.some((p) => p.label !== undefined);
-  const accessibleDescription = description ?? autoDescription(points, source);
 
   const figureStyle = {
     ...(accent ? { "--brock-accent": accent } : {}),
@@ -630,14 +878,64 @@ export function ColumnChart({
   const yAxisPaddingLeft = showYTicks ? 40 : 0;
   const yAxisTotalLeft = yAxisPaddingLeft + (hasYAxisTitle ? 24 : 0);
 
+  const toolbarConfig = resolveToolbar(exportable);
+  const runPNG = async () => {
+    const { width, height: hgt } = getExportDimensions();
+    const ctx = getExportContext(width, hgt);
+    const svg = synthesizeSVG(ctx);
+    const blob = await svgToPNG(svg, 2, ctx.background);
+    downloadBlob(blob, resolveDownloadName("png"));
+    onExport?.("png", blob);
+  };
+  const runSVG = () => {
+    const { width, height: hgt } = getExportDimensions();
+    const svg = synthesizeSVG(getExportContext(width, hgt));
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    downloadBlob(blob, resolveDownloadName("svg"));
+    onExport?.("svg", svg);
+  };
+  const runCSV = () => {
+    const csv = pointsToCSV(
+      points.map((p) => ({
+        label: p.label,
+        value: p.value,
+        pattern: p.pattern,
+        color: p.color,
+        highlight: p.highlight,
+        note: p.note,
+      })),
+    );
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    downloadBlob(blob, resolveDownloadName("csv"));
+    onExport?.("csv", csv);
+  };
+  const runCopy = async () => {
+    const { width, height: hgt } = getExportDimensions();
+    const ctx = getExportContext(width, hgt);
+    const svg = synthesizeSVG(ctx);
+    const blob = await svgToPNG(svg, 2, ctx.background);
+    await copyImageToClipboard(blob);
+    onExport?.("copy", blob);
+  };
+
   return (
     <figure
-      className={`relative ${className ?? ""}`}
+      ref={figureRef}
+      className={`brock-chart relative ${className ?? ""}`}
       role="figure"
       aria-labelledby={captionId}
       aria-busy={loading || undefined}
       style={figureStyle}
     >
+      {toolbarConfig && (
+        <Toolbar
+          config={toolbarConfig}
+          onPNG={runPNG}
+          onSVG={runSVG}
+          onCSV={runCSV}
+          onCopy={runCopy}
+        />
+      )}
       {loading && <LoadingOverlay label={loadingLabel} />}
       {(header?.title || header?.subtitle) && (
         <Header title={header.title} subtitle={header.subtitle} />
@@ -902,6 +1200,140 @@ function toError(input: Error | string | null | undefined): Error | null {
   if (!input) return null;
   if (input instanceof Error) return input;
   return new Error(String(input));
+}
+
+/** Append the right extension to a download file name if missing. */
+function ensureExt(name: string, format: "png" | "svg" | "csv"): string {
+  return name.toLowerCase().endsWith(`.${format}`) ? name : `${name}.${format}`;
+}
+
+type ToolbarConfig = {
+  png: boolean;
+  svg: boolean;
+  csv: boolean;
+  copy: boolean;
+};
+
+/**
+ * Resolve the `exportable` prop into a concrete on/off config per action.
+ * Returns `null` when no actions should be shown (so the toolbar is omitted
+ * entirely — no extra DOM, no a11y noise).
+ */
+function resolveToolbar(
+  input: boolean | Partial<ToolbarConfig> | undefined,
+): ToolbarConfig | null {
+  if (!input) return null;
+  if (input === true) {
+    return { png: true, svg: true, csv: true, copy: true };
+  }
+  const cfg: ToolbarConfig = {
+    png: !!input.png,
+    svg: !!input.svg,
+    csv: !!input.csv,
+    copy: !!input.copy,
+  };
+  if (!cfg.png && !cfg.svg && !cfg.csv && !cfg.copy) return null;
+  return cfg;
+}
+
+/**
+ * Toolbar — top-right export bar. Pixel-font icons in Departure Mono
+ * (PNG / SVG / CSV / COPY) kept tight so they read as a chip set, not
+ * Material-style icons. Hidden under @media print so exports don't show
+ * the toolbar on themselves.
+ */
+function Toolbar({
+  config,
+  onPNG,
+  onSVG,
+  onCSV,
+  onCopy,
+}: {
+  config: ToolbarConfig;
+  onPNG: () => void | Promise<void>;
+  onSVG: () => void | Promise<void>;
+  onCSV: () => void | Promise<void>;
+  onCopy: () => void | Promise<void>;
+}) {
+  const [busy, setBusy] = useState<"png" | "svg" | "csv" | "copy" | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const run = async (
+    kind: "png" | "svg" | "csv" | "copy",
+    action: () => void | Promise<void>,
+  ) => {
+    if (busy) return;
+    setBusy(kind);
+    try {
+      await action();
+      if (kind === "copy") {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const btn =
+    "cursor-pointer rounded-[2px] border border-border bg-background px-1.5 py-0.5 font-pixel text-[10px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground disabled:opacity-50 disabled:cursor-wait";
+
+  return (
+    <div
+      className="brock-toolbar absolute top-0 right-0 z-30 flex gap-1"
+      role="toolbar"
+      aria-label="Chart export"
+    >
+      {config.png && (
+        <button
+          type="button"
+          className={btn}
+          onClick={() => run("png", onPNG)}
+          disabled={!!busy}
+          aria-label="Download PNG"
+          title="Download PNG"
+        >
+          PNG
+        </button>
+      )}
+      {config.svg && (
+        <button
+          type="button"
+          className={btn}
+          onClick={() => run("svg", onSVG)}
+          disabled={!!busy}
+          aria-label="Download SVG"
+          title="Download SVG"
+        >
+          SVG
+        </button>
+      )}
+      {config.csv && (
+        <button
+          type="button"
+          className={btn}
+          onClick={() => run("csv", onCSV)}
+          disabled={!!busy}
+          aria-label="Download CSV"
+          title="Download CSV"
+        >
+          CSV
+        </button>
+      )}
+      {config.copy && (
+        <button
+          type="button"
+          className={btn}
+          onClick={() => run("copy", onCopy)}
+          disabled={!!busy}
+          aria-label="Copy image to clipboard"
+          title="Copy image to clipboard"
+        >
+          {copied ? "✓ COPIED" : "▒ COPY"}
+        </button>
+      )}
+    </div>
+  );
 }
 
 function Header({
@@ -1497,6 +1929,24 @@ function BarAnimationStyles() {
       @media (prefers-reduced-motion: reduce) {
         .brock-skeleton-bar,
         .brock-loading-spinner { animation: none; }
+      }
+      /* Print: strip interactive chrome, expand chart inline, force solid
+         backgrounds and visible borders so the printed page reads cleanly.
+         Toolbar, loading overlay, hover tooltip — all hidden. */
+      @media print {
+        .brock-toolbar,
+        .brock-loading-overlay,
+        .brock-skeleton-bar { display: none !important; }
+        .brock-bars-animated .brock-bar { animation: none !important; }
+        .brock-chart {
+          break-inside: avoid;
+          page-break-inside: avoid;
+          background: white !important;
+          color: black !important;
+        }
+        .brock-bars-scroll {
+          overflow: visible !important;
+        }
       }
     `}</style>
   );

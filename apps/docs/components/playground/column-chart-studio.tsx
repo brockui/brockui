@@ -199,6 +199,12 @@ type StudioState = {
   errorLabel: string;
   retryLabel: string;
   withRetry: boolean;
+  // export
+  exportPNG: boolean;
+  exportSVG: boolean;
+  exportCSV: boolean;
+  exportCopy: boolean;
+  exportFileName: string;
   // header
   headerTitle: string;
   headerSubtitle: string;
@@ -267,6 +273,11 @@ const INITIAL_STATE: StudioState = {
   errorLabel: "Error",
   retryLabel: "Retry",
   withRetry: true,
+  exportPNG: true,
+  exportSVG: true,
+  exportCSV: true,
+  exportCopy: true,
+  exportFileName: "active-users-7d",
   headerTitle: "Active users",
   headerSubtitle: "Last 7 days",
   xAxisTitle: "",
@@ -492,6 +503,27 @@ function generateCode(s: StudioState): string {
       }
     }
   }
+  // Export — emit the most concise form. `exportable` true for all-on, an
+  // object for partial selection, omitted when fully off.
+  const anyExport =
+    s.exportPNG || s.exportSVG || s.exportCSV || s.exportCopy;
+  const allExport =
+    s.exportPNG && s.exportSVG && s.exportCSV && s.exportCopy;
+  if (anyExport) {
+    if (allExport) {
+      lines.push(`      exportable`);
+    } else {
+      const fields: string[] = [];
+      if (s.exportPNG) fields.push("png: true");
+      if (s.exportSVG) fields.push("svg: true");
+      if (s.exportCSV) fields.push("csv: true");
+      if (s.exportCopy) fields.push("copy: true");
+      lines.push(`      exportable={{ ${fields.join(", ")} }}`);
+    }
+    if (s.exportFileName && s.exportFileName !== "chart") {
+      lines.push(`      exportFileName=${quote(s.exportFileName)}`);
+    }
+  }
 
   lines.push(`    />`);
   lines.push(`  );`);
@@ -604,6 +636,17 @@ export function ColumnChartStudio() {
             loadingLabel={s.loadingLabel || undefined}
             errorLabel={s.errorLabel || undefined}
             retryLabel={s.retryLabel || undefined}
+            exportable={
+              s.exportPNG || s.exportSVG || s.exportCSV || s.exportCopy
+                ? {
+                    png: s.exportPNG,
+                    svg: s.exportSVG,
+                    csv: s.exportCSV,
+                    copy: s.exportCopy,
+                  }
+                : false
+            }
+            exportFileName={s.exportFileName || "chart"}
             height={260}
             gap={density.value}
             accent={accent}
@@ -794,6 +837,40 @@ export function ColumnChartStudio() {
                 )}
               </>
             )}
+          </Accordion>
+
+          <Accordion label="Export">
+            <Field label="Formats">
+              <div className="space-y-1.5">
+                <Toggle
+                  label="PNG button"
+                  checked={s.exportPNG}
+                  onChange={(v) => update("exportPNG", v)}
+                />
+                <Toggle
+                  label="SVG button"
+                  checked={s.exportSVG}
+                  onChange={(v) => update("exportSVG", v)}
+                />
+                <Toggle
+                  label="CSV button"
+                  checked={s.exportCSV}
+                  onChange={(v) => update("exportCSV", v)}
+                />
+                <Toggle
+                  label="Copy-image button"
+                  checked={s.exportCopy}
+                  onChange={(v) => update("exportCopy", v)}
+                />
+              </div>
+            </Field>
+            <Field label="File name">
+              <TextInput
+                value={s.exportFileName}
+                onChange={(v) => update("exportFileName", v)}
+                placeholder="active-users-7d"
+              />
+            </Field>
           </Accordion>
 
           <Accordion label="Header">

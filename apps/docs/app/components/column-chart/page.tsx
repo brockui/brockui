@@ -235,6 +235,34 @@ const props: PropRow[] = [
       "Full override of the default error UI. May be a React node or a function that receives the normalized Error",
   },
   {
+    name: "exportable",
+    type: "boolean | { png?, svg?, csv?, copy? }",
+    default: "false",
+    description:
+      "Show the export toolbar (top-right). true = all 4 actions; object form = enable specific ones. Imperative ref methods always work regardless",
+  },
+  {
+    name: "exportFileName",
+    type: "string | (format) => string",
+    default: "'chart'",
+    description:
+      "Base file name for downloads. String for fixed, function for per-format. Right extension (.png/.svg/.csv) auto-appended",
+  },
+  {
+    name: "onExport",
+    type: "(format, artifact) => void",
+    default: "undefined",
+    description:
+      "Fires after an export completes. Receives format ('png'|'svg'|'csv'|'copy') and the artifact (Blob for png/copy, string for svg/csv). Useful for analytics or custom share flows",
+  },
+  {
+    name: "ref",
+    type: "Ref<ColumnChartHandle>",
+    default: "—",
+    description:
+      "Imperative API: { exportSVG, exportPNG, exportCSV, copyImage }. Each method accepts { fileName, download, width, height } (scale extra on PNG). Works even while the chart is in loading/error/empty state",
+  },
+  {
     name: "description",
     type: "string",
     default: "auto-generated",
