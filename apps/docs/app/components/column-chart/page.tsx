@@ -291,6 +291,27 @@ const props: PropRow[] = [
       "Headless slot dictionary. Each slot replaces a default sub-component: tooltip (per-bar), empty (no data), loading (skeleton), error (terminal), toolbar (export chips), caption (below source), watermark (figure overlay). Each slot receives typed props. Slots win over loadingFallback / errorFallback shortcuts",
   },
   {
+    name: "caption",
+    type: "string",
+    default: "undefined",
+    description:
+      "Short editorial caption — italic muted text with left border, rendered below the source line. FT/Stripe-Letters print-margin pattern. slots.caption wins over this",
+  },
+  {
+    name: "watermark",
+    type: "string",
+    default: "undefined",
+    description:
+      "Diagonal watermark text — faint pixel-font overlay (≈6% opacity) over the chart. Use for DRAFT, CONFIDENTIAL, brand attribution. Hidden in print. slots.watermark wins over this",
+  },
+  {
+    name: "annotations",
+    type: "ColumnChartAnnotation[]",
+    default: "undefined",
+    description:
+      "Free-floating editorial annotations at specific (x, y) data points. x accepts a 0-based index or a label string. Each annotation: { x, y, text, anchor?, arrow?, color? }. Optional dashed connector arrow to the exact point. Reproduced in the SVG / PNG export",
+  },
+  {
     name: "description",
     type: "string",
     default: "auto-generated",

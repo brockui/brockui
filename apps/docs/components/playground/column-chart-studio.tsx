@@ -222,6 +222,15 @@ type StudioState = {
   slotEmpty: boolean;
   slotCaption: boolean;
   slotWatermark: boolean;
+  // editorial
+  captionText: string;
+  watermarkText: string;
+  annotationsEnabled: boolean;
+  annotationText: string;
+  annotationLabel: string;
+  annotationY: number;
+  annotationAnchor: "top" | "bottom" | "left" | "right";
+  annotationArrow: boolean;
   // header
   headerTitle: string;
   headerSubtitle: string;
@@ -307,6 +316,14 @@ const INITIAL_STATE: StudioState = {
   slotEmpty: false,
   slotCaption: false,
   slotWatermark: false,
+  captionText: "",
+  watermarkText: "",
+  annotationsEnabled: false,
+  annotationText: "← peak",
+  annotationLabel: "FRI",
+  annotationY: 220,
+  annotationAnchor: "top",
+  annotationArrow: true,
   headerTitle: "Active users",
   headerSubtitle: "Last 7 days",
   xAxisTitle: "",
@@ -531,6 +548,24 @@ function generateCode(s: StudioState): string {
         lines.push(`      retryLabel=${quote(s.retryLabel)}`);
       }
     }
+  }
+  // Editorial — caption / watermark / annotations.
+  if (s.captionText) {
+    lines.push(`      caption=${quote(s.captionText)}`);
+  }
+  if (s.watermarkText) {
+    lines.push(`      watermark=${quote(s.watermarkText)}`);
+  }
+  if (s.annotationsEnabled && s.annotationText) {
+    const parts: string[] = [];
+    parts.push(`x: ${quote(s.annotationLabel)}`);
+    parts.push(`y: ${s.annotationY}`);
+    parts.push(`text: ${quote(s.annotationText)}`);
+    if (s.annotationAnchor !== "top") {
+      parts.push(`anchor: ${quote(s.annotationAnchor)}`);
+    }
+    if (s.annotationArrow) parts.push(`arrow: true`);
+    lines.push(`      annotations={[{ ${parts.join(", ")} }]}`);
   }
   // Slots — emit an illustrative slot dictionary when any are active.
   const anySlot =
@@ -780,6 +815,21 @@ export function ColumnChartStudio() {
           <ColumnChart
             ref={chartRef}
             slots={slots}
+            caption={s.captionText || undefined}
+            watermark={s.watermarkText || undefined}
+            annotations={
+              s.annotationsEnabled && s.annotationText
+                ? [
+                    {
+                      x: s.annotationLabel,
+                      y: s.annotationY,
+                      text: s.annotationText,
+                      anchor: s.annotationAnchor,
+                      arrow: s.annotationArrow,
+                    },
+                  ]
+                : undefined
+            }
             onBarClick={
               s.eventsEnabled
                 ? (point, index) =>
@@ -1522,6 +1572,73 @@ export function ColumnChartStudio() {
                   onChange={(v) => update("trendValue", v)}
                 />
               </Field>
+            )}
+          </Accordion>
+
+          <Accordion label="Editorial">
+            <Field label="Caption (italic note below source)">
+              <TextInput
+                value={s.captionText}
+                onChange={(v) => update("captionText", v)}
+                placeholder="Excludes weekends."
+              />
+            </Field>
+            <Field label="Watermark (diagonal text behind chart)">
+              <TextInput
+                value={s.watermarkText}
+                onChange={(v) => update("watermarkText", v)}
+                placeholder="DRAFT"
+              />
+            </Field>
+            <Toggle
+              label="Show annotation"
+              checked={s.annotationsEnabled}
+              onChange={(v) => update("annotationsEnabled", v)}
+            />
+            {s.annotationsEnabled && (
+              <>
+                <Field label="Text">
+                  <TextInput
+                    value={s.annotationText}
+                    onChange={(v) => update("annotationText", v)}
+                    placeholder="← peak"
+                  />
+                </Field>
+                <Field label="X (label match)">
+                  <TextInput
+                    value={s.annotationLabel}
+                    onChange={(v) => update("annotationLabel", v)}
+                    placeholder="FRI"
+                  />
+                </Field>
+                <Field label="Y (data-space value)">
+                  <NumberInput
+                    value={s.annotationY}
+                    onChange={(v) => update("annotationY", v)}
+                  />
+                </Field>
+                <Field label="Anchor">
+                  <Segmented
+                    options={["Top", "Right", "Bottom", "Left"]}
+                    selectedIndex={
+                      { top: 0, right: 1, bottom: 2, left: 3 }[
+                        s.annotationAnchor
+                      ]
+                    }
+                    onSelect={(i) =>
+                      update(
+                        "annotationAnchor",
+                        (["top", "right", "bottom", "left"] as const)[i],
+                      )
+                    }
+                  />
+                </Field>
+                <Toggle
+                  label="Dashed connector to bar"
+                  checked={s.annotationArrow}
+                  onChange={(v) => update("annotationArrow", v)}
+                />
+              </>
             )}
           </Accordion>
 

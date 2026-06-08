@@ -100,6 +100,36 @@ export type ColumnChartGoal = {
 };
 
 /**
+ * Free-floating editorial annotation positioned at a specific (x, y) in data
+ * space. Use sparingly — the FT/Bloomberg "callout + arrow" pattern for
+ * marking inflection points, anomalies, deployment cuts, etc.
+ *
+ * `x` accepts either a 0-based bar index (number) or a label string (matched
+ * case-insensitively against the bar's `label` field). `y` is in data-value
+ * space — the renderer maps it into pixels using the chart's `max`.
+ *
+ * When `arrow=true`, a thin dashed line is drawn from the text card to the
+ * exact (x, y) point in the chart.
+ */
+export type ColumnChartAnnotation = {
+  /** Bar index (number) or label match (string). */
+  x: number | string;
+  /** Value on the Y-axis in data space. */
+  y: number;
+  /** Text content of the annotation card. */
+  text: string;
+  /**
+   * Where the text card sits relative to the (x, y) point. Default "top" —
+   * card floats above the point. Use "bottom"/"left"/"right" to dodge bars.
+   */
+  anchor?: "top" | "bottom" | "left" | "right";
+  /** Draw a dashed connector from the card to (x, y). Default `false`. */
+  arrow?: boolean;
+  /** Override text color (defaults to foreground). */
+  color?: string;
+};
+
+/**
  * Highlighted vertical zone spanning a range of bar indices — FT/Bloomberg
  * "plot band" pattern. Sits behind bars at very-low opacity so the bars stay
  * the loudest mark. Common uses: "Q3", "deployment window", "recession",
@@ -560,6 +590,37 @@ export type ColumnChartProps = {
    * `errorFallback`) when both are set.
    */
   slots?: ColumnChartSlots;
+
+  /**
+   * Short editorial caption rendered below the source line. Italic, muted,
+   * left-bordered — borrows the print-margin annotation pattern from FT /
+   * Stripe Letters. Use for reading notes ("Q4 estimate may revise after
+   * the close"), context ("Excludes weekends"), or methodology ("Includes
+   * agent retries").
+   *
+   * `slots.caption` takes precedence and replaces the default rendering.
+   */
+  caption?: string;
+
+  /**
+   * Diagonal watermark text rendered as a faint overlay over the chart.
+   * Default opacity is low (≈8%) so it never competes with data ink. Use
+   * for "DRAFT", "CONFIDENTIAL", brand name, or per-export attribution.
+   *
+   * `slots.watermark` takes precedence and replaces the default rendering.
+   */
+  watermark?: string;
+
+  /**
+   * Free-floating editorial annotations — text cards positioned at specific
+   * (x, y) points in data space, optionally with a dashed connector arrow
+   * to that point. Different from `bands` (which highlight a range) and
+   * different from per-bar `note` (which travels with the datum).
+   *
+   * Annotations are reproduced in the SVG / PNG export so editorial
+   * markup survives the share.
+   */
+  annotations?: readonly ColumnChartAnnotation[];
 };
 
 /**
@@ -781,6 +842,9 @@ export function ColumnChart({
   onBarHover,
   onBarFocus,
   slots,
+  caption,
+  watermark,
+  annotations,
 }: ColumnChartProps) {
   const points = normalize(
     data,
@@ -876,6 +940,9 @@ export function ColumnChart({
       goal,
       bands,
       source,
+      caption,
+      watermark,
+      annotations,
       description: accessibleDescription,
     };
   };
@@ -1030,6 +1097,10 @@ export function ColumnChart({
       // focus/event refresh — keeps getSelection() / focusBar() reading fresh state
       focusIndex,
       onBarFocus,
+      // editorial layers — must refresh export snapshot when these change
+      caption,
+      watermark,
+      annotations,
     ],
   );
 
@@ -1233,7 +1304,9 @@ export function ColumnChart({
               </div>
             );
           })()
-        : null}
+        : watermark
+          ? <Watermark text={watermark} />
+          : null}
       {loading && <LoadingOverlay label={loadingLabel} />}
       {(header?.title || header?.subtitle) && (
         <Header title={header.title} subtitle={header.subtitle} />
@@ -1285,6 +1358,7 @@ export function ColumnChart({
                 onBarHover={onBarHover}
                 onBarFocus={onBarFocus}
                 tooltipSlot={slots?.tooltip}
+                annotations={annotations}
               />
             </div>
             {hasAnyLabel && showXTicks && (
@@ -1315,7 +1389,9 @@ export function ColumnChart({
             const CaptionSlot = slots.caption;
             return <CaptionSlot />;
           })()
-        : null}
+        : caption
+          ? <Caption text={caption} />
+          : null}
 
       <figcaption id={captionId} className="sr-only">
         {accessibleDescription}
@@ -1766,6 +1842,7 @@ function BarsGroup({
   onBarHover,
   onBarFocus,
   tooltipSlot,
+  annotations,
 }: {
   points: NormalizedPoint[];
   max: number;
@@ -1796,6 +1873,7 @@ function BarsGroup({
   ) => void;
   onBarFocus?: (point: ColumnChartDataPoint, index: number) => void;
   tooltipSlot?: ComponentType<ColumnChartTooltipSlotProps>;
+  annotations?: readonly ColumnChartAnnotation[];
 }) {
   /** Strip the internal NormalizedPoint shape down to the public DataPoint. */
   function publicPoint(p: NormalizedPoint): ColumnChartDataPoint {
@@ -1874,6 +1952,16 @@ function BarsGroup({
         <BandsOverlay bands={bands} total={total} gap={gap} />
       )}
 
+      {annotations && annotations.length > 0 && (
+        <AnnotationsLayer
+          annotations={annotations}
+          points={points}
+          total={total}
+          gap={gap}
+          max={max}
+        />
+      )}
+
       {points.map((point, i) => (
         <Bar
           key={i}
@@ -1914,6 +2002,176 @@ function BarsGroup({
         <GoalLine goal={goal} max={max} formatValue={formatValue} />
       )}
     </div>
+  );
+}
+
+/** Default `caption` rendering — italic note below source. */
+function Caption({ text }: { text: string }) {
+  return (
+    <div className="brock-caption mt-2 border-l-2 border-border bg-muted/20 px-3 py-1.5 font-sans text-xs text-muted-foreground italic">
+      {text}
+    </div>
+  );
+}
+
+/** Default `watermark` rendering — rotated faint text overlay. */
+function Watermark({ text }: { text: string }) {
+  return (
+    <div
+      className="brock-watermark pointer-events-none absolute inset-0 z-0 flex items-center justify-center"
+      aria-hidden
+    >
+      <span
+        className="font-pixel text-[68px] leading-none tracking-wider text-foreground/[0.06] select-none"
+        style={{ transform: "rotate(-20deg)" }}
+      >
+        {text.toUpperCase()}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Resolve an annotation `x` (number index or string label) against the
+ * normalized points. Returns the matched index or `-1` if no match.
+ */
+function resolveAnnotationIndex(
+  x: number | string,
+  points: NormalizedPoint[],
+): number {
+  if (typeof x === "number") {
+    if (x < 0 || x >= points.length) return -1;
+    return x;
+  }
+  const target = x.toLowerCase();
+  return points.findIndex((p) => (p.label ?? "").toLowerCase() === target);
+}
+
+/**
+ * AnnotationsLayer — free-floating editorial markup. Each annotation is an
+ * absolute-positioned card at the (x, y) point in data space, optionally
+ * with a dashed connector line to the exact point.
+ *
+ * Math mirrors BandsOverlay: every bar covers
+ *   width = (100% + gapPx) / total
+ * so the bar center is at
+ *   left + width / 2 = (idx + 0.5) * (100% + gapPx) / total - gapPx/2
+ * y is mapped from data space using the same `max` the bars use.
+ */
+function AnnotationsLayer({
+  annotations,
+  points,
+  total,
+  gap,
+  max,
+}: {
+  annotations: readonly ColumnChartAnnotation[];
+  points: NormalizedPoint[];
+  total: number;
+  gap: number;
+  max: number;
+}) {
+  if (total <= 0 || max <= 0) return null;
+  return (
+    <>
+      {annotations.map((annotation, i) => {
+        const idx = resolveAnnotationIndex(annotation.x, points);
+        if (idx < 0) return null;
+        const xCenter = `calc((${idx} + 0.5) * (100% + ${gap}px) / ${total} - ${gap / 2}px)`;
+        const yRatio = Math.max(0, Math.min(1, annotation.y / max));
+        const yPct = `${(1 - yRatio) * 100}%`;
+        const anchor = annotation.anchor ?? "top";
+        const cardColor = annotation.color ?? "var(--foreground)";
+
+        // Card position relative to (xCenter, yPx)
+        const cardStyle: CSSProperties = (() => {
+          switch (anchor) {
+            case "bottom":
+              return {
+                left: xCenter,
+                top: yPct,
+                transform: "translate(-50%, 8px)",
+              };
+            case "left":
+              return {
+                left: xCenter,
+                top: yPct,
+                transform: "translate(calc(-100% - 8px), -50%)",
+              };
+            case "right":
+              return {
+                left: xCenter,
+                top: yPct,
+                transform: "translate(8px, -50%)",
+              };
+            case "top":
+            default:
+              return {
+                left: xCenter,
+                top: yPct,
+                transform: "translate(-50%, calc(-100% - 8px))",
+              };
+          }
+        })();
+
+        return (
+          <div
+            key={i}
+            className="brock-annotation pointer-events-none absolute z-10"
+            style={cardStyle}
+          >
+            <span
+              className="rounded-[2px] border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] tabular-nums whitespace-nowrap"
+              style={{ color: cardColor }}
+            >
+              {annotation.text}
+            </span>
+            {annotation.arrow && (
+              <span
+                className="absolute block"
+                aria-hidden
+                style={{
+                  // Tiny dashed line from card edge toward the (xCenter, yPx)
+                  // point. Direction depends on anchor.
+                  ...(anchor === "top"
+                    ? {
+                        left: "50%",
+                        top: "100%",
+                        width: 1,
+                        height: 8,
+                        borderLeft: "1px dashed currentColor",
+                      }
+                    : anchor === "bottom"
+                      ? {
+                          left: "50%",
+                          bottom: "100%",
+                          width: 1,
+                          height: 8,
+                          borderLeft: "1px dashed currentColor",
+                        }
+                      : anchor === "left"
+                        ? {
+                            top: "50%",
+                            left: "100%",
+                            width: 8,
+                            height: 1,
+                            borderTop: "1px dashed currentColor",
+                          }
+                        : {
+                            top: "50%",
+                            right: "100%",
+                            width: 8,
+                            height: 1,
+                            borderTop: "1px dashed currentColor",
+                          }),
+                  color: cardColor,
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </>
   );
 }
 

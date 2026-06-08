@@ -1028,6 +1028,182 @@ describe("ColumnChart — animation", () => {
   });
 });
 
+/* ─── Editorial layers (caption / watermark / annotations) ──────── */
+
+describe("ColumnChart — caption prop", () => {
+  it("renders the caption string below source", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10]}
+        labels={["A"]}
+        source="FT"
+        caption="Excludes weekends."
+      />,
+    );
+    const cap = container.querySelector(".brock-caption");
+    expect(cap).toBeInTheDocument();
+    expect(cap).toHaveTextContent("Excludes weekends.");
+  });
+
+  it("slots.caption overrides the string caption prop", () => {
+    render(
+      <ColumnChart
+        data={[10]}
+        labels={["A"]}
+        caption="should not show"
+        slots={{
+          caption: () => <div data-testid="slot-cap">slot</div>,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("slot-cap")).toBeInTheDocument();
+    expect(screen.queryByText("should not show")).not.toBeInTheDocument();
+  });
+
+  it("no caption is rendered when neither prop nor slot is set", () => {
+    const { container } = render(<ColumnChart data={[10]} labels={["A"]} />);
+    expect(container.querySelector(".brock-caption")).toBeFalsy();
+  });
+});
+
+describe("ColumnChart — watermark prop", () => {
+  it("renders watermark text uppercased and rotated", () => {
+    const { container } = render(
+      <ColumnChart data={[10]} labels={["A"]} watermark="draft" />,
+    );
+    const wm = container.querySelector(".brock-watermark");
+    expect(wm).toBeInTheDocument();
+    expect(wm).toHaveTextContent("DRAFT");
+    const span = wm?.querySelector("span") as HTMLElement;
+    expect(span.style.transform).toContain("rotate");
+  });
+
+  it("watermark is aria-hidden and pointer-events-none", () => {
+    const { container } = render(
+      <ColumnChart data={[10]} labels={["A"]} watermark="draft" />,
+    );
+    const wm = container.querySelector(".brock-watermark") as HTMLElement;
+    expect(wm.getAttribute("aria-hidden")).toBe("true");
+    expect(wm.className).toContain("pointer-events-none");
+  });
+
+  it("slots.watermark overrides the string watermark prop", () => {
+    render(
+      <ColumnChart
+        data={[10]}
+        labels={["A"]}
+        watermark="should not show"
+        slots={{
+          watermark: () => <div data-testid="slot-wm">brand</div>,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("slot-wm")).toBeInTheDocument();
+  });
+});
+
+describe("ColumnChart — annotations prop", () => {
+  it("renders one annotation card per entry, matched by label string", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "MON", value: 10 },
+          { label: "TUE", value: 20 },
+          { label: "WED", value: 30 },
+        ]}
+        annotations={[
+          { x: "TUE", y: 25, text: "← spike" },
+          { x: "WED", y: 32, text: "anomaly", arrow: true },
+        ]}
+      />,
+    );
+    const cards = container.querySelectorAll(".brock-annotation");
+    expect(cards.length).toBe(2);
+    expect(cards[0].textContent).toContain("← spike");
+    expect(cards[1].textContent).toContain("anomaly");
+  });
+
+  it("annotations match by 0-based numeric index", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20, 30]}
+        labels={["A", "B", "C"]}
+        annotations={[{ x: 2, y: 32, text: "tail" }]}
+      />,
+    );
+    const card = container.querySelector(".brock-annotation");
+    expect(card?.textContent).toContain("tail");
+  });
+
+  it("annotations with no x match are silently skipped", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10]}
+        labels={["A"]}
+        annotations={[{ x: "NOPE", y: 5, text: "stray" }]}
+      />,
+    );
+    expect(container.querySelectorAll(".brock-annotation").length).toBe(0);
+  });
+
+  it("arrow=true draws a dashed connector", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10]}
+        labels={["A"]}
+        annotations={[{ x: 0, y: 8, text: "x", arrow: true }]}
+      />,
+    );
+    const card = container.querySelector(".brock-annotation") as HTMLElement;
+    const arrow = card.querySelector("span[aria-hidden]") as HTMLElement;
+    expect(arrow).toBeTruthy();
+    // The dashed border is set via inline style on either borderLeft or borderTop
+    const css = arrow.outerHTML;
+    expect(css).toContain("dashed");
+  });
+});
+
+describe("synthesizeSVG — editorial layers", () => {
+  it("watermark is rendered as a rotated text node with low fill-opacity", () => {
+    const svg = synthesizeSVG(ctx({ watermark: "DRAFT" }));
+    expect(svg).toContain("transform=\"rotate(-20");
+    expect(svg).toContain("fill-opacity=\"0.06\"");
+    expect(svg).toContain(">DRAFT<");
+  });
+
+  it("caption is rendered as italic text below the source line", () => {
+    const svg = synthesizeSVG(
+      ctx({ caption: "Excludes weekends.", source: "FT" }),
+    );
+    expect(svg).toContain("font-style=\"italic\"");
+    expect(svg).toContain(">Excludes weekends.<");
+  });
+
+  it("annotations emit a chip (rect+text) + dashed connector when arrow=true", () => {
+    const svg = synthesizeSVG(
+      ctx({
+        annotations: [
+          { x: 1, y: 25, text: "peak", arrow: true },
+        ],
+        max: 30,
+      }),
+    );
+    // Chip rect + chip text + connector line = 3 SVG elements added
+    expect(svg).toContain(">peak<");
+    expect(svg).toContain("stroke-dasharray=\"2 2\"");
+  });
+
+  it("annotation chip omits the connector when arrow is omitted", () => {
+    const svg = synthesizeSVG(
+      ctx({
+        annotations: [{ x: 0, y: 8, text: "no-arrow" }],
+      }),
+    );
+    expect(svg).toContain(">no-arrow<");
+    expect(svg).not.toContain("stroke-dasharray=\"2 2\"");
+  });
+});
+
 /* ─── Slots (headless customization) ──────────────────────────────── */
 
 describe("ColumnChart — slots", () => {

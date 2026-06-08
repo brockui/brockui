@@ -21,6 +21,7 @@
  */
 
 import type {
+  ColumnChartAnnotation,
   ColumnChartBand,
   ColumnChartGoal,
   ColumnChartPattern,
@@ -92,6 +93,22 @@ export type SynthesisContext = {
   bands?: readonly ColumnChartBand[];
   /** Source attribution. */
   source?: string;
+  /**
+   * Short editorial caption rendered as italic muted text below the source
+   * line. Equivalent to the in-app `Caption` sub-component.
+   */
+  caption?: string;
+  /**
+   * Diagonal watermark text rendered at low opacity in the center of the
+   * chart area (behind bars in the DOM render, drawn first in SVG so bars
+   * cover it). Use sparingly.
+   */
+  watermark?: string;
+  /**
+   * Free-floating annotations — text cards at specific (x, y) data points
+   * with optional dashed connector arrow to that point.
+   */
+  annotations?: readonly ColumnChartAnnotation[];
   /** Accessible description (becomes <title> + <desc>). */
   description: string;
   /** Pixel-font fallback chain. */
@@ -121,6 +138,23 @@ function escapeXml(value: string): string {
 /** Round to 2 decimals for tidy SVG numbers. */
 function r2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/**
+ * Resolve an annotation's `x` against the export points — supports both a
+ * 0-based index (number) and a label string (case-insensitive match).
+ * Returns -1 if no match. Mirrors the in-app resolveAnnotationIndex.
+ */
+function resolveAnnotationIndexForExport(
+  x: number | string,
+  points: ExportPoint[],
+): number {
+  if (typeof x === "number") {
+    if (x < 0 || x >= points.length) return -1;
+    return x;
+  }
+  const target = x.toLowerCase();
+  return points.findIndex((p) => (p.label ?? "").toLowerCase() === target);
 }
 
 /** Stable 6-char hash of a color hex for unique pattern IDs. */
@@ -217,6 +251,9 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
     goal,
     bands,
     source,
+    caption,
+    watermark,
+    annotations,
     description,
   } = ctx;
 
@@ -334,6 +371,17 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
     `<line x1="${r2(barsLeft)}" y1="${r2(barsBottom)}" x2="${r2(width)}" y2="${r2(barsBottom)}" stroke="${border}" stroke-width="1"/>`,
   );
 
+  // Watermark — diagonal text at low opacity, drawn BEFORE bars/bands so
+  // bars and axes sit on top. Mirrors the in-app Watermark component.
+  if (watermark) {
+    const wmCenterX = r2(barsLeft + barsAreaWidth / 2);
+    const wmCenterY = r2(barsTop + barsAreaHeight / 2);
+    const fontSize = Math.min(96, Math.max(32, Math.floor(barsAreaHeight / 3)));
+    parts.push(
+      `<text x="${wmCenterX}" y="${wmCenterY}" text-anchor="middle" dominant-baseline="middle" font-family="${pixelFont}" font-size="${fontSize}" fill="${foreground}" fill-opacity="0.06" letter-spacing="0.06em" transform="rotate(-20 ${wmCenterX} ${wmCenterY})">${escapeXml(watermark.toUpperCase())}</text>`,
+    );
+  }
+
   // Plot bands (behind bars)
   if (bands && total > 0) {
     for (const band of bands) {
@@ -405,6 +453,91 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
     });
   }
 
+  // Free-floating annotations (text card + optional dashed connector).
+  // Drawn AFTER bars but BEFORE goal so important reference lines still win.
+  if (annotations && annotations.length > 0 && total > 0 && max > 0) {
+    for (const annotation of annotations) {
+      const idx = resolveAnnotationIndexForExport(annotation.x, points);
+      if (idx < 0) continue;
+      const xCenter = barsLeft + idx * (barWidth + gap) + barWidth / 2;
+      const yRatio = Math.max(0, Math.min(1, annotation.y / max));
+      const yPoint = barsBottom - yRatio * barsAreaHeight;
+      const anchor = annotation.anchor ?? "top";
+      const cardColor = annotation.color ?? foreground;
+      // Approximate card width — 5.5px per char + 8px padding for the chip.
+      const approxCardW = annotation.text.length * 5.5 + 10;
+      const cardH = 14;
+      const gapToPoint = 8;
+      let cardX: number;
+      let cardY: number;
+      let lineX1: number;
+      let lineY1: number;
+      switch (anchor) {
+        case "bottom":
+          cardX = xCenter - approxCardW / 2;
+          cardY = yPoint + gapToPoint;
+          lineX1 = xCenter;
+          lineY1 = yPoint + 1;
+          break;
+        case "left":
+          cardX = xCenter - gapToPoint - approxCardW;
+          cardY = yPoint - cardH / 2;
+          lineX1 = xCenter - 1;
+          lineY1 = yPoint;
+          break;
+        case "right":
+          cardX = xCenter + gapToPoint;
+          cardY = yPoint - cardH / 2;
+          lineX1 = xCenter + 1;
+          lineY1 = yPoint;
+          break;
+        case "top":
+        default:
+          cardX = xCenter - approxCardW / 2;
+          cardY = yPoint - gapToPoint - cardH;
+          lineX1 = xCenter;
+          lineY1 = yPoint - 1;
+          break;
+      }
+      // Background chip
+      parts.push(
+        `<rect x="${r2(cardX)}" y="${r2(cardY)}" width="${r2(approxCardW)}" height="${cardH}" fill="${background}" stroke="${border}" stroke-width="1" rx="2"/>`,
+      );
+      // Text
+      parts.push(
+        `<text x="${r2(cardX + approxCardW / 2)}" y="${r2(cardY + cardH - 4)}" text-anchor="middle" font-family="${monoFont}" font-size="10" font-variant-numeric="tabular-nums" fill="${cardColor}">${escapeXml(annotation.text)}</text>`,
+      );
+      // Connector arrow
+      if (annotation.arrow) {
+        // line endpoints: from card edge → (xCenter, yPoint)
+        let cx2: number;
+        let cy2: number;
+        switch (anchor) {
+          case "bottom":
+            cx2 = xCenter;
+            cy2 = cardY;
+            break;
+          case "left":
+            cx2 = cardX + approxCardW;
+            cy2 = cardY + cardH / 2;
+            break;
+          case "right":
+            cx2 = cardX;
+            cy2 = cardY + cardH / 2;
+            break;
+          case "top":
+          default:
+            cx2 = xCenter;
+            cy2 = cardY + cardH;
+            break;
+        }
+        parts.push(
+          `<line x1="${r2(lineX1)}" y1="${r2(lineY1)}" x2="${r2(cx2)}" y2="${r2(cy2)}" stroke="${cardColor}" stroke-width="1" stroke-dasharray="2 2"/>`,
+        );
+      }
+    }
+  }
+
   // Goal line (drawn on top of bars)
   if (goal && Number.isFinite(goal.value) && goal.value > 0 && max > 0) {
     const goalY = barsBottom - (goal.value / max) * barsAreaHeight;
@@ -449,6 +582,15 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
   if (source) {
     parts.push(
       `<text x="0" y="${r2(height - 6)}" font-family="${monoFont}" font-size="10" fill="${muted}" letter-spacing="0.06em">${escapeXml(`SOURCE: ${source.toUpperCase()}`)}</text>`,
+    );
+  }
+
+  // Caption (italic muted text). If no source, sits at the bottom edge; if
+  // source is present, stacks above it.
+  if (caption) {
+    const capY = source ? height - 18 : height - 6;
+    parts.push(
+      `<text x="0" y="${r2(capY)}" font-family="${sansFont}" font-size="11" font-style="italic" fill="${muted}">${escapeXml(caption)}</text>`,
     );
   }
 
