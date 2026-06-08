@@ -23,6 +23,7 @@
 import type {
   CSSProperties,
   KeyboardEvent,
+  MouseEvent as ReactMouseEvent,
   ReactNode,
   Ref,
 } from "react";
@@ -406,6 +407,40 @@ export type ColumnChartProps = {
 
   /** Ref handle for imperative exports — see `ColumnChartHandle`. */
   ref?: Ref<ColumnChartHandle>;
+
+  /**
+   * Fired when the user clicks a bar (mouse, touch, or Enter/Space on a
+   * focused bar). Receives the normalized data point, its 0-based index, and
+   * the originating event.
+   *
+   * The callback is purely a notification — the chart does not change focus or
+   * selection state. Combine with the imperative `focusBar(i)` method on the
+   * ref if you want a controlled-selection pattern.
+   */
+  onBarClick?: (
+    point: ColumnChartDataPoint,
+    index: number,
+    event:
+      | ReactMouseEvent<HTMLDivElement>
+      | KeyboardEvent<HTMLDivElement>,
+  ) => void;
+
+  /**
+   * Fired on mouse enter / leave of a bar. On `leave`, both `point` and
+   * `index` are `null`. Useful for syncing custom legend / tooltip / detail
+   * panels with the hovered datum.
+   */
+  onBarHover?: (
+    point: ColumnChartDataPoint | null,
+    index: number | null,
+  ) => void;
+
+  /**
+   * Fired when keyboard focus moves between bars (arrow keys, Home/End, Tab
+   * into chart). Tracks the roving-tabindex focus position. Use for "show
+   * details for the focused bar" patterns in keyboard-only workflows.
+   */
+  onBarFocus?: (point: ColumnChartDataPoint, index: number) => void;
 };
 
 /**
@@ -437,6 +472,22 @@ export type ColumnChartHandle = {
     width?: number;
     height?: number;
   }) => Promise<void>;
+  /**
+   * Move keyboard focus to a specific bar by 0-based index. Out-of-range
+   * indices are clamped to the data range. Returns the index that received
+   * focus, or `-1` if no bars are rendered (loading/error/empty states).
+   *
+   * Use this for "drive focus from external UI" patterns — e.g. when the user
+   * clicks an entry in a side legend, you want the corresponding bar to focus
+   * so a screen reader announces it.
+   */
+  focusBar: (index: number) => number;
+  /**
+   * Return the currently keyboard-focused bar, or `null` if no bars are
+   * rendered. Mirrors the internal roving-tabindex position regardless of
+   * whether the chart actually has DOM focus right now.
+   */
+  getSelection: () => { point: ColumnChartDataPoint; index: number } | null;
 };
 
 type NormalizedPoint = {
@@ -607,6 +658,9 @@ export function ColumnChart({
   exportFileName = "chart",
   onExport,
   ref,
+  onBarClick,
+  onBarHover,
+  onBarFocus,
 }: ColumnChartProps) {
   const points = normalize(
     data,
@@ -617,6 +671,20 @@ export function ColumnChart({
   );
   const captionId = useId();
   const figureRef = useRef<HTMLElement>(null);
+  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [focusIndex, setFocusIndexState] = useState(0);
+  // Ref mirror of focusIndex so the imperative `getSelection` / `focusBar`
+  // can read the latest value synchronously, before React flushes state.
+  const focusIndexRef = useRef(0);
+  const setFocusIndex = (i: number) => {
+    focusIndexRef.current = i;
+    setFocusIndexState(i);
+  };
+
+  // Snap focus into the data range if data shrank/grew under us.
+  if (points.length > 0 && focusIndex >= points.length) {
+    setFocusIndex(points.length - 1);
+  }
 
   // Number formatting cascade: explicit overrides > numberFormat > default
   const baseFormatter = makeFormatter(numberFormat);
@@ -766,6 +834,49 @@ export function ColumnChart({
         await copyImageToClipboard(blob);
         onExport?.("copy", blob);
       },
+      focusBar: (index) => {
+        if (points.length === 0) return -1;
+        const clamped = Math.max(0, Math.min(points.length - 1, index));
+        setFocusIndex(clamped);
+        // Defer DOM focus so the post-render barRefs map is up to date.
+        if (typeof window !== "undefined") {
+          requestAnimationFrame(() => {
+            barRefs.current[clamped]?.focus();
+          });
+        }
+        const point = points[clamped];
+        onBarFocus?.(
+          {
+            label: point.label,
+            value: point.value,
+            pattern: point.pattern,
+            color: point.color,
+            highlight: point.highlight,
+            note: point.note,
+          },
+          clamped,
+        );
+        return clamped;
+      },
+      getSelection: () => {
+        if (points.length === 0) return null;
+        const i = Math.max(
+          0,
+          Math.min(points.length - 1, focusIndexRef.current),
+        );
+        const p = points[i];
+        return {
+          index: i,
+          point: {
+            label: p.label,
+            value: p.value,
+            pattern: p.pattern,
+            color: p.color,
+            highlight: p.highlight,
+            note: p.note,
+          },
+        };
+      },
     }),
     // Closure captures the latest props/derived values on every render —
     // intentional, so exports always reflect the current chart state.
@@ -796,6 +907,9 @@ export function ColumnChart({
       yAxis?.title,
       yTicks,
       accessibleDescription,
+      // focus/event refresh — keeps getSelection() / focusBar() reading fresh state
+      focusIndex,
+      onBarFocus,
     ],
   );
 
@@ -980,6 +1094,12 @@ export function ColumnChart({
                 labelFormat={effectiveLabelFormat}
                 patternStyle={patternStyle}
                 bands={bands}
+                focusIndex={focusIndex}
+                setFocusIndex={setFocusIndex}
+                barRefs={barRefs}
+                onBarClick={onBarClick}
+                onBarHover={onBarHover}
+                onBarFocus={onBarFocus}
               />
             </div>
             {hasAnyLabel && showXTicks && (
@@ -1447,6 +1567,12 @@ function BarsGroup({
   labelFormat,
   patternStyle,
   bands,
+  focusIndex,
+  setFocusIndex,
+  barRefs,
+  onBarClick,
+  onBarHover,
+  onBarFocus,
 }: {
   points: NormalizedPoint[];
   max: number;
@@ -1461,14 +1587,39 @@ function BarsGroup({
   labelFormat: (v: number) => string;
   patternStyle: ColumnChartPatternStyle;
   bands: readonly ColumnChartBand[] | undefined;
+  focusIndex: number;
+  setFocusIndex: (i: number) => void;
+  barRefs: React.RefObject<(HTMLDivElement | null)[]>;
+  onBarClick?: (
+    point: ColumnChartDataPoint,
+    index: number,
+    event:
+      | ReactMouseEvent<HTMLDivElement>
+      | KeyboardEvent<HTMLDivElement>,
+  ) => void;
+  onBarHover?: (
+    point: ColumnChartDataPoint | null,
+    index: number | null,
+  ) => void;
+  onBarFocus?: (point: ColumnChartDataPoint, index: number) => void;
 }) {
-  const [focusIndex, setFocusIndex] = useState(0);
-  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
+  /** Strip the internal NormalizedPoint shape down to the public DataPoint. */
+  function publicPoint(p: NormalizedPoint): ColumnChartDataPoint {
+    return {
+      label: p.label,
+      value: p.value,
+      pattern: p.pattern,
+      color: p.color,
+      highlight: p.highlight,
+      note: p.note,
+    };
+  }
 
   function moveFocus(target: number) {
     const clamped = Math.max(0, Math.min(points.length - 1, target));
     setFocusIndex(clamped);
     barRefs.current[clamped]?.focus();
+    onBarFocus?.(publicPoint(points[clamped]), clamped);
   }
 
   function handleKey(event: KeyboardEvent<HTMLDivElement>, currentIndex: number) {
@@ -1490,6 +1641,14 @@ function BarsGroup({
       case "End":
         event.preventDefault();
         moveFocus(points.length - 1);
+        break;
+      case "Enter":
+      case " ":
+        // Activation: trigger the click handler with the keyboard event.
+        if (onBarClick) {
+          event.preventDefault();
+          onBarClick(publicPoint(points[currentIndex]), currentIndex, event);
+        }
         break;
     }
   }
@@ -1515,6 +1674,7 @@ function BarsGroup({
       style={{ gap }}
       role="img"
       aria-label={ariaLabel}
+      onMouseLeave={onBarHover ? () => onBarHover(null, null) : undefined}
     >
       {bands && bands.length > 0 && (
         <BandsOverlay bands={bands} total={total} gap={gap} />
@@ -1538,7 +1698,20 @@ function BarsGroup({
           showLabel={showLabels}
           labelFormat={labelFormat}
           onKeyDown={(e) => handleKey(e, i)}
-          onFocus={() => setFocusIndex(i)}
+          onFocus={() => {
+            setFocusIndex(i);
+            onBarFocus?.(publicPoint(point), i);
+          }}
+          onClick={
+            onBarClick
+              ? (e) => onBarClick(publicPoint(point), i, e)
+              : undefined
+          }
+          onMouseEnter={
+            onBarHover
+              ? () => onBarHover(publicPoint(point), i)
+              : undefined
+          }
         />
       ))}
 
@@ -1644,6 +1817,8 @@ function Bar({
   labelFormat,
   onKeyDown,
   onFocus,
+  onClick,
+  onMouseEnter,
 }: {
   ref: (el: HTMLDivElement | null) => void;
   index: number;
@@ -1659,6 +1834,8 @@ function Bar({
   labelFormat: (v: number) => string;
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   onFocus: () => void;
+  onClick?: (e: ReactMouseEvent<HTMLDivElement>) => void;
+  onMouseEnter?: () => void;
 }) {
   const barHeight = allZero
     ? 0
@@ -1670,16 +1847,21 @@ function Bar({
     ? `${point.label}: ${formatValue(point.value)}`
     : `Bar ${index + 1}: ${formatValue(point.value)}`;
 
+  // Cursor hints affordance — only when a click handler is wired.
+  const cursorClass = onClick ? "cursor-pointer" : "";
+
   return (
     <div
       ref={ref}
-      className="group/bar relative flex flex-1 items-end self-stretch rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brock-accent"
+      className={`group/bar relative flex flex-1 items-end self-stretch rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brock-accent ${cursorClass}`}
       role="graphics-symbol"
       aria-roledescription="bar"
       aria-label={accessibleName}
       tabIndex={isTabStop ? 0 : -1}
       onKeyDown={onKeyDown}
       onFocus={onFocus}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
     >
       {point.note && !allZero && point.value > 0 && (
         <span

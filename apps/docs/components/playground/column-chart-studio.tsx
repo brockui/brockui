@@ -19,11 +19,12 @@
 
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import {
   ColumnChart,
   type ColumnChartDataPoint,
+  type ColumnChartHandle,
 } from "@/components/charts/column-chart";
 import { CopyButton } from "@/components/ui/copy-button";
 
@@ -205,6 +206,15 @@ type StudioState = {
   exportCSV: boolean;
   exportCopy: boolean;
   exportFileName: string;
+  // events
+  eventsEnabled: boolean;
+  lastClickIndex: number | null;
+  lastClickLabel: string | null;
+  lastClickValue: number | null;
+  hoverIndex: number | null;
+  hoverLabel: string | null;
+  focusIndex: number | null;
+  focusLabel: string | null;
   // header
   headerTitle: string;
   headerSubtitle: string;
@@ -278,6 +288,14 @@ const INITIAL_STATE: StudioState = {
   exportCSV: true,
   exportCopy: true,
   exportFileName: "active-users-7d",
+  eventsEnabled: true,
+  lastClickIndex: null,
+  lastClickLabel: null,
+  lastClickValue: null,
+  hoverIndex: null,
+  hoverLabel: null,
+  focusIndex: null,
+  focusLabel: null,
   headerTitle: "Active users",
   headerSubtitle: "Last 7 days",
   xAxisTitle: "",
@@ -503,6 +521,20 @@ function generateCode(s: StudioState): string {
       }
     }
   }
+  // Events — emit a short illustrative handler for each enabled callback.
+  if (s.eventsEnabled) {
+    lines.push(`      onBarClick={(point, index) => {`);
+    lines.push(`        console.log("clicked", index, point);`);
+    lines.push(`      }}`);
+    lines.push(`      onBarHover={(point, index) => {`);
+    lines.push(`        // point is null on mouse leave`);
+    lines.push(`        setHoverIndex(index);`);
+    lines.push(`      }}`);
+    lines.push(`      onBarFocus={(point, index) => {`);
+    lines.push(`        // Fires on keyboard navigation`);
+    lines.push(`        announce(\`Bar \${index + 1}: \${point.value}\`);`);
+    lines.push(`      }}`);
+  }
   // Export — emit the most concise form. `exportable` true for all-on, an
   // object for partial selection, omitted when fully off.
   const anyExport =
@@ -535,6 +567,7 @@ function generateCode(s: StudioState): string {
 
 export function ColumnChartStudio() {
   const [s, setS] = useState<StudioState>(INITIAL_STATE);
+  const chartRef = useRef<ColumnChartHandle>(null);
 
   function update<K extends keyof StudioState>(key: K, value: StudioState[K]) {
     setS((prev) => ({ ...prev, [key]: value }));
@@ -620,6 +653,38 @@ export function ColumnChartStudio() {
         <PanelHeader label="Chart" />
         <div className="p-6">
           <ColumnChart
+            ref={chartRef}
+            onBarClick={
+              s.eventsEnabled
+                ? (point, index) =>
+                    setS((prev) => ({
+                      ...prev,
+                      lastClickIndex: index,
+                      lastClickLabel: point.label ?? null,
+                      lastClickValue: point.value,
+                    }))
+                : undefined
+            }
+            onBarHover={
+              s.eventsEnabled
+                ? (point, index) =>
+                    setS((prev) => ({
+                      ...prev,
+                      hoverIndex: index,
+                      hoverLabel: point?.label ?? null,
+                    }))
+                : undefined
+            }
+            onBarFocus={
+              s.eventsEnabled
+                ? (point, index) =>
+                    setS((prev) => ({
+                      ...prev,
+                      focusIndex: index,
+                      focusLabel: point.label ?? null,
+                    }))
+                : undefined
+            }
             data={effectiveChartData}
             labels={effectiveLabels}
             loading={effectiveLoading}
@@ -871,6 +936,76 @@ export function ColumnChartStudio() {
                 placeholder="active-users-7d"
               />
             </Field>
+          </Accordion>
+
+          <Accordion label="Events">
+            <Toggle
+              label="Track click / hover / focus"
+              checked={s.eventsEnabled}
+              onChange={(v) => update("eventsEnabled", v)}
+            />
+            {s.eventsEnabled && (
+              <>
+                <Field label="Last click">
+                  <div
+                    className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
+                    aria-live="polite"
+                  >
+                    {s.lastClickIndex !== null
+                      ? `#${s.lastClickIndex} · ${s.lastClickLabel ?? "—"} · ${s.lastClickValue}`
+                      : "— no clicks yet —"}
+                  </div>
+                </Field>
+                <Field label="Hovering">
+                  <div
+                    className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
+                    aria-live="polite"
+                  >
+                    {s.hoverIndex !== null
+                      ? `#${s.hoverIndex} · ${s.hoverLabel ?? "—"}`
+                      : "— mouse outside —"}
+                  </div>
+                </Field>
+                <Field label="Focused">
+                  <div
+                    className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
+                    aria-live="polite"
+                  >
+                    {s.focusIndex !== null
+                      ? `#${s.focusIndex} · ${s.focusLabel ?? "—"}`
+                      : "— no focus yet —"}
+                  </div>
+                </Field>
+                <Field label="Programmatic focus (ref.focusBar)">
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
+                      onClick={() => chartRef.current?.focusBar(0)}
+                    >
+                      ◀ First
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
+                      onClick={() => {
+                        const next = (s.focusIndex ?? -1) + 1;
+                        chartRef.current?.focusBar(next);
+                      }}
+                    >
+                      Next ▶
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
+                      onClick={() => chartRef.current?.focusBar(999)}
+                    >
+                      Last ▶▶
+                    </button>
+                  </div>
+                </Field>
+              </>
+            )}
           </Accordion>
 
           <Accordion label="Header">

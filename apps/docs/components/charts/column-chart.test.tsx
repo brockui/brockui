@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useRef } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ColumnChart, type ColumnChartHandle } from "./column-chart";
+import {
+  ColumnChart,
+  type ColumnChartHandle,
+  type ColumnChartProps,
+} from "./column-chart";
 import {
   pointsToCSV,
   synthesizeSVG,
@@ -1270,6 +1274,218 @@ describe("ColumnChart — toolbar (exportable prop)", () => {
     expect(format).toBe("svg");
     expect(artifact).toContain("<svg ");
     expect(artifact).toContain("</svg>");
+  });
+});
+
+describe("ColumnChart — event callbacks (onBarClick / Hover / Focus)", () => {
+  it("onBarClick fires with point, index, and a click event", async () => {
+    const user = userEvent.setup();
+    const onBarClick = vi.fn();
+    const { container } = render(
+      <ColumnChart
+        data={[{ label: "A", value: 10 }, { label: "B", value: 20 }]}
+        onBarClick={onBarClick}
+      />,
+    );
+    const bars = container.querySelectorAll('[role="graphics-symbol"]');
+    await user.click(bars[1]);
+    expect(onBarClick).toHaveBeenCalledTimes(1);
+    const [point, index, event] = onBarClick.mock.calls[0];
+    expect(index).toBe(1);
+    expect(point).toEqual(
+      expect.objectContaining({ label: "B", value: 20 }),
+    );
+    expect(event).toBeDefined();
+    expect((event as MouseEvent).type).toBe("click");
+  });
+
+  it("Enter on a focused bar invokes onBarClick with the keyboard event", async () => {
+    const user = userEvent.setup();
+    const onBarClick = vi.fn();
+    const { container } = render(
+      <ColumnChart
+        data={[{ label: "A", value: 10 }, { label: "B", value: 20 }]}
+        onBarClick={onBarClick}
+      />,
+    );
+    const bars = container.querySelectorAll('[role="graphics-symbol"]');
+    (bars[0] as HTMLElement).focus();
+    await user.keyboard("{Enter}");
+    expect(onBarClick).toHaveBeenCalledTimes(1);
+    expect(onBarClick.mock.calls[0][1]).toBe(0);
+  });
+
+  it("Space on a focused bar invokes onBarClick", async () => {
+    const user = userEvent.setup();
+    const onBarClick = vi.fn();
+    const { container } = render(
+      <ColumnChart data={[10, 20]} labels={["A", "B"]} onBarClick={onBarClick} />,
+    );
+    const bars = container.querySelectorAll('[role="graphics-symbol"]');
+    (bars[1] as HTMLElement).focus();
+    await user.keyboard(" ");
+    expect(onBarClick).toHaveBeenCalledTimes(1);
+    expect(onBarClick.mock.calls[0][1]).toBe(1);
+  });
+
+  it("onBarHover fires with the point on mouse enter", async () => {
+    const user = userEvent.setup();
+    const onBarHover = vi.fn();
+    const { container } = render(
+      <ColumnChart
+        data={[{ label: "A", value: 10 }, { label: "B", value: 20 }]}
+        onBarHover={onBarHover}
+      />,
+    );
+    const bars = container.querySelectorAll('[role="graphics-symbol"]');
+    await user.hover(bars[0]);
+    expect(onBarHover).toHaveBeenCalledWith(
+      expect.objectContaining({ label: "A", value: 10 }),
+      0,
+    );
+  });
+
+  it("onBarHover fires with (null, null) when mouse leaves the bars area", async () => {
+    const user = userEvent.setup();
+    const onBarHover = vi.fn();
+    const { container } = render(
+      <ColumnChart data={[10, 20]} labels={["A", "B"]} onBarHover={onBarHover} />,
+    );
+    const bars = container.querySelectorAll('[role="graphics-symbol"]');
+    // Hover a bar first so a subsequent unhover crosses the .brock-bars edge.
+    await user.hover(bars[0]);
+    await user.unhover(bars[0]);
+    // Move pointer outside the bars area altogether.
+    await user.unhover(container.querySelector(".brock-bars") as HTMLElement);
+    const calls = onBarHover.mock.calls;
+    // At least one call must be the leave signal (null, null).
+    const sawLeave = calls.some((c) => c[0] === null && c[1] === null);
+    expect(sawLeave).toBe(true);
+  });
+
+  it("onBarFocus fires when keyboard nav moves between bars", async () => {
+    const user = userEvent.setup();
+    const onBarFocus = vi.fn();
+    const { container } = render(
+      <ColumnChart
+        data={[{ label: "A", value: 10 }, { label: "B", value: 20 }]}
+        onBarFocus={onBarFocus}
+      />,
+    );
+    const bars = container.querySelectorAll('[role="graphics-symbol"]');
+    (bars[0] as HTMLElement).focus();
+    onBarFocus.mockClear();
+    await user.keyboard("{ArrowRight}");
+    // Last focus emission is index 1
+    const last = onBarFocus.mock.calls[onBarFocus.mock.calls.length - 1];
+    expect(last[1]).toBe(1);
+    expect(last[0]).toEqual(expect.objectContaining({ label: "B", value: 20 }));
+  });
+
+  it("cursor-pointer is added to bars only when onBarClick is provided", () => {
+    const { container, rerender } = render(<ColumnChart data={[10]} />);
+    expect(
+      (container.querySelector('[role="graphics-symbol"]') as HTMLElement)
+        .className,
+    ).not.toContain("cursor-pointer");
+
+    rerender(<ColumnChart data={[10]} onBarClick={() => {}} />);
+    expect(
+      (container.querySelector('[role="graphics-symbol"]') as HTMLElement)
+        .className,
+    ).toContain("cursor-pointer");
+  });
+});
+
+describe("ColumnChart — imperative focusBar / getSelection", () => {
+  /**
+   * Returns the LIVE ref via a callback that re-reads `.current` each time —
+   * useImperativeHandle re-binds methods when deps change (e.g. focusIndex),
+   * so a stored snapshot would go stale.
+   */
+  function FocusHarness({
+    refOut,
+    data,
+    onBarFocus,
+  }: {
+    refOut: { handle: React.RefObject<ColumnChartHandle | null> | null };
+    data?: ColumnChartProps["data"];
+    onBarFocus?: ColumnChartProps["onBarFocus"];
+  }) {
+    const handle = useRef<ColumnChartHandle>(null);
+    refOut.handle = handle;
+    return (
+      <ColumnChart
+        ref={handle}
+        data={
+          data ?? [
+            { label: "A", value: 10 },
+            { label: "B", value: 20 },
+            { label: "C", value: 30 },
+          ]
+        }
+        onBarFocus={onBarFocus}
+      />
+    );
+  }
+
+  it("focusBar(n) moves keyboard focus and returns the clamped index", () => {
+    const refOut: { handle: React.RefObject<ColumnChartHandle | null> | null } = {
+      handle: null,
+    };
+    render(<FocusHarness refOut={refOut} />);
+    expect(refOut.handle!.current!.focusBar(1)).toBe(1);
+    expect(refOut.handle!.current!.focusBar(99)).toBe(2);
+    expect(refOut.handle!.current!.focusBar(-5)).toBe(0);
+  });
+
+  it("focusBar fires onBarFocus", () => {
+    const refOut: { handle: React.RefObject<ColumnChartHandle | null> | null } = {
+      handle: null,
+    };
+    const onBarFocus = vi.fn();
+    render(
+      <FocusHarness
+        refOut={refOut}
+        data={[
+          { label: "A", value: 10 },
+          { label: "B", value: 20 },
+        ]}
+        onBarFocus={onBarFocus}
+      />,
+    );
+    onBarFocus.mockClear();
+    refOut.handle!.current!.focusBar(1);
+    expect(onBarFocus).toHaveBeenCalledTimes(1);
+    expect(onBarFocus.mock.calls[0][1]).toBe(1);
+    expect(onBarFocus.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ label: "B", value: 20 }),
+    );
+  });
+
+  it("getSelection returns the currently focused bar", () => {
+    const refOut: { handle: React.RefObject<ColumnChartHandle | null> | null } = {
+      handle: null,
+    };
+    render(<FocusHarness refOut={refOut} />);
+    expect(refOut.handle!.current!.getSelection()).toEqual({
+      index: 0,
+      point: expect.objectContaining({ label: "A", value: 10 }),
+    });
+    refOut.handle!.current!.focusBar(2);
+    expect(refOut.handle!.current!.getSelection()).toEqual({
+      index: 2,
+      point: expect.objectContaining({ label: "C", value: 30 }),
+    });
+  });
+
+  it("focusBar returns -1 and getSelection returns null when no data", () => {
+    const refOut: { handle: React.RefObject<ColumnChartHandle | null> | null } = {
+      handle: null,
+    };
+    render(<FocusHarness refOut={refOut} data={[]} />);
+    expect(refOut.handle!.current!.focusBar(0)).toBe(-1);
+    expect(refOut.handle!.current!.getSelection()).toBeNull();
   });
 });
 

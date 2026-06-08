@@ -260,7 +260,28 @@ const props: PropRow[] = [
     type: "Ref<ColumnChartHandle>",
     default: "—",
     description:
-      "Imperative API: { exportSVG, exportPNG, exportCSV, copyImage }. Each method accepts { fileName, download, width, height } (scale extra on PNG). Works even while the chart is in loading/error/empty state",
+      "Imperative API: { exportSVG, exportPNG, exportCSV, copyImage, focusBar, getSelection }. Export methods work even in loading/error/empty. focusBar(i) clamps + moves keyboard focus (returns clamped index, -1 if no data). getSelection() returns the current { index, point } or null",
+  },
+  {
+    name: "onBarClick",
+    type: "(point, index, event) => void",
+    default: "undefined",
+    description:
+      "Fires on click, tap, or Enter/Space on a focused bar. Event is a MouseEvent or KeyboardEvent. Adds cursor-pointer to bars when provided",
+  },
+  {
+    name: "onBarHover",
+    type: "(point | null, index | null) => void",
+    default: "undefined",
+    description:
+      "Fires on mouse enter (point + index) and on leave of the bars area (null, null). Sync custom legends / detail panels with the hovered datum",
+  },
+  {
+    name: "onBarFocus",
+    type: "(point, index) => void",
+    default: "undefined",
+    description:
+      "Fires on keyboard focus changes between bars (arrow keys, Home/End, Tab in, and programmatic focusBar()). Tracks the roving-tabindex position",
   },
   {
     name: "description",
