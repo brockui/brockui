@@ -284,6 +284,13 @@ const props: PropRow[] = [
       "Fires on keyboard focus changes between bars (arrow keys, Home/End, Tab in, and programmatic focusBar()). Tracks the roving-tabindex position",
   },
   {
+    name: "slots",
+    type: "ColumnChartSlots",
+    default: "{}",
+    description:
+      "Headless slot dictionary. Each slot replaces a default sub-component: tooltip (per-bar), empty (no data), loading (skeleton), error (terminal), toolbar (export chips), caption (below source), watermark (figure overlay). Each slot receives typed props. Slots win over loadingFallback / errorFallback shortcuts",
+  },
+  {
     name: "description",
     type: "string",
     default: "auto-generated",

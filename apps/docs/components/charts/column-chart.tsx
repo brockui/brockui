@@ -21,6 +21,7 @@
 "use client";
 
 import type {
+  ComponentType,
   CSSProperties,
   KeyboardEvent,
   MouseEvent as ReactMouseEvent,
@@ -113,6 +114,105 @@ export type ColumnChartBand = {
   label?: string;
   /** Optional CSS background. Defaults to a low-opacity foreground tint. */
   color?: string;
+};
+
+/* ─── Slot prop types ──────────────────────────────────────────────── */
+
+/**
+ * Props passed to a custom `slots.tooltip` component. Replaces the default
+ * pixel-badge + Hack-mono tooltip that hovers above the focused bar.
+ * Position is already handled by the wrapper — the slot only needs to render
+ * its content.
+ */
+export type ColumnChartTooltipSlotProps = {
+  /** The bar this tooltip is for. */
+  point: ColumnChartDataPoint;
+  /** 0-based index within the data array. */
+  index: number;
+  /** Already-formatted value string (respects numberFormat / formatValue). */
+  value: string;
+  /** X-axis label, if the bar has one. */
+  label?: string;
+  /** Which edge the bar sits on — useful for tail orientation. */
+  edge: "left" | "center" | "right";
+};
+
+/** Props passed to a custom `slots.empty` component. */
+export type ColumnChartEmptySlotProps = {
+  /** Height the slot should occupy (matches the chart's `height` prop). */
+  height: number;
+  /** Source attribution, if the chart has one. */
+  source?: string;
+};
+
+/** Props passed to a custom `slots.loading` component. */
+export type ColumnChartLoadingSlotProps = {
+  /** Height the slot should occupy. */
+  height: number;
+  /** Source attribution, if the chart has one. */
+  source?: string;
+  /** Localized "Loading…" label. */
+  label: string;
+};
+
+/** Props passed to a custom `slots.error` component. */
+export type ColumnChartErrorSlotProps = {
+  /** Height the slot should occupy. */
+  height: number;
+  /** Source attribution, if the chart has one. */
+  source?: string;
+  /** Localized "Error" label. */
+  label: string;
+  /** Normalized error message string. */
+  message: string;
+  /** The full normalized Error instance for richer rendering. */
+  error: Error;
+  /** Retry callback, if `onRetry` was passed to ColumnChart. */
+  onRetry?: () => void;
+  /** Localized "Retry" label. */
+  retryLabel: string;
+};
+
+/**
+ * Props passed to a custom `slots.toolbar` component. Replaces the default
+ * top-right PNG/SVG/CSV/COPY chip bar. The custom toolbar gets bound actions
+ * that fire the same export pipeline (so onExport callbacks still fire) plus
+ * an `enabled` map matching the `exportable` prop so the slot can hide
+ * actions the consumer disabled.
+ */
+export type ColumnChartToolbarSlotProps = {
+  exportPNG: () => Promise<void>;
+  exportSVG: () => void;
+  exportCSV: () => void;
+  copyImage: () => Promise<void>;
+  enabled: { png: boolean; svg: boolean; csv: boolean; copy: boolean };
+};
+
+/**
+ * Slot props passed to `slots.caption`. Rendered below the source line. No
+ * props by default — the slot has full control over its content.
+ */
+export type ColumnChartCaptionSlotProps = Record<string, never>;
+
+/**
+ * Slot props for a `slots.watermark`. Rendered as an absolute-positioned
+ * overlay over the chart figure (after the chart, before tooltip). Use for
+ * subtle branding without competing with data ink.
+ */
+export type ColumnChartWatermarkSlotProps = Record<string, never>;
+
+/**
+ * The full slot dictionary. Every slot is optional; provide only the ones
+ * you want to override. Defaults stay in place for the rest.
+ */
+export type ColumnChartSlots = {
+  tooltip?: ComponentType<ColumnChartTooltipSlotProps>;
+  empty?: ComponentType<ColumnChartEmptySlotProps>;
+  loading?: ComponentType<ColumnChartLoadingSlotProps>;
+  error?: ComponentType<ColumnChartErrorSlotProps>;
+  toolbar?: ComponentType<ColumnChartToolbarSlotProps>;
+  caption?: ComponentType<ColumnChartCaptionSlotProps>;
+  watermark?: ComponentType<ColumnChartWatermarkSlotProps>;
 };
 
 export type ColumnChartProps = {
@@ -441,6 +541,25 @@ export type ColumnChartProps = {
    * details for the focused bar" patterns in keyboard-only workflows.
    */
   onBarFocus?: (point: ColumnChartDataPoint, index: number) => void;
+
+  /**
+   * Slot dictionary for headless customization. Each slot replaces a specific
+   * default sub-component:
+   *
+   *  - `tooltip`   — hover/focus tooltip above the focused bar
+   *  - `empty`     — replaces the ASCII empty state
+   *  - `loading`   — replaces the dashed skeleton (no-data + loading case)
+   *  - `error`     — replaces the ▲▲▲ error UI
+   *  - `toolbar`   — replaces the PNG/SVG/CSV/COPY chip bar (slot receives
+   *                  bound action handlers + an `enabled` map)
+   *  - `caption`   — extra editorial caption rendered below the source line
+   *  - `watermark` — absolute-positioned overlay over the figure (subtle
+   *                  branding)
+   *
+   * Slots take precedence over the shortcut props (`loadingFallback`,
+   * `errorFallback`) when both are set.
+   */
+  slots?: ColumnChartSlots;
 };
 
 /**
@@ -661,6 +780,7 @@ export function ColumnChart({
   onBarClick,
   onBarHover,
   onBarFocus,
+  slots,
 }: ColumnChartProps) {
   const points = normalize(
     data,
@@ -922,6 +1042,24 @@ export function ColumnChart({
   // 5. data ready, not loading → normal chart.
   const normalizedError = toError(error);
   if (normalizedError) {
+    // Slot wins over shortcut fallback wins over default.
+    if (slots?.error) {
+      const ErrSlot = slots.error;
+      return (
+        <>
+          <ErrSlot
+            height={height}
+            source={source}
+            label={errorLabel}
+            message={normalizedError.message}
+            error={normalizedError}
+            onRetry={onRetry}
+            retryLabel={retryLabel}
+          />
+          <BarAnimationStyles />
+        </>
+      );
+    }
     if (errorFallback !== undefined) {
       return (
         <>
@@ -948,6 +1086,19 @@ export function ColumnChart({
   }
 
   if (loading && points.length === 0) {
+    if (slots?.loading) {
+      const LoadingSlot = slots.loading;
+      return (
+        <>
+          <LoadingSlot
+            height={height}
+            source={source}
+            label={loadingLabel}
+          />
+          <BarAnimationStyles />
+        </>
+      );
+    }
     if (loadingFallback !== undefined) {
       return <>{loadingFallback}</>;
     }
@@ -965,6 +1116,15 @@ export function ColumnChart({
   }
 
   if (points.length === 0) {
+    if (slots?.empty) {
+      const EmptySlot = slots.empty;
+      return (
+        <>
+          <EmptySlot height={height} source={source} />
+          <BarAnimationStyles />
+        </>
+      );
+    }
     return (
       <>
         <EmptyState height={height} source={source} className={className} />
@@ -1041,15 +1201,39 @@ export function ColumnChart({
       aria-busy={loading || undefined}
       style={figureStyle}
     >
-      {toolbarConfig && (
-        <Toolbar
-          config={toolbarConfig}
-          onPNG={runPNG}
-          onSVG={runSVG}
-          onCSV={runCSV}
-          onCopy={runCopy}
-        />
-      )}
+      {toolbarConfig &&
+        (slots?.toolbar ? (
+          (() => {
+            const ToolbarSlot = slots.toolbar;
+            return (
+              <ToolbarSlot
+                exportPNG={runPNG}
+                exportSVG={runSVG}
+                exportCSV={runCSV}
+                copyImage={runCopy}
+                enabled={toolbarConfig}
+              />
+            );
+          })()
+        ) : (
+          <Toolbar
+            config={toolbarConfig}
+            onPNG={runPNG}
+            onSVG={runSVG}
+            onCSV={runCSV}
+            onCopy={runCopy}
+          />
+        ))}
+      {slots?.watermark
+        ? (() => {
+            const WatermarkSlot = slots.watermark;
+            return (
+              <div className="pointer-events-none absolute inset-0 z-10">
+                <WatermarkSlot />
+              </div>
+            );
+          })()
+        : null}
       {loading && <LoadingOverlay label={loadingLabel} />}
       {(header?.title || header?.subtitle) && (
         <Header title={header.title} subtitle={header.subtitle} />
@@ -1100,6 +1284,7 @@ export function ColumnChart({
                 onBarClick={onBarClick}
                 onBarHover={onBarHover}
                 onBarFocus={onBarFocus}
+                tooltipSlot={slots?.tooltip}
               />
             </div>
             {hasAnyLabel && showXTicks && (
@@ -1124,6 +1309,13 @@ export function ColumnChart({
       )}
 
       {source && <ChartSource source={source} />}
+
+      {slots?.caption
+        ? (() => {
+            const CaptionSlot = slots.caption;
+            return <CaptionSlot />;
+          })()
+        : null}
 
       <figcaption id={captionId} className="sr-only">
         {accessibleDescription}
@@ -1573,6 +1765,7 @@ function BarsGroup({
   onBarClick,
   onBarHover,
   onBarFocus,
+  tooltipSlot,
 }: {
   points: NormalizedPoint[];
   max: number;
@@ -1602,6 +1795,7 @@ function BarsGroup({
     index: number | null,
   ) => void;
   onBarFocus?: (point: ColumnChartDataPoint, index: number) => void;
+  tooltipSlot?: ComponentType<ColumnChartTooltipSlotProps>;
 }) {
   /** Strip the internal NormalizedPoint shape down to the public DataPoint. */
   function publicPoint(p: NormalizedPoint): ColumnChartDataPoint {
@@ -1712,6 +1906,7 @@ function BarsGroup({
               ? () => onBarHover(publicPoint(point), i)
               : undefined
           }
+          tooltipSlot={tooltipSlot}
         />
       ))}
 
@@ -1819,6 +2014,7 @@ function Bar({
   onFocus,
   onClick,
   onMouseEnter,
+  tooltipSlot,
 }: {
   ref: (el: HTMLDivElement | null) => void;
   index: number;
@@ -1836,6 +2032,7 @@ function Bar({
   onFocus: () => void;
   onClick?: (e: ReactMouseEvent<HTMLDivElement>) => void;
   onMouseEnter?: () => void;
+  tooltipSlot?: ComponentType<ColumnChartTooltipSlotProps>;
 }) {
   const barHeight = allZero
     ? 0
@@ -1907,13 +2104,39 @@ function Bar({
         }
         aria-hidden
       />
-      {!allZero && (
-        <Tooltip
-          label={point.label}
-          value={formatValue(point.value)}
-          edge={edge}
-        />
-      )}
+      {!allZero &&
+        (tooltipSlot ? (
+          (() => {
+            const TooltipSlot = tooltipSlot;
+            return (
+              <div
+                className={`pointer-events-none absolute bottom-full z-10 mb-2 hidden group-hover/bar:flex group-focus/bar:flex ${TOOLTIP_POSITION[edge]} ${TOOLTIP_ALIGN[edge]}`}
+                aria-hidden
+              >
+                <TooltipSlot
+                  point={{
+                    label: point.label,
+                    value: point.value,
+                    pattern: point.pattern,
+                    color: point.color,
+                    highlight: point.highlight,
+                    note: point.note,
+                  }}
+                  index={index}
+                  value={formatValue(point.value)}
+                  label={point.label}
+                  edge={edge}
+                />
+              </div>
+            );
+          })()
+        ) : (
+          <Tooltip
+            label={point.label}
+            value={formatValue(point.value)}
+            edge={edge}
+          />
+        ))}
     </div>
   );
 }

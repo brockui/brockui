@@ -1028,6 +1028,225 @@ describe("ColumnChart — animation", () => {
   });
 });
 
+/* ─── Slots (headless customization) ──────────────────────────────── */
+
+describe("ColumnChart — slots", () => {
+  it("slots.empty replaces the default ASCII empty state", () => {
+    render(
+      <ColumnChart
+        data={[]}
+        slots={{
+          empty: ({ height, source }) => (
+            <div data-testid="custom-empty" style={{ height }}>
+              empty · source={source ?? "—"}
+            </div>
+          ),
+        }}
+        source="FT"
+      />,
+    );
+    const node = screen.getByTestId("custom-empty");
+    expect(node).toBeInTheDocument();
+    expect(node).toHaveTextContent("source=FT");
+    expect(screen.queryByText(/no data for this period/)).not.toBeInTheDocument();
+  });
+
+  it("slots.loading replaces the default skeleton", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[]}
+        loading
+        slots={{
+          loading: ({ label }) => (
+            <div data-testid="custom-loading">spinning · {label}</div>
+          ),
+        }}
+      />,
+    );
+    expect(screen.getByTestId("custom-loading")).toHaveTextContent("Loading…");
+    expect(container.querySelector(".brock-skeleton-bar")).toBeFalsy();
+  });
+
+  it("slots.error replaces the default ▲▲▲ error block and receives the Error", () => {
+    const onRetry = vi.fn();
+    render(
+      <ColumnChart
+        data={[]}
+        error="Upstream timeout"
+        onRetry={onRetry}
+        slots={{
+          error: ({ error, message, onRetry: retry, retryLabel }) => (
+            <div data-testid="custom-error">
+              <span>kind:{error.name}</span>
+              <span>msg:{message}</span>
+              <button type="button" onClick={retry}>{retryLabel}</button>
+            </div>
+          ),
+        }}
+      />,
+    );
+    const node = screen.getByTestId("custom-error");
+    expect(node).toHaveTextContent("kind:Error");
+    expect(node).toHaveTextContent("msg:Upstream timeout");
+  });
+
+  it("slots > shortcut fallbacks: slots.error wins over errorFallback", () => {
+    render(
+      <ColumnChart
+        data={[]}
+        error="boom"
+        errorFallback={<div data-testid="shortcut">should not show</div>}
+        slots={{
+          error: () => <div data-testid="slot-error">slot wins</div>,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("slot-error")).toBeInTheDocument();
+    expect(screen.queryByTestId("shortcut")).not.toBeInTheDocument();
+  });
+
+  it("slots.toolbar replaces the default chip bar and gets bound handlers", async () => {
+    const user = userEvent.setup();
+    URL.createObjectURL = vi.fn(() => "blob:stub");
+    URL.revokeObjectURL = vi.fn();
+    const onExport = vi.fn();
+    render(
+      <ColumnChart
+        data={[10, 20, 30]}
+        labels={["A", "B", "C"]}
+        exportable
+        onExport={onExport}
+        slots={{
+          toolbar: ({ exportCSV, enabled }) => (
+            <div data-testid="custom-tb">
+              <span>csv-enabled:{String(enabled.csv)}</span>
+              <button type="button" onClick={exportCSV}>
+                MyCSV
+              </button>
+            </div>
+          ),
+        }}
+      />,
+    );
+    expect(screen.getByTestId("custom-tb")).toHaveTextContent("csv-enabled:true");
+    // Default chips should not render
+    expect(screen.queryByRole("button", { name: "Download PNG" })).not.toBeInTheDocument();
+    await user.click(screen.getByText("MyCSV"));
+    expect(onExport).toHaveBeenCalledWith("csv", expect.stringContaining("label,value"));
+  });
+
+  it("slots.caption renders below the source line", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10]}
+        labels={["A"]}
+        source="FT"
+        slots={{
+          caption: () => <div data-testid="caption">reading note</div>,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("caption")).toBeInTheDocument();
+    // Caption must come after the source-line node in DOM order.
+    const sourceNode = within(container).getByText((_, n) =>
+      n?.textContent?.startsWith("Source: FT") ?? false,
+    );
+    const captionNode = screen.getByTestId("caption");
+    const pos = sourceNode.compareDocumentPosition(captionNode);
+    // eslint-disable-next-line no-bitwise
+    expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("slots.watermark mounts as an absolute overlay over the figure", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10]}
+        labels={["A"]}
+        slots={{
+          watermark: () => <div data-testid="wm">brock</div>,
+        }}
+      />,
+    );
+    const wm = screen.getByTestId("wm");
+    expect(wm).toBeInTheDocument();
+    const wrapper = wm.parentElement as HTMLElement;
+    expect(wrapper.className).toContain("absolute");
+    expect(wrapper.className).toContain("pointer-events-none");
+    // Watermark sits inside the figure
+    expect(container.querySelector("figure")?.contains(wm)).toBe(true);
+  });
+
+  it("slots.tooltip renders the custom node above a focused bar", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[{ label: "A", value: 10 }, { label: "B", value: 20 }]}
+        slots={{
+          tooltip: ({ point, index, value, edge }) => (
+            <div data-testid="custom-tt">
+              <span>i={index}</span>
+              <span>v={value}</span>
+              <span>e={edge}</span>
+              <span>lbl={point.label}</span>
+            </div>
+          ),
+        }}
+      />,
+    );
+    const tt = container.querySelectorAll('[data-testid="custom-tt"]');
+    // One tooltip per bar (visibility is CSS-driven via group-hover/focus)
+    expect(tt.length).toBe(2);
+    // First tooltip carries index=0, value, lbl=A, edge=left
+    expect(tt[0].textContent).toContain("i=0");
+    expect(tt[0].textContent).toContain("lbl=A");
+    expect(tt[0].textContent).toContain("e=left");
+  });
+
+  it("when no slots are provided, defaults render unchanged", () => {
+    const { container } = render(
+      <ColumnChart data={[]} source="FT" />,
+    );
+    // Default ASCII empty still shows
+    expect(screen.getByText(/no data for this period/)).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="custom-empty"]')).toBeFalsy();
+  });
+
+  it("slots.empty wins over the ASCII default even with source preserved", () => {
+    render(
+      <ColumnChart
+        data={[]}
+        source="FT"
+        slots={{
+          empty: () => <span data-testid="just-empty">empty</span>,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("just-empty")).toBeInTheDocument();
+    // The default's "Source: FT" line lives inside ChartSource which is no
+    // longer rendered when slot.empty is provided — the slot owns the full
+    // visual.
+    expect(screen.queryByText(/^Source: FT/)).not.toBeInTheDocument();
+  });
+
+  it("multiple slots can coexist", () => {
+    render(
+      <ColumnChart
+        data={[10]}
+        labels={["A"]}
+        source="FT"
+        exportable={{ csv: true }}
+        slots={{
+          toolbar: () => <div data-testid="tb">tb</div>,
+          caption: () => <div data-testid="cap">cap</div>,
+          watermark: () => <div data-testid="wm">wm</div>,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("tb")).toBeInTheDocument();
+    expect(screen.getByTestId("cap")).toBeInTheDocument();
+    expect(screen.getByTestId("wm")).toBeInTheDocument();
+  });
+});
+
 /* ─── Export utility tests ─────────────────────────────────────────── */
 
 function ctx(overrides: Partial<SynthesisContext> = {}): SynthesisContext {
