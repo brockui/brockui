@@ -1,21 +1,49 @@
 /**
- * Column Chart — time-series vertical bars
+ * Column Chart — time-series vertical bars, editorial-grade.
  *
- * Brock UI signature moves:
- *  1. Hack mono Y-axis with tabular-nums
- *  2. Single --brock-accent fill (no gradient/glow)
- *  3. No gridlines, single 1px baseline (Tufte data-ink)
- *  4. Hover/focus tooltip: Departure Mono pixel badge + Hack value
- *  5. Staggered entry animation (CSS only, honors prefers-reduced-motion)
- *  6. Built-in source attribution (FT/Bloomberg pattern)
- *  7. ASCII empty state in pixel font
+ * The Brock UI signature moves:
+ *
+ *  1. Hack mono Y-axis with tabular-nums; --brock-accent for the bar fill
+ *     (single color, no gradient/glow); 1px baseline only — no gridlines
+ *     (Tufte data-ink).
+ *  2. Pixel-font tooltip badge (Departure Mono) + Hack value; staggered
+ *     CSS-only entry animation that honors prefers-reduced-motion.
+ *  3. ASCII "no data" empty state; dashed-bar skeleton loading state with
+ *     LOADING badge; ▲▲▲ error state with optional Retry button — all in
+ *     one Tufte-friendly visual language.
+ *  4. Hatching as a Tufte encoding: per-bar `pattern: 'hatched'`, plus
+ *     `hatchUntilIndex` / `hatchFromIndex` shortcuts (historical-vs-projected),
+ *     plus 5 pattern styles (diagonal / reverse / vertical / horizontal / dots).
+ *  5. Per-bar editorial overrides via the object-form `data` shape:
+ *     { label, value, pattern, color, highlight, note } — emphasis without
+ *     a separate annotations API.
+ *  6. Plot bands (`bands`) for range highlights; goal line that participates
+ *     in scale; free-floating annotations (`annotations`) with optional
+ *     dashed connector arrows for FT-style call-outs.
+ *  7. Editorial extras: short `caption` below source; diagonal `watermark`
+ *     overlay for DRAFT / CONFIDENTIAL; both reproduced in SVG export.
+ *  8. Native export: PNG / SVG / CSV / Copy via the Toolbar slot or the
+ *     imperative ref. Zero external deps. Patterns + per-bar colors +
+ *     annotations all survive the round-trip.
+ *  9. Print stylesheet (@media print) strips toolbar/overlays, forces solid
+ *     bg, prevents page-breaks inside the figure.
+ * 10. Event callbacks: onBarClick / onBarHover / onBarFocus. Imperative ref
+ *     API: { exportSVG, exportPNG, exportCSV, copyImage, focusBar, getSelection }.
+ * 11. Full slot system for headless customization: tooltip / empty / loading /
+ *     error / toolbar / caption / watermark — each typed with its own props.
+ * 12. Forward-compat for Python / WordPress / static embeds: chartType +
+ *     dataDescription AI metadata, toJSON() / fromJSON() with a versioned
+ *     $schema, and a renderToHTMLString() pipeline that turns a JSON config
+ *     into self-contained HTML — no React runtime needed at the consumer.
  *
  * Accessibility:
- *  - Container: role="img" with aria-label
+ *  - Container: role="figure" with aria-labelledby
  *  - Bars: role="graphics-symbol", roving tabindex, Arrow/Home/End keyboard nav
- *  - Hidden <table> summary for screen readers (sr-only)
- *  - Focus-visible tooltip + orange focus ring
- *  - WCAG AA contrast on all text
+ *  - Enter / Space on a focused bar invokes onBarClick
+ *  - Hidden <table class="sr-only"> summary for screen readers
+ *  - Loading: role="status" aria-live="polite" + aria-busy
+ *  - Error:   role="alert"  aria-live="assertive"
+ *  - prefers-reduced-motion honored across bar-rise + skeleton + spinner
  */
 
 "use client";

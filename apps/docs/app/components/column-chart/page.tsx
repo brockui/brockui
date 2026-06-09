@@ -1,3 +1,4 @@
+import { ColumnChartExamples } from "@/components/charts/column-chart-examples";
 import { ColumnChartStudio } from "@/components/playground/column-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
 
@@ -411,6 +412,15 @@ export default function ColumnChartPage() {
           paste into your app.
         </p>
         <ColumnChartStudio />
+      </Section>
+
+      <Section title="Examples · Drop-in patterns" wide>
+        <p className="mb-6 max-w-2xl text-xs text-muted-foreground">
+          Eight curated configurations covering the prop surface. Each one is a
+          live chart — view source to see the exact prop set, copy into your
+          app, adjust.
+        </p>
+        <ColumnChartExamples />
       </Section>
 
       <Section title="Installation">
