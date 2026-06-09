@@ -312,6 +312,27 @@ const props: PropRow[] = [
       "Free-floating editorial annotations at specific (x, y) data points. x accepts a 0-based index or a label string. Each annotation: { x, y, text, anchor?, arrow?, color? }. Optional dashed connector arrow to the exact point. Reproduced in the SVG / PNG export",
   },
   {
+    name: "chartType",
+    type: "string",
+    default: "'column'",
+    description:
+      "Machine-readable identifier stamped on the figure as data-chart-type. Included in toJSON() output. AI/LLM tooling + analytics use it to reason about the chart shape",
+  },
+  {
+    name: "dataDescription",
+    type: "string",
+    default: "undefined",
+    description:
+      "Natural-language description of the data ('Daily active users, last 7 days'). Stamped as data-description. For AI prompts and editorial provenance. Distinct from `description` (which is the screen-reader auto-label)",
+  },
+  {
+    name: "data-testid",
+    type: "string",
+    default: "undefined",
+    description:
+      "QA selector hook forwarded to the figure. Stable across className refactors — Testing Library / Playwright convention",
+  },
+  {
     name: "description",
     type: "string",
     default: "auto-generated",

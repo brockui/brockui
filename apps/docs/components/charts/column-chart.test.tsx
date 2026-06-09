@@ -8,8 +8,13 @@ import {
   type ColumnChartProps,
 } from "./column-chart";
 import {
+  COLUMN_CHART_JSON_SCHEMA,
+  fromJSON,
   pointsToCSV,
+  renderToHTMLString,
   synthesizeSVG,
+  toJSON,
+  type ColumnChartJSON,
   type ExportPoint,
   type SynthesisContext,
 } from "./column-chart-export";
@@ -1025,6 +1030,242 @@ describe("ColumnChart — animation", () => {
     );
     const figure = container.querySelector("figure");
     expect(figure?.style.getPropertyValue("--brock-bar-duration")).toBe("800ms");
+  });
+});
+
+/* ─── Forward-compat (Z6) ─────────────────────────────────────────── */
+
+describe("ColumnChart — forward-compat props", () => {
+  it("stamps data-chart-type onto the figure (default 'column')", () => {
+    const { container } = render(<ColumnChart data={[10]} />);
+    const figure = container.querySelector("figure") as HTMLElement;
+    expect(figure.getAttribute("data-chart-type")).toBe("column");
+  });
+
+  it("custom chartType overrides the default tag", () => {
+    const { container } = render(
+      <ColumnChart data={[10]} chartType="cohort-retention" />,
+    );
+    expect(
+      container.querySelector("figure")?.getAttribute("data-chart-type"),
+    ).toBe("cohort-retention");
+  });
+
+  it("dataDescription is stamped as data-description (AI-readable)", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10]}
+        dataDescription="Daily active users, last 7 days"
+      />,
+    );
+    expect(
+      container.querySelector("figure")?.getAttribute("data-description"),
+    ).toBe("Daily active users, last 7 days");
+  });
+
+  it("data-testid is forwarded onto the figure", () => {
+    const { container } = render(
+      <ColumnChart data={[10]} data-testid="active-users" />,
+    );
+    expect(
+      container.querySelector("figure")?.getAttribute("data-testid"),
+    ).toBe("active-users");
+  });
+});
+
+describe("toJSON / fromJSON", () => {
+  it("includes $schema and strips functions / callbacks / ReactNodes", () => {
+    const json = toJSON({
+      data: [10, 20, 30],
+      labels: ["A", "B", "C"],
+      height: 240,
+      accent: "#FF0000",
+      onBarClick: () => {},
+      onBarHover: () => {},
+      formatValue: (v: number) => `${v}!`,
+      slots: { tooltip: () => null },
+      loadingFallback: { type: "div" } as unknown,
+      className: "my-class",
+    });
+    expect(json.$schema).toBe(COLUMN_CHART_JSON_SCHEMA);
+    expect(json.data).toEqual([10, 20, 30]);
+    expect(json.labels).toEqual(["A", "B", "C"]);
+    expect(json.height).toBe(240);
+    expect(json.accent).toBe("#FF0000");
+    // None of these should leak into the JSON
+    expect(JSON.stringify(json)).not.toContain("onBarClick");
+    expect(JSON.stringify(json)).not.toContain("formatValue");
+    expect(JSON.stringify(json)).not.toContain("slots");
+    expect(JSON.stringify(json)).not.toContain("loadingFallback");
+    expect(JSON.stringify(json)).not.toContain("className");
+  });
+
+  it("normalizes error: Error → message, string stays, null is dropped", () => {
+    expect(toJSON({ data: [], error: new Error("boom") }).error).toBe("boom");
+    expect(toJSON({ data: [], error: "string error" }).error).toBe(
+      "string error",
+    );
+    expect("error" in toJSON({ data: [], error: null })).toBe(false);
+  });
+
+  it("dataLabels.format function is dropped; show is preserved", () => {
+    const json = toJSON({
+      data: [10],
+      dataLabels: { show: true, format: (v: number) => `${v}` },
+    });
+    expect(json.dataLabels).toEqual({ show: true });
+    expect(JSON.stringify(json)).not.toContain("format");
+  });
+
+  it("exportFileName function is dropped; string is preserved", () => {
+    expect(toJSON({ data: [], exportFileName: "report" }).exportFileName).toBe(
+      "report",
+    );
+    expect(
+      "exportFileName" in
+        toJSON({
+          data: [],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          exportFileName: ((fmt: string) => `chart-${fmt}`) as any,
+        }),
+    ).toBe(false);
+  });
+
+  it("toJSON is JSON.stringify-safe (no circular refs, no functions)", () => {
+    const json = toJSON({
+      data: [{ label: "A", value: 10, color: "#F00", highlight: true }],
+      labels: undefined,
+      onBarHover: () => {},
+      bands: [{ from: 0, to: 0, label: "Q1" }],
+      annotations: [{ x: 0, y: 5, text: "x" }],
+      caption: "note",
+      watermark: "DRAFT",
+      dataDescription: "the data",
+      chartType: "column",
+    });
+    expect(() => JSON.stringify(json)).not.toThrow();
+    const round = JSON.parse(JSON.stringify(json)) as ColumnChartJSON;
+    expect(round.data).toEqual([
+      { label: "A", value: 10, color: "#F00", highlight: true },
+    ]);
+    expect(round.bands).toEqual([{ from: 0, to: 0, label: "Q1" }]);
+    expect(round.caption).toBe("note");
+    expect(round.dataDescription).toBe("the data");
+  });
+
+  it("fromJSON is a pass-through for known keys and drops $schema", () => {
+    const json: ColumnChartJSON = {
+      $schema: COLUMN_CHART_JSON_SCHEMA,
+      data: [10, 20],
+      labels: ["A", "B"],
+      accent: "#00F",
+      caption: "x",
+    };
+    const props = fromJSON(json);
+    expect(props.data).toEqual([10, 20]);
+    expect(props.labels).toEqual(["A", "B"]);
+    expect(props.accent).toBe("#00F");
+    expect(props.caption).toBe("x");
+    expect("$schema" in props).toBe(false);
+  });
+
+  it("toJSON → fromJSON roundtrip is stable for serializable props", () => {
+    const original = {
+      data: [10, 20, 30],
+      labels: ["A", "B", "C"],
+      height: 320,
+      accent: "#F54900",
+      header: { title: "Active users", subtitle: "Last 7 days" },
+      trend: 0.184,
+      goal: { value: 25, label: "Target" },
+      source: "FT",
+      caption: "Excludes weekends",
+      watermark: "DRAFT",
+      annotations: [{ x: "B", y: 22, text: "spike", arrow: true } as const],
+      chartType: "column",
+      dataDescription: "Daily active users",
+    };
+    const json = toJSON(original);
+    const back = fromJSON(json);
+    // Drops $schema, but everything else round-trips faithfully.
+    delete (json as { $schema?: string }).$schema;
+    expect(back).toEqual(json);
+  });
+
+  it("fromJSON warns in dev when $schema is unknown", () => {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      fromJSON({
+        $schema: "brock-ui/column-chart/v99",
+        data: [1],
+      } as ColumnChartJSON);
+      expect(spy).toHaveBeenCalled();
+      expect(spy.mock.calls[0][0]).toContain("brock-ui/column-chart/v99");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("renderToHTMLString", () => {
+  it("wraps the SVG in a div with role=img and the description as aria-label", () => {
+    const html = renderToHTMLString({
+      data: [10, 20, 30],
+      labels: ["A", "B", "C"],
+      source: "FT",
+    });
+    expect(html).toMatch(/^<div role="img" aria-label="[^"]+"/);
+    expect(html).toContain("Column chart with 3 data points");
+    expect(html).toContain("Source: FT");
+    expect(html).toContain("<svg ");
+    expect(html.trim().endsWith("</div>")).toBe(true);
+  });
+
+  it("includes data-chart-type / data-description attrs on the wrapper", () => {
+    const html = renderToHTMLString({
+      data: [10],
+      chartType: "cohort-retention",
+      dataDescription: "Weekly cohorts",
+    });
+    expect(html).toContain('data-chart-type="cohort-retention"');
+    expect(html).toContain('data-description="Weekly cohorts"');
+  });
+
+  it("normalizes object-form data points and preserves per-bar overrides", () => {
+    const html = renderToHTMLString({
+      data: [
+        { label: "A", value: 10 },
+        { label: "B", value: 20, color: "#F00", highlight: true },
+      ],
+    });
+    expect(html).toContain("<svg ");
+    // Highlight outline path adds an extra path; expect 3 paths (2 bars + 1 highlight)
+    expect((html.match(/<path d="/g) ?? []).length).toBe(3);
+  });
+
+  it("supports overriding width / height / theme colors", () => {
+    const html = renderToHTMLString(
+      { data: [1, 2, 3] },
+      {
+        width: 1200,
+        height: 600,
+        colors: { accent: "#0F0", background: "#000" },
+      },
+    );
+    expect(html).toContain('width="1200"');
+    expect(html).toContain('height="600"');
+    expect(html).toContain('fill="#0F0"'); // accent
+    expect(html).toContain('fill="#000"'); // background rect
+  });
+
+  it("escapes attribute values to prevent HTML injection through dataDescription", () => {
+    const html = renderToHTMLString({
+      data: [10],
+      dataDescription: '<script>alert("xss")</script>',
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+    expect(html).toContain("&quot;xss&quot;");
   });
 });
 

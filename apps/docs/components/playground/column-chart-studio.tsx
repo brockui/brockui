@@ -28,6 +28,7 @@ import {
   type ColumnChartSlots,
   type ColumnChartTooltipSlotProps,
 } from "@/components/charts/column-chart";
+import { toJSON } from "@/components/charts/column-chart-export";
 import { CopyButton } from "@/components/ui/copy-button";
 
 /* ─── Presets ────────────────────────────────────────────────────────── */
@@ -231,6 +232,10 @@ type StudioState = {
   annotationY: number;
   annotationAnchor: "top" | "bottom" | "left" | "right";
   annotationArrow: boolean;
+  // forward-compat
+  dataDescription: string;
+  testId: string;
+  showJSON: boolean;
   // header
   headerTitle: string;
   headerSubtitle: string;
@@ -324,6 +329,9 @@ const INITIAL_STATE: StudioState = {
   annotationY: 220,
   annotationAnchor: "top",
   annotationArrow: true,
+  dataDescription: "",
+  testId: "",
+  showJSON: false,
   headerTitle: "Active users",
   headerSubtitle: "Last 7 days",
   xAxisTitle: "",
@@ -555,6 +563,13 @@ function generateCode(s: StudioState): string {
   }
   if (s.watermarkText) {
     lines.push(`      watermark=${quote(s.watermarkText)}`);
+  }
+  // Forward-compat metadata.
+  if (s.dataDescription) {
+    lines.push(`      dataDescription=${quote(s.dataDescription)}`);
+  }
+  if (s.testId) {
+    lines.push(`      data-testid=${quote(s.testId)}`);
   }
   if (s.annotationsEnabled && s.annotationText) {
     const parts: string[] = [];
@@ -817,6 +832,8 @@ export function ColumnChartStudio() {
             slots={slots}
             caption={s.captionText || undefined}
             watermark={s.watermarkText || undefined}
+            dataDescription={s.dataDescription || undefined}
+            data-testid={s.testId || undefined}
             annotations={
               s.annotationsEnabled && s.annotationText
                 ? [
@@ -987,6 +1004,74 @@ export function ColumnChartStudio() {
             }}
           />
         </div>
+        {s.showJSON && (
+          <div className="border-t border-border">
+            <PanelHeader label="JSON · toJSON() output">
+              <CopyButton
+                text={JSON.stringify(
+                  toJSON({
+                    data: ds.data,
+                    labels: ds.labels,
+                    height: 260,
+                    gap: density.value,
+                    accent,
+                    barRadius: radius.value,
+                    header:
+                      s.headerTitle || s.headerSubtitle
+                        ? {
+                            title: s.headerTitle,
+                            subtitle: s.headerSubtitle,
+                          }
+                        : undefined,
+                    trend: s.trendShow ? s.trendValue : undefined,
+                    goal: s.goalShow
+                      ? { value: s.goalValue, label: s.goalLabel }
+                      : undefined,
+                    source: s.sourceShow ? s.sourceText : undefined,
+                    caption: s.captionText || undefined,
+                    watermark: s.watermarkText || undefined,
+                    dataDescription: s.dataDescription || undefined,
+                    chartType: "column",
+                  }),
+                  null,
+                  2,
+                )}
+              />
+            </PanelHeader>
+            <pre className="max-h-72 overflow-auto p-4 font-mono text-[11px] leading-relaxed text-foreground">
+              <code>
+                {JSON.stringify(
+                  toJSON({
+                    data: ds.data,
+                    labels: ds.labels,
+                    height: 260,
+                    gap: density.value,
+                    accent,
+                    barRadius: radius.value,
+                    header:
+                      s.headerTitle || s.headerSubtitle
+                        ? {
+                            title: s.headerTitle,
+                            subtitle: s.headerSubtitle,
+                          }
+                        : undefined,
+                    trend: s.trendShow ? s.trendValue : undefined,
+                    goal: s.goalShow
+                      ? { value: s.goalValue, label: s.goalLabel }
+                      : undefined,
+                    source: s.sourceShow ? s.sourceText : undefined,
+                    caption: s.captionText || undefined,
+                    watermark: s.watermarkText || undefined,
+                    dataDescription: s.dataDescription || undefined,
+                    chartType: "column",
+                  }),
+                  null,
+                  2,
+                )}
+              </code>
+            </pre>
+          </div>
+        )}
       </div>
 
       {/* ── Settings panel (right) ────────────────────────────────── */}
@@ -1674,6 +1759,34 @@ export function ColumnChartStudio() {
                   }
                 />
               </Field>
+            )}
+          </Accordion>
+
+          <Accordion label="Forward-compat">
+            <Field label="dataDescription (AI/LLM metadata)">
+              <TextInput
+                value={s.dataDescription}
+                onChange={(v) => update("dataDescription", v)}
+                placeholder="Daily active users, last 7 days"
+              />
+            </Field>
+            <Field label="data-testid (QA selector)">
+              <TextInput
+                value={s.testId}
+                onChange={(v) => update("testId", v)}
+                placeholder="active-users-chart"
+              />
+            </Field>
+            <Toggle
+              label="Show JSON (portable config)"
+              checked={s.showJSON}
+              onChange={(v) => update("showJSON", v)}
+            />
+            {s.showJSON && (
+              <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
+                JSON dumps below the chart panel — paste into a notebook,
+                WordPress, or pass to <code>renderToHTMLString()</code>.
+              </div>
             )}
           </Accordion>
         </div>

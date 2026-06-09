@@ -621,6 +621,30 @@ export type ColumnChartProps = {
    * markup survives the share.
    */
   annotations?: readonly ColumnChartAnnotation[];
+
+  /**
+   * Machine-readable identifier for this chart type. Stamped onto the figure
+   * as `data-chart-type` and included in `toJSON()` output. Default
+   * `"column"`. Useful for AI / LLM tooling that wants to reason about what
+   * the chart represents — and for analytics that need a stable type tag.
+   */
+  chartType?: string;
+
+  /**
+   * Natural-language description of what the data represents. Different from
+   * `description` (which auto-generates a count-based screen-reader label).
+   * Stamped onto the figure as `data-description` and included in `toJSON()`
+   * output. Use for AI prompts ("Daily active users, normalized to working
+   * days, week-over-week") or for editorial provenance.
+   */
+  dataDescription?: string;
+
+  /**
+   * Test selector hook. Forwarded to the outer `<figure>` as `data-testid`.
+   * Convention from Testing Library / Playwright — keeps automation stable
+   * across className refactors.
+   */
+  "data-testid"?: string;
 };
 
 /**
@@ -845,6 +869,9 @@ export function ColumnChart({
   caption,
   watermark,
   annotations,
+  chartType = "column",
+  dataDescription,
+  "data-testid": dataTestId,
 }: ColumnChartProps) {
   const points = normalize(
     data,
@@ -1270,6 +1297,9 @@ export function ColumnChart({
       role="figure"
       aria-labelledby={captionId}
       aria-busy={loading || undefined}
+      data-chart-type={chartType}
+      data-description={dataDescription || undefined}
+      data-testid={dataTestId}
       style={figureStyle}
     >
       {toolbarConfig &&

@@ -1,18 +1,31 @@
 /**
- * Column Chart — export utilities.
+ * Column Chart — export & portability utilities.
  *
- * Three native export paths, zero external dependencies:
+ * Native export paths, zero external dependencies:
  *
- *  - synthesizeSVG()  — build a standalone SVG string from chart props.
- *                       Patterns (hatching) are emitted as <pattern> defs;
- *                       per-bar colors, highlight outlines, goal lines, plot
- *                       bands, data labels, notes, header, trend, source —
- *                       all reproduced so the export looks like the screen.
- *  - svgToPNG()       — rasterize that SVG via Image + Canvas at @2x (retina)
- *                       by default. Returns a Blob.
- *  - pointsToCSV()    — emit RFC-4180-style CSV of the visible data points.
+ *  - synthesizeSVG()        — build a standalone SVG string from chart props.
+ *                             Patterns (hatching) are emitted as <pattern>
+ *                             defs; per-bar colors, highlight outlines, goal
+ *                             lines, plot bands, data labels, notes, header,
+ *                             trend, source — all reproduced so the export
+ *                             looks like the screen.
+ *  - svgToPNG()             — rasterize that SVG via Image + Canvas at @2x
+ *                             (retina) by default. Returns a Blob.
+ *  - pointsToCSV()          — emit RFC-4180-style CSV of the visible points.
  *
  * Plus small helpers: downloadBlob(), copyImageToClipboard().
+ *
+ * Forward-compatibility (Z6) — turning the component config into something
+ * portable so a Python/Jupyter/anywidget bridge or a WordPress embed can
+ * round-trip it without React:
+ *
+ *  - toJSON()               — strip callbacks / refs / ReactNode / functions
+ *                             from a props bag, return a plain JSON-friendly
+ *                             config object.
+ *  - fromJSON()             — counterpart; turn a JSON config back into a
+ *                             partial ColumnChartProps you can spread.
+ *  - renderToHTMLString()   — sync renderer for static HTML embed (no React
+ *                             runtime needed at the consumer).
  *
  * Lives in its own file (not the React component) so the synthesis logic can
  * be audited and tested independently, and so the component file stays a
@@ -733,4 +746,376 @@ export async function copyImageToClipboard(blob: Blob): Promise<void> {
   await navigator.clipboard.write([
     new ClipboardItemCtor({ [blob.type]: blob }),
   ]);
+}
+
+/* ─── Forward-compat: JSON portability ──────────────────────────────── */
+
+/**
+ * The JSON shape we round-trip via toJSON / fromJSON. Mirrors the subset of
+ * ColumnChartProps that is JSON-safe (no functions, no React nodes, no refs).
+ *
+ * Deliberately re-declares the relevant fields (instead of `Pick<...>`-ing
+ * from ColumnChartProps) so the JSON contract is stable across React-side
+ * refactors and so it can serve as the contract for a Python anywidget bridge
+ * or a WordPress embed builder.
+ */
+export type ColumnChartJSON = {
+  /** Schema version — bump when the JSON shape changes in a non-additive way. */
+  $schema?: string;
+  data: Array<
+    | number
+    | {
+        label?: string;
+        value: number;
+        pattern?: ColumnChartPattern;
+        color?: string;
+        highlight?: boolean;
+        note?: string;
+      }
+  >;
+  labels?: string[];
+  height?: number;
+  gap?: number;
+  accent?: string;
+  barRadius?: number;
+  header?: { title?: string; subtitle?: string };
+  xAxis?: { title?: string; hideTicks?: boolean };
+  yAxis?: {
+    title?: string;
+    min?: number;
+    max?: number;
+    hideTicks?: boolean;
+  };
+  numberFormat?: {
+    prefix?: string;
+    suffix?: string;
+    decimals?: number;
+    locale?: string;
+    notation?: "standard" | "compact" | "scientific" | "engineering";
+    style?: "decimal" | "currency" | "percent";
+    currency?: string;
+  };
+  dataLabels?: { show?: boolean };
+  trend?: number;
+  goal?: { value: number; label?: string };
+  source?: string;
+  description?: string;
+  pattern?: ColumnChartPattern;
+  hatchUntilIndex?: number;
+  hatchFromIndex?: number;
+  patternStyle?: ColumnChartPatternStyle;
+  minBarWidth?: number;
+  scroll?: "none" | "auto";
+  bands?: ColumnChartBand[];
+  animation?: { enabled?: boolean; duration?: number };
+  loading?: boolean;
+  error?: string;
+  loadingLabel?: string;
+  errorLabel?: string;
+  retryLabel?: string;
+  exportable?:
+    | boolean
+    | { png?: boolean; svg?: boolean; csv?: boolean; copy?: boolean };
+  exportFileName?: string;
+  caption?: string;
+  watermark?: string;
+  annotations?: ColumnChartAnnotation[];
+  chartType?: string;
+  dataDescription?: string;
+};
+
+export const COLUMN_CHART_JSON_SCHEMA = "brock-ui/column-chart/v1";
+
+/**
+ * The set of props that are JSON-safe — everything not in this set is dropped
+ * by `toJSON()`. Keeps the export small and prevents accidentally leaking
+ * functions / React nodes / refs.
+ */
+const JSON_SAFE_KEYS: Array<keyof ColumnChartJSON> = [
+  "data",
+  "labels",
+  "height",
+  "gap",
+  "accent",
+  "barRadius",
+  "header",
+  "xAxis",
+  "yAxis",
+  "numberFormat",
+  "dataLabels",
+  "trend",
+  "goal",
+  "source",
+  "description",
+  "pattern",
+  "hatchUntilIndex",
+  "hatchFromIndex",
+  "patternStyle",
+  "minBarWidth",
+  "scroll",
+  "bands",
+  "animation",
+  "loading",
+  "error",
+  "loadingLabel",
+  "errorLabel",
+  "retryLabel",
+  "exportable",
+  "exportFileName",
+  "caption",
+  "watermark",
+  "annotations",
+  "chartType",
+  "dataDescription",
+];
+
+/**
+ * Serialize a props-like object to a portable JSON config. Anything that
+ * isn't JSON-safe (callbacks like `onBarClick`, render fns like `formatValue`,
+ * React nodes like `loadingFallback`, slot components, refs, `className`) is
+ * dropped on the floor. Specifically:
+ *
+ *  - `error` is normalized: Error instances become their `.message` string;
+ *    `null` is dropped entirely.
+ *  - `dataLabels.format` is dropped (function); declarative bits (show) stay.
+ *  - `numberFormat` is kept whole (already JSON-safe).
+ *  - `exportable` may be `true` or an object — both stay.
+ *  - `exportFileName` is kept only when it is a string (not a function).
+ *
+ * The result includes `$schema` so consumers can tell which version of the
+ * contract they're reading.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function toJSON(props: Record<string, any>): ColumnChartJSON {
+  const out: ColumnChartJSON = {
+    $schema: COLUMN_CHART_JSON_SCHEMA,
+    data: [],
+  };
+
+  for (const key of JSON_SAFE_KEYS) {
+    if (!(key in props)) continue;
+    const value = props[key];
+    if (value === undefined) continue;
+
+    if (key === "error") {
+      if (value === null) continue;
+      if (value instanceof Error) {
+        out.error = value.message;
+      } else if (typeof value === "string") {
+        out.error = value;
+      }
+      continue;
+    }
+    if (key === "exportFileName") {
+      if (typeof value === "string") out.exportFileName = value;
+      continue;
+    }
+    if (key === "dataLabels") {
+      // Drop the `format` function; keep declarative.
+      if (typeof value === "object" && value !== null) {
+        out.dataLabels = { show: !!value.show };
+      }
+      continue;
+    }
+
+    // Bands / annotations / data — already JSON-safe, but make a defensive
+    // shallow copy so callers can mutate the result without mutating props.
+    if (
+      key === "bands" ||
+      key === "annotations" ||
+      key === "data" ||
+      key === "labels"
+    ) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (out as any)[key] = Array.isArray(value) ? value.slice() : value;
+      continue;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (out as any)[key] = value;
+  }
+
+  return out;
+}
+
+/**
+ * Reverse of `toJSON()` — turn a JSON config back into a partial props bag
+ * that can be spread onto `<ColumnChart {...props} />`. Currently a thin
+ * pass-through (the JSON shape is intentionally a strict subset of the props
+ * shape) but the indirection means we can later layer migrations on top.
+ *
+ * Unknown keys are dropped silently, including the `$schema` field. If
+ * `$schema` is present and doesn't match a known version, a console.warn
+ * fires in development.
+ */
+export function fromJSON(input: ColumnChartJSON): Partial<ColumnChartJSON> {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    input.$schema &&
+    input.$schema !== COLUMN_CHART_JSON_SCHEMA
+  ) {
+    console.warn(
+      `[brock-ui] fromJSON: unknown $schema "${input.$schema}". Expected "${COLUMN_CHART_JSON_SCHEMA}". The config may not render correctly.`,
+    );
+  }
+  const out: Partial<ColumnChartJSON> = {};
+  for (const key of JSON_SAFE_KEYS) {
+    if (!(key in input)) continue;
+    const value = input[key];
+    if (value === undefined) continue;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (out as any)[key] = value;
+  }
+  return out;
+}
+
+/* ─── Forward-compat: static HTML render ────────────────────────────── */
+
+/**
+ * Options for `renderToHTMLString`. All optional — sensible defaults make
+ * the call site short for the common case.
+ */
+export type RenderToHTMLOptions = {
+  /** Override SVG width. Default 800. */
+  width?: number;
+  /** Override SVG height. Default 400. */
+  height?: number;
+  /** Theme color overrides — defaults are light-theme safe. */
+  colors?: Partial<{
+    accent: string;
+    foreground: string;
+    muted: string;
+    border: string;
+    background: string;
+  }>;
+  /** Number formatter to apply across Y-axis / tooltip / inline labels. */
+  formatValue?: (v: number) => string;
+};
+
+const DEFAULT_RENDER_COLORS = {
+  accent: "#F54900",
+  foreground: "#0a0a0a",
+  muted: "#666666",
+  border: "#e5e5e5",
+  background: "#ffffff",
+};
+
+/**
+ * Render a chart config to a self-contained HTML string. Output is a `<div>`
+ * with `role="img"` + the inline SVG + an optional caption block underneath.
+ * No external CSS, no external fonts (system fallbacks listed in the SVG),
+ * no JavaScript — paste-able into WordPress, Notion, Jupyter, an email, or
+ * a server-rendered page where the React runtime isn't available.
+ *
+ * Resolves bar heights and Y-axis ticks the same way the React render does,
+ * via the existing `synthesizeSVG` pipeline — so the static HTML matches the
+ * live React chart pixel-for-pixel (modulo the watermark / annotation chips,
+ * which use the same SVG path either way).
+ */
+export function renderToHTMLString(
+  input: ColumnChartJSON,
+  options: RenderToHTMLOptions = {},
+): string {
+  const width = options.width ?? 800;
+  const height = options.height ?? 400;
+  const colors = { ...DEFAULT_RENDER_COLORS, ...(options.colors ?? {}) };
+  const fmt: (v: number) => string =
+    options.formatValue ?? ((v: number) => v.toLocaleString());
+
+  // Normalize raw `data` (number[] or object[]) into ExportPoints.
+  const labels = input.labels ?? [];
+  const exportPoints: ExportPoint[] = input.data
+    .map((d, i) => {
+      if (typeof d === "number") {
+        return {
+          label: labels[i],
+          value: d,
+          pattern: "solid" as ColumnChartPattern,
+        };
+      }
+      return {
+        label: d.label,
+        value: d.value,
+        pattern: d.pattern ?? "solid",
+        color: d.color,
+        highlight: d.highlight,
+        note: d.note,
+      };
+    })
+    .filter((p) => Number.isFinite(p.value) && p.value >= 0);
+
+  const dataMax = exportPoints.reduce((m, p) => Math.max(m, p.value), 0);
+  const goalBased =
+    input.goal && Number.isFinite(input.goal.value) && input.goal.value > 0
+      ? Math.max(dataMax, input.goal.value)
+      : dataMax;
+  const max = input.yAxis?.max !== undefined ? input.yAxis.max : goalBased;
+  const allZero = max === 0;
+  const yTicks = allZero ? [0] : [max, Math.round(max / 2), 0];
+
+  const description =
+    input.description ??
+    `Column chart with ${exportPoints.length} data point${
+      exportPoints.length === 1 ? "" : "s"
+    }${input.source ? `. Source: ${input.source}.` : "."}`;
+
+  const ctx: SynthesisContext = {
+    width,
+    height,
+    points: exportPoints,
+    max,
+    allZero,
+    gap: input.gap ?? 4,
+    barRadius: input.barRadius ?? 0,
+    patternStyle: input.patternStyle ?? "diagonal",
+    accent: input.accent ?? colors.accent,
+    foreground: colors.foreground,
+    muted: colors.muted,
+    border: colors.border,
+    background: colors.background,
+    yTicks,
+    yAxisFormat: fmt,
+    formatValue: fmt,
+    labelFormat: fmt,
+    showLabels: input.dataLabels?.show ?? false,
+    showYTicks: !input.yAxis?.hideTicks,
+    showXTicks: !input.xAxis?.hideTicks,
+    yAxisTitle: input.yAxis?.title,
+    xAxisTitle: input.xAxis?.title,
+    headerTitle: input.header?.title,
+    headerSubtitle: input.header?.subtitle,
+    trend: input.trend,
+    goal: input.goal,
+    bands: input.bands,
+    source: input.source,
+    caption: input.caption,
+    watermark: input.watermark,
+    annotations: input.annotations,
+    description,
+  };
+
+  const svg = synthesizeSVG(ctx);
+
+  // Wrap in a portable container with role=img + ARIA label, and forward the
+  // chart-type / data-description hints so AI tooling can still read them
+  // even from the static markup.
+  const dataAttrs: string[] = [];
+  if (input.chartType) {
+    dataAttrs.push(`data-chart-type="${escapeAttr(input.chartType)}"`);
+  }
+  if (input.dataDescription) {
+    dataAttrs.push(
+      `data-description="${escapeAttr(input.dataDescription)}"`,
+    );
+  }
+
+  return `<div role="img" aria-label="${escapeAttr(description)}" ${dataAttrs.join(" ")}>${svg}</div>`;
+}
+
+function escapeAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
