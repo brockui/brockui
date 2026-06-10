@@ -16,7 +16,8 @@
  *     plus 5 pattern styles (diagonal / reverse / vertical / horizontal / dots).
  *  5. Per-bar editorial overrides via the object-form `data` shape:
  *     { label, value, pattern, color, highlight, note } — emphasis without
- *     a separate annotations API.
+ *     a separate annotations API. Optional `sort` (asc/desc) + `topN` (with an
+ *     "Other" bucket) turn the chart into a ranking without reshaping data.
  *  6. Plot bands (`bands`) for range highlights; goal line that participates
  *     in scale; free-floating annotations (`annotations`) with optional
  *     dashed connector arrows for FT-style call-outs.
@@ -29,6 +30,8 @@
  *     bg, prevents page-breaks inside the figure.
  * 10. Event callbacks: onBarClick / onBarHover / onBarFocus. Imperative ref
  *     API: { exportSVG, exportPNG, exportCSV, copyImage, focusBar, getSelection }.
+ *     Touch: tap pins a bar's tooltip (hover/focus don't exist on touch);
+ *     re-tap dismisses, tapping another switches.
  * 11. Full slot system for headless customization: tooltip / empty / loading /
  *     error / toolbar / caption / watermark — each typed with its own props.
  * 12. Forward-compat for Python / WordPress / static embeds: chartType +
@@ -461,6 +464,35 @@ export type ColumnChartProps = {
   scroll?: "none" | "auto";
 
   /**
+   * Reorder bars by value before rendering.
+   *
+   *  - `"none"` (default) — preserve input / DataFrame order (chronological,
+   *    categorical-as-given). The honest default for a time-series column chart.
+   *  - `"asc"` / `"desc"` — sort by value. Turns the chart into a ranking
+   *    (smallest→largest or largest→smallest), the Datawrapper / Flourish
+   *    "sorted bar" pattern.
+   *
+   * Sorting is applied AFTER `topN` bucketing, so an "Other" bar participates
+   * in the sort like any other bar. Positional shortcuts (`hatchUntilIndex`,
+   * `hatchFromIndex`, annotations by numeric index) resolve on the *input*
+   * order and travel with their datum; annotations matched by label survive
+   * the reorder. The sort is stable (ties keep input order).
+   */
+  sort?: "none" | "asc" | "desc";
+
+  /**
+   * Keep only the N largest bars by value and roll the remainder into a single
+   * "Other" bar (sum of the dropped values). The long-tail-compression pattern
+   * from Datawrapper / editorial ranking charts. `topN <= 0` or
+   * `topN >= data.length` is a no-op. The "Other" bar is solid (chart default
+   * pattern), uncolored, and carries no note/highlight.
+   */
+  topN?: number;
+
+  /** Label for the bucketed remainder bar created by `topN`. Default `"Other"`. */
+  otherLabel?: string;
+
+  /**
    * Plot bands — vertical highlighted zones spanning a range of bar indices.
    * Editorial pattern: "Q3", "deployment window", "experiment cohort". Bands
    * render behind bars at low opacity so they never dominate the data.
@@ -775,12 +807,58 @@ function isObjectForm(
   return data.length > 0 && typeof data[0] === "object" && data[0] !== null;
 }
 
+/**
+ * Roll all but the N largest bars (by value) into a single "Other" bucket.
+ * No-op when `topN` is unset, ≤ 0, or ≥ the number of points. The kept bars
+ * preserve their input order; the "Other" bar is appended last (later `sort`
+ * may reorder everything, including "Other").
+ */
+function applyTopN(
+  points: NormalizedPoint[],
+  topN: number | undefined,
+  otherLabel: string,
+  defaultPattern: ColumnChartPattern,
+): NormalizedPoint[] {
+  if (topN === undefined || topN <= 0 || points.length <= topN) return points;
+
+  // Indices of the N largest by value (stable: ties resolve by input order).
+  const keptIndices = new Set(
+    points
+      .map((p, i) => ({ v: p.value, i }))
+      .sort((a, b) => b.v - a.v || a.i - b.i)
+      .slice(0, topN)
+      .map((x) => x.i),
+  );
+
+  const result: NormalizedPoint[] = [];
+  let otherSum = 0;
+  points.forEach((p, i) => {
+    if (keptIndices.has(i)) result.push(p);
+    else otherSum += p.value;
+  });
+  result.push({ label: otherLabel, value: otherSum, pattern: defaultPattern });
+  return result;
+}
+
+/** Sort points by value. `"none"` preserves order; the sort is stable. */
+function applySort(
+  points: NormalizedPoint[],
+  sort: "none" | "asc" | "desc",
+): NormalizedPoint[] {
+  if (sort === "asc") return [...points].sort((a, b) => a.value - b.value);
+  if (sort === "desc") return [...points].sort((a, b) => b.value - a.value);
+  return points;
+}
+
 function normalize(
   data: readonly number[] | readonly ColumnChartDataPoint[],
   labels: readonly string[] | undefined,
   defaultPattern: ColumnChartPattern,
   hatchUntilIndex: number | undefined,
   hatchFromIndex: number | undefined,
+  sort: "none" | "asc" | "desc",
+  topN: number | undefined,
+  otherLabel: string,
 ): NormalizedPoint[] {
   const patternFor = (i: number, override?: ColumnChartPattern): ColumnChartPattern => {
     if (override) return override;
@@ -838,7 +916,12 @@ function normalize(
     }
   }
 
-  return cleaned;
+  // Long-tail compression first, then ranking — so an "Other" bar sorts by
+  // its summed value alongside the rest.
+  return applySort(
+    applyTopN(cleaned, topN, otherLabel, defaultPattern),
+    sort,
+  );
 }
 
 function autoDescription(
@@ -877,6 +960,9 @@ export function ColumnChart({
   patternStyle = "diagonal",
   minBarWidth = 4,
   scroll = "none",
+  sort = "none",
+  topN,
+  otherLabel = "Other",
   bands,
   loading = false,
   error,
@@ -907,6 +993,9 @@ export function ColumnChart({
     pattern,
     hatchUntilIndex,
     hatchFromIndex,
+    sort,
+    topN,
+    otherLabel,
   );
   const captionId = useId();
   const figureRef = useRef<HTMLElement>(null);
@@ -1983,6 +2072,10 @@ function BarsGroup({
     }
   }
 
+  // Touch: on tap, pin the tapped bar's tooltip (hover/focus don't exist on
+  // touch). Tapping the same bar again clears it; tapping another switches.
+  const [tapIndex, setTapIndex] = useState<number | null>(null);
+
   const total = points.length;
   // Edge zone size: first/last 15% of bars (min 1) anchor tooltip to that edge
   const edgeZone = Math.max(1, Math.floor(total * 0.15));
@@ -2052,6 +2145,8 @@ function BarsGroup({
               ? () => onBarHover(publicPoint(point), i)
               : undefined
           }
+          isTapActive={tapIndex === i}
+          onTap={() => setTapIndex((prev) => (prev === i ? null : i))}
           tooltipSlot={tooltipSlot}
         />
       ))}
@@ -2330,6 +2425,8 @@ function Bar({
   onFocus,
   onClick,
   onMouseEnter,
+  isTapActive,
+  onTap,
   tooltipSlot,
 }: {
   ref: (el: HTMLDivElement | null) => void;
@@ -2348,6 +2445,8 @@ function Bar({
   onFocus: () => void;
   onClick?: (e: ReactMouseEvent<HTMLDivElement>) => void;
   onMouseEnter?: () => void;
+  isTapActive: boolean;
+  onTap: () => void;
   tooltipSlot?: ComponentType<ColumnChartTooltipSlotProps>;
 }) {
   const barHeight = allZero
@@ -2363,6 +2462,12 @@ function Bar({
   // Cursor hints affordance — only when a click handler is wired.
   const cursorClass = onClick ? "cursor-pointer" : "";
 
+  // Tooltip visibility: hover/focus drive it on pointer devices; a tap pins it
+  // on touch (where hover/focus don't apply). When pinned we force `flex`.
+  const tooltipVisClass = isTapActive
+    ? "flex"
+    : "hidden group-hover/bar:flex group-focus/bar:flex";
+
   return (
     <div
       ref={ref}
@@ -2375,6 +2480,7 @@ function Bar({
       onFocus={onFocus}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
+      onTouchStart={onTap}
     >
       {point.note && !allZero && point.value > 0 && (
         <span
@@ -2426,7 +2532,7 @@ function Bar({
             const TooltipSlot = tooltipSlot;
             return (
               <div
-                className={`pointer-events-none absolute bottom-full z-10 mb-2 hidden group-hover/bar:flex group-focus/bar:flex ${TOOLTIP_POSITION[edge]} ${TOOLTIP_ALIGN[edge]}`}
+                className={`pointer-events-none absolute bottom-full z-10 mb-2 ${tooltipVisClass} ${TOOLTIP_POSITION[edge]} ${TOOLTIP_ALIGN[edge]}`}
                 aria-hidden
               >
                 <TooltipSlot
@@ -2451,6 +2557,7 @@ function Bar({
             label={point.label}
             value={formatValue(point.value)}
             edge={edge}
+            forceVisible={isTapActive}
           />
         ))}
     </div>
@@ -2473,14 +2580,19 @@ function Tooltip({
   label,
   value,
   edge,
+  forceVisible,
 }: {
   label?: string;
   value: string;
   edge: EdgePosition;
+  forceVisible?: boolean;
 }) {
+  const visClass = forceVisible
+    ? "flex"
+    : "hidden group-hover/bar:flex group-focus/bar:flex";
   return (
     <div
-      className={`pointer-events-none absolute bottom-full z-10 mb-2 hidden flex-col gap-1 group-hover/bar:flex group-focus/bar:flex ${TOOLTIP_POSITION[edge]} ${TOOLTIP_ALIGN[edge]}`}
+      className={`pointer-events-none absolute bottom-full z-10 mb-2 flex-col gap-1 ${visClass} ${TOOLTIP_POSITION[edge]} ${TOOLTIP_ALIGN[edge]}`}
       aria-hidden
     >
       {label && (

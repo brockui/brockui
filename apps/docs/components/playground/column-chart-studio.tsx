@@ -196,6 +196,9 @@ const DATASETS: Record<
 type StudioState = {
   // data
   period: DatasetKey;
+  sortIdx: number; // 0 = none, 1 = asc, 2 = desc
+  topNEnabled: boolean;
+  topNValue: number;
   // states
   stateMode: "ready" | "loading" | "loading-overlay" | "error";
   errorMessage: string;
@@ -298,6 +301,9 @@ type StudioState = {
 
 const INITIAL_STATE: StudioState = {
   period: "weekly",
+  sortIdx: 0,
+  topNEnabled: false,
+  topNValue: 5,
   stateMode: "ready",
   errorMessage: "Couldn't load metrics — the upstream API timed out.",
   loadingLabel: "Loading…",
@@ -520,6 +526,13 @@ function generateCode(s: StudioState): string {
   }
   if (s.minBarWidth !== 4) {
     lines.push(`      minBarWidth={${s.minBarWidth}}`);
+  }
+  const sortValue = (["none", "asc", "desc"] as const)[s.sortIdx];
+  if (sortValue !== "none") {
+    lines.push(`      sort=${quote(sortValue)}`);
+  }
+  if (s.topNEnabled && s.topNValue > 0) {
+    lines.push(`      topN={${s.topNValue}}`);
   }
   if (s.bandsEnabled) {
     const from = Math.max(0, Math.min(ds.data.length - 1, s.bandFrom));
@@ -981,6 +994,8 @@ export function ColumnChartStudio() {
             }
             scroll={s.scrollEnabled ? "auto" : "none"}
             minBarWidth={s.minBarWidth}
+            sort={(["none", "asc", "desc"] as const)[s.sortIdx]}
+            topN={s.topNEnabled ? s.topNValue : undefined}
             bands={
               s.bandsEnabled
                 ? [
@@ -1091,6 +1106,28 @@ export function ColumnChartStudio() {
                   setPeriod((Object.keys(DATASETS) as DatasetKey[])[i])
                 }
               />
+            </Field>
+            <Field label="Sort by value">
+              <Segmented
+                options={["None", "Asc", "Desc"]}
+                selectedIndex={s.sortIdx}
+                onSelect={(i) => update("sortIdx", i)}
+              />
+            </Field>
+            <Field label="Top-N + Other">
+              <div className="space-y-1.5">
+                <Toggle
+                  label="Roll the long tail into 'Other'"
+                  checked={s.topNEnabled}
+                  onChange={(v) => update("topNEnabled", v)}
+                />
+                {s.topNEnabled && (
+                  <NumberInput
+                    value={s.topNValue}
+                    onChange={(v) => update("topNValue", Math.max(1, v))}
+                  />
+                )}
+              </div>
             </Field>
           </Accordion>
 

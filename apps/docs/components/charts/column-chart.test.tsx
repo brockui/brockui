@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useRef } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   ColumnChart,
@@ -2198,5 +2198,221 @@ describe("ColumnChart — imperative ref API", () => {
     // Spy on anchor.click via setting download attr — easier path: just check
     // that exportCSV runs without throwing when fileName lacks extension.
     expect(() => api!.exportCSV({ fileName: "report", download: true })).not.toThrow();
+  });
+});
+
+describe("ColumnChart — sort & topN", () => {
+  const labelsOf = () =>
+    screen
+      .getAllByRole("graphics-symbol")
+      .map((b) => b.getAttribute("aria-label"));
+
+  it("preserves input order by default (sort='none')", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 30 },
+          { label: "B", value: 10 },
+          { label: "C", value: 20 },
+        ]}
+      />,
+    );
+    expect(labelsOf()).toEqual(["A: 30", "B: 10", "C: 20"]);
+  });
+
+  it("sort='desc' orders bars largest → smallest", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 30 },
+          { label: "B", value: 10 },
+          { label: "C", value: 20 },
+        ]}
+        sort="desc"
+      />,
+    );
+    expect(labelsOf()).toEqual(["A: 30", "C: 20", "B: 10"]);
+  });
+
+  it("sort='asc' orders bars smallest → largest", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 30 },
+          { label: "B", value: 10 },
+          { label: "C", value: 20 },
+        ]}
+        sort="asc"
+      />,
+    );
+    expect(labelsOf()).toEqual(["B: 10", "C: 20", "A: 30"]);
+  });
+
+  it("is stable — equal values keep input order", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 10 },
+          { label: "B", value: 10 },
+          { label: "C", value: 10 },
+        ]}
+        sort="desc"
+      />,
+    );
+    expect(labelsOf()).toEqual(["A: 10", "B: 10", "C: 10"]);
+  });
+
+  it("per-bar overrides travel with their datum across a sort", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 30 },
+          { label: "B", value: 10, highlight: true },
+          { label: "C", value: 20 },
+        ]}
+        sort="asc"
+      />,
+    );
+    // B (highlighted) is smallest → now first. Highlight must stay on B.
+    const bars = screen.getAllByRole("graphics-symbol");
+    expect(bars[0].getAttribute("aria-label")).toBe("B: 10");
+    const highlighted = container.querySelector(".brock-bar-highlighted");
+    expect(
+      highlighted
+        ?.closest('[role="graphics-symbol"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("B: 10");
+  });
+
+  it("topN keeps the N largest and rolls the rest into an 'Other' bar (summed)", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 50 },
+          { label: "B", value: 40 },
+          { label: "C", value: 5 },
+          { label: "D", value: 3 },
+          { label: "E", value: 2 },
+        ]}
+        topN={2}
+      />,
+    );
+    // A, B kept (input order); C+D+E = 10 bucketed into Other (appended last).
+    expect(labelsOf()).toEqual(["A: 50", "B: 40", "Other: 10"]);
+  });
+
+  it("topN respects a custom otherLabel", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 50 },
+          { label: "B", value: 5 },
+          { label: "C", value: 5 },
+        ]}
+        topN={1}
+        otherLabel="Rest"
+      />,
+    );
+    expect(labelsOf()).toEqual(["A: 50", "Rest: 10"]);
+  });
+
+  it("topN is a no-op when topN >= data length", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 10 },
+          { label: "B", value: 20 },
+        ]}
+        topN={5}
+      />,
+    );
+    expect(labelsOf()).toEqual(["A: 10", "B: 20"]);
+    expect(screen.queryByText("Other")).not.toBeInTheDocument();
+  });
+
+  it("topN runs before sort — 'Other' participates in the ranking", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 50 },
+          { label: "B", value: 40 },
+          { label: "C", value: 30 },
+          { label: "D", value: 25 },
+        ]}
+        topN={2}
+        sort="desc"
+      />,
+    );
+    // Kept: A(50), B(40). Other = C+D = 55 → sorts to the front on desc.
+    expect(labelsOf()).toEqual(["Other: 55", "A: 50", "B: 40"]);
+  });
+
+  it("serializes sort / topN / otherLabel through toJSON", () => {
+    const json = toJSON({
+      data: [1, 2, 3],
+      sort: "desc",
+      topN: 2,
+      otherLabel: "Rest",
+    });
+    expect(json.sort).toBe("desc");
+    expect(json.topN).toBe(2);
+    expect(json.otherLabel).toBe("Rest");
+  });
+});
+
+describe("ColumnChart — touch tooltip (tap to pin)", () => {
+  // The tooltip wrapper inside a bar is the only descendant carrying `mb-2`.
+  const tooltipOf = (bar: HTMLElement) =>
+    bar.querySelector(".mb-2") as HTMLElement;
+
+  it("tooltips are hover/focus-driven (hidden) by default", () => {
+    render(<ColumnChart data={[10, 20]} labels={["A", "B"]} />);
+    const bars = screen.getAllByRole("graphics-symbol");
+    const tip = tooltipOf(bars[0]);
+    expect(tip.classList.contains("hidden")).toBe(true);
+    expect(tip.classList.contains("flex")).toBe(false);
+  });
+
+  it("tapping a bar pins its tooltip visible", () => {
+    render(<ColumnChart data={[10, 20]} labels={["A", "B"]} />);
+    const bars = screen.getAllByRole("graphics-symbol");
+    fireEvent.touchStart(bars[0]);
+    const tip = tooltipOf(bars[0]);
+    expect(tip.classList.contains("flex")).toBe(true);
+    expect(tip.classList.contains("hidden")).toBe(false);
+  });
+
+  it("re-tapping the same bar dismisses its tooltip", () => {
+    render(<ColumnChart data={[10, 20]} labels={["A", "B"]} />);
+    const bars = screen.getAllByRole("graphics-symbol");
+    fireEvent.touchStart(bars[0]);
+    fireEvent.touchStart(bars[0]);
+    const tip = tooltipOf(bars[0]);
+    expect(tip.classList.contains("hidden")).toBe(true);
+  });
+
+  it("tapping another bar moves the pin", () => {
+    render(<ColumnChart data={[10, 20]} labels={["A", "B"]} />);
+    const bars = screen.getAllByRole("graphics-symbol");
+    fireEvent.touchStart(bars[0]);
+    fireEvent.touchStart(bars[1]);
+    expect(tooltipOf(bars[0]).classList.contains("hidden")).toBe(true);
+    expect(tooltipOf(bars[1]).classList.contains("flex")).toBe(true);
+  });
+
+  it("tap pinning also works with a custom tooltip slot", () => {
+    render(
+      <ColumnChart
+        data={[10, 20]}
+        labels={["A", "B"]}
+        slots={{
+          tooltip: ({ value }) => <div data-testid="custom-tip">{value}</div>,
+        }}
+      />,
+    );
+    const bars = screen.getAllByRole("graphics-symbol");
+    fireEvent.touchStart(bars[1]);
+    expect(tooltipOf(bars[1]).classList.contains("flex")).toBe(true);
+    expect(within(bars[1]).getByTestId("custom-tip")).toBeInTheDocument();
   });
 });

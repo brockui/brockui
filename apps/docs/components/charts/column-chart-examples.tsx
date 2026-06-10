@@ -16,6 +16,16 @@ const historicalProjectedLabels = [
   "JUL",
 ];
 
+const rankingData = [
+  { label: "DIRECT", value: 4120 },
+  { label: "SEARCH", value: 3870 },
+  { label: "SOCIAL", value: 1290 },
+  { label: "EMAIL", value: 940 },
+  { label: "REFERRAL", value: 610 },
+  { label: "AFFILIATE", value: 380 },
+  { label: "DISPLAY", value: 210 },
+] as const;
+
 const emphasisData = [
   { label: "MON", value: 142 },
   { label: "TUE", value: 168 },
@@ -51,7 +61,7 @@ function ExampleCard({
 }
 
 /**
- * Examples gallery — 8 curated configurations covering the prop surface.
+ * Examples gallery — 9 curated configurations covering the prop surface.
  * Lives in its own client component file so the docs page can stay an
  * RSC while these cards (which include event handlers like onRetry)
  * render on the client.
@@ -138,6 +148,21 @@ export function ColumnChartExamples() {
           data={emphasisData}
           height={200}
           source="Brock Analytics, 2026"
+        />
+      </ExampleCard>
+
+      <ExampleCard
+        title="Top-N ranking"
+        subtitle="sort='desc' + topN with an 'Other' bucket"
+      >
+        <ColumnChart
+          data={rankingData}
+          height={200}
+          sort="desc"
+          topN={4}
+          otherLabel="OTHER"
+          numberFormat={{ notation: "compact" }}
+          source="Brock Analytics — traffic by channel"
         />
       </ExampleCard>
 

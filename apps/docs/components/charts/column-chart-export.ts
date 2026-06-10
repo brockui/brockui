@@ -806,6 +806,9 @@ export type ColumnChartJSON = {
   patternStyle?: ColumnChartPatternStyle;
   minBarWidth?: number;
   scroll?: "none" | "auto";
+  sort?: "none" | "asc" | "desc";
+  topN?: number;
+  otherLabel?: string;
   bands?: ColumnChartBand[];
   animation?: { enabled?: boolean; duration?: number };
   loading?: boolean;
@@ -853,6 +856,9 @@ const JSON_SAFE_KEYS: Array<keyof ColumnChartJSON> = [
   "patternStyle",
   "minBarWidth",
   "scroll",
+  "sort",
+  "topN",
+  "otherLabel",
   "bands",
   "animation",
   "loading",
