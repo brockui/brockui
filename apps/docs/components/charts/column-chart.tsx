@@ -923,7 +923,14 @@ function makeFormatter(config?: {
       : {}),
   };
 
-  return (v: number) => `${prefix}${v.toLocaleString(locale, options)}${suffix}`;
+  return (v: number) => {
+    // Sign placement: a prefixed format must read −$28k, not $-28k. Format
+    // the magnitude and re-attach a typographic minus (U+2212) up front.
+    if (prefix && v < 0) {
+      return `\u2212${prefix}${Math.abs(v).toLocaleString(locale, options)}${suffix}`;
+    }
+    return `${prefix}${v.toLocaleString(locale, options)}${suffix}`;
+  };
 }
 
 function isObjectForm(
@@ -1151,6 +1158,20 @@ export function ColumnChart({
   // Snap focus into the data range if data shrank/grew under us.
   if (points.length > 0 && focusIndex >= points.length) {
     setFocusIndex(points.length - 1);
+  }
+
+  // Plot bands address DISPLAY positions; after a sort the original zone
+  // ("Q3", "deployment window") is editorially meaningless. Warn, don't fix —
+  // re-mapping zones across a ranking has no honest answer.
+  if (
+    process.env.NODE_ENV !== "production" &&
+    sort !== "none" &&
+    bands &&
+    bands.length > 0
+  ) {
+    console.warn(
+      `[brock-ui] ColumnChart: \`bands\` assume input order, but \`sort="${sort}"\` reorders the bars — the banded zone no longer covers the original range. Remove the bands or the sort.`,
+    );
   }
 
   // Dev-only diagnostic: bars are pointer targets when onBarClick is wired,
@@ -1754,7 +1775,6 @@ export function ColumnChart({
       <DataTableSummary
         points={points}
         formatValue={effectiveFormatValue}
-        caption={accessibleDescription}
         transformNote={transformNote}
       />
 
@@ -2959,19 +2979,20 @@ function ChartSource({ source }: { source: string }) {
 function DataTableSummary({
   points,
   formatValue,
-  caption,
   transformNote,
 }: {
   points: NormalizedPoint[];
   formatValue: (v: number, d?: ColumnChartDataPoint) => string;
-  caption: string;
   /** "Sorted by value… / N categories combined…" — announced with the table. */
   transformNote?: string;
 }) {
+  // Caption is deliberately short: the figure's figcaption already carries
+  // the full description — duplicating it here makes screen readers say
+  // everything twice.
   return (
     <table className="sr-only">
       <caption>
-        {caption}
+        Data table.
         {transformNote ? ` ${transformNote}` : ""}
       </caption>
       <thead>
@@ -3144,6 +3165,10 @@ function BarAnimationStyles() {
         .brock-toolbar,
         .brock-loading-overlay,
         .brock-skeleton-bar { display: none !important; }
+        /* The watermark is a document-lifecycle marker (DRAFT/CONFIDENTIAL) —
+           print is exactly where it must survive. 6% foreground vanishes on
+           paper; print it darker. */
+        .brock-watermark span { color: rgb(0 0 0 / 0.14) !important; }
         .brock-bars-animated .brock-bar { animation: none !important; }
         .brock-chart {
           break-inside: avoid;

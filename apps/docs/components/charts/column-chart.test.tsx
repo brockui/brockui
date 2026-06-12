@@ -168,9 +168,10 @@ describe("ColumnChart — accessibility", () => {
     );
     const table = container.querySelector("table.sr-only");
     expect(table).toBeInTheDocument();
-    const caption = within(table as HTMLElement).getByText(
-      /Column chart with 3 data points/,
-    );
+    // Caption is deliberately short — the figcaption already carries the
+    // full description; duplicating it would make screen readers say
+    // everything twice.
+    const caption = within(table as HTMLElement).getByText(/Data table\./);
     expect(caption.tagName).toBe("CAPTION");
     const rows = within(table as HTMLElement).getAllByRole("row");
     // 1 header row + 3 data rows
@@ -3107,5 +3108,81 @@ describe("ColumnChart — pointer target size warning (WCAG 2.5.8)", () => {
     restore();
     expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("2.5.8"));
     warn.mockRestore();
+  });
+});
+
+describe("ColumnChart — prod review fixes (2026-06-12)", () => {
+  it("formats negative prefixed values with the sign before the prefix (−$28k, not $-28k)", () => {
+    render(
+      <ColumnChart
+        data={[{ label: "APR", value: -28 }, { label: "MAY", value: 42 }]}
+        numberFormat={{ prefix: "$", suffix: "k" }}
+        dataLabels={{ show: true }}
+      />,
+    );
+    expect(screen.getAllByText("−$28k").length).toBeGreaterThan(0);
+    expect(screen.queryByText("$-28k")).not.toBeInTheDocument();
+    // Positive values untouched.
+    expect(screen.getAllByText("$42k").length).toBeGreaterThan(0);
+  });
+
+  it("warns in dev when bands are combined with sort (zones assume input order)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    render(
+      <ColumnChart
+        data={[30, 10, 20]}
+        sort="desc"
+        bands={[{ from: 0, to: 1, label: "Q1" }]}
+      />,
+    );
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("bands"),
+    );
+    warn.mockRestore();
+  });
+
+  it("does not warn for bands without sort", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    render(
+      <ColumnChart data={[30, 10, 20]} bands={[{ from: 0, to: 1 }]} />,
+    );
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("keeps the watermark visible in print styles (lifecycle marker)", () => {
+    const { container } = render(<ColumnChart data={[10]} watermark="DRAFT" />);
+    const css = container.querySelector("style")?.textContent ?? "";
+    // No display:none for the watermark inside @media print; instead a
+    // darker print color so it survives on paper.
+    const printBlock = css.slice(css.indexOf("@media print"));
+    expect(printBlock).not.toMatch(/brock-watermark[^}]*display:\s*none/);
+    expect(printBlock).toContain(".brock-watermark span");
+  });
+});
+
+describe("docs page — props table drift guard (canon §14)", () => {
+  it("every public prop of ColumnChartProps is mentioned on the docs page", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const componentSrc = fs.readFileSync(
+      path.resolve(__dirname, "./column-chart.tsx"),
+      "utf-8",
+    );
+    const pageSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../app/components/column-chart/page.tsx"),
+      "utf-8",
+    );
+    // Extract top-level prop names from the ColumnChartProps interface:
+    // lines at exactly 2-space indent ending in `?:` or `:`.
+    const ifaceStart = componentSrc.indexOf("export type ColumnChartProps = {");
+    const ifaceEnd = componentSrc.indexOf(String.fromCharCode(10) + "};", ifaceStart);
+    const iface = componentSrc.slice(ifaceStart, ifaceEnd);
+    const propNames = [...iface.matchAll(/^  (?:"([\w-]+)"|([a-zA-Z]\w*))\??:/gm)]
+      .map((m) => m[1] ?? m[2])
+      .filter(Boolean);
+    expect(propNames.length).toBeGreaterThan(30); // sanity: parser works
+    const missing = propNames.filter((name) => !pageSrc.includes(name));
+    expect(missing).toEqual([]);
   });
 });

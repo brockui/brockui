@@ -2,7 +2,8 @@ import { ColumnChartExamples } from "@/components/charts/column-chart-examples";
 import { ColumnChartStudio } from "@/components/playground/column-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
 
-const installCommand = "npx shadcn@latest add brockui.com/r/column-chart";
+const installCommand =
+  "npx shadcn@latest add https://brockui.com/r/column-chart";
 
 const usageCode = `import { ColumnChart } from "@/components/charts/column-chart";
 
@@ -34,7 +35,21 @@ const props: PropRow[] = [
     type: "number[] | DataPoint[]",
     default: "—",
     description:
-      "Bar values. Two forms: number[] (with labels prop) or { label?, value, pattern?, color?, highlight?, note? }[] (object form — supports per-bar overrides for color, hatching, emphasis outline, and editorial annotation)",
+      "Bar values. Two forms: number[] (with labels prop) or { key?, label?, value, meta?, pattern?, color?, highlight?, note? }[] (object form). key = stable address for annotations/focusBar (defaults to label); meta = your payload, returned untouched in every callback; negatives render below the zero baseline. The synthetic 'Other' bar carries isOther + items[] (output-only)",
+  },
+  {
+    name: "sort",
+    type: "'none' | 'asc' | 'desc'",
+    default: "'none'",
+    description:
+      "Reorder bars by value (stable). 'none' preserves input order — the honest default for time buckets; asc/desc turns the chart into a ranking",
+  },
+  {
+    name: "topN",
+    type: "number | { n, label?, pinned?, distinct? }",
+    default: "undefined",
+    description:
+      "Keep the N largest bars, roll the tail into one 'Other' aggregate (summed). Defaults: pinned last regardless of sort, muted --brock-other fill. Callbacks receive isOther + the collapsed items[]. Number shorthand = all defaults",
   },
   {
     name: "labels",
@@ -84,10 +99,11 @@ const props: PropRow[] = [
   },
   {
     name: "yAxis",
-    type: "{ title?, min?, max?, hideTicks? }",
+    type: "{ title?, max?, hideTicks? }",
     default: "undefined",
     description:
-      "Y-axis configuration (vertical title, custom min/max, hide tick labels)",
+      "Y-axis configuration. There is deliberately no min — a column chart's baseline is always zero (truncated bars lie). max is extend-only headroom: values below the data max are ignored with a dev warning",
+
   },
   {
     name: "numberFormat",
@@ -98,10 +114,11 @@ const props: PropRow[] = [
   },
   {
     name: "dataLabels",
-    type: "{ show?, format? }",
-    default: "undefined",
+    type: "{ show?: boolean | 'auto', format? }",
+    default: "{ show: 'auto' }",
     description:
-      "Show value above each bar (Hack mono). Optional per-label formatter overrides numberFormat",
+      "Direct value labels at each bar's outer end (Hack mono; mirrored below negative bars). 'auto' (the default) shows labels AND hides the Y axis when the chart has <= 8 bars — redundant ink once every value is printed. Explicit yAxis.hideTicks wins. format(value, datum) overrides numberFormat",
+
   },
   {
     name: "pattern",
@@ -115,7 +132,7 @@ const props: PropRow[] = [
     type: "number",
     default: "undefined",
     description:
-      "Convenience: bars with index < N render hatched, the rest render solid. Classic historical-vs-projected encoding",
+      "Convenience: bars with INPUT index < N render hatched (applied before sort/topN — the pattern travels with its datum). Classic historical-vs-projected encoding",
   },
   {
     name: "hatchFromIndex",
@@ -150,7 +167,7 @@ const props: PropRow[] = [
     type: "{ from, to, label?, color? }[]",
     default: "undefined",
     description:
-      "Plot bands — highlighted vertical zones over a range of bar indices. Editorial pattern ('Q3', 'deployment window'). Render behind bars at low opacity. Indices are clamped to the data range",
+      "Plot bands — highlighted vertical zones over a range of DISPLAY positions. Editorial pattern ('Q3', 'deployment window'). Render behind bars at low opacity; indices clamp to the data range. Bands assume input order — combining bands with sort dev-warns (a 'Q3' zone is meaningless after re-ranking)",
   },
   {
     name: "trend",
@@ -160,11 +177,12 @@ const props: PropRow[] = [
       "Decimal trend indicator e.g. 0.184 → ↗ +18.4%. Orange if positive, muted if negative",
   },
   {
-    name: "goal",
-    type: "{ value, label? }",
+    name: "referenceLine",
+    type: "{ value: number | { stat: 'mean' | 'median' }, label? }",
     default: "undefined",
     description:
-      "Dashed reference line at value. Goal is included in max scale so it stays visible above bars. KPI dashboard pattern",
+      "Dashed reference line — a fixed threshold ('Q3 target') or a computed statistic over the ORIGINAL input data (sort/topN must not move a statistic). Stats auto-label Mean/Median. Participates in the scale on both sides, so negative and break-even (0) references stay visible",
+
   },
   {
     name: "source",
@@ -261,7 +279,7 @@ const props: PropRow[] = [
     type: "Ref<ColumnChartHandle>",
     default: "—",
     description:
-      "Imperative API: { exportSVG, exportPNG, exportCSV, copyImage, focusBar, getSelection }. Export methods work even in loading/error/empty. focusBar(i) clamps + moves keyboard focus (returns clamped index, -1 if no data). getSelection() returns the current { index, point } or null",
+      "Imperative API: { exportSVG, exportPNG, exportCSV, copyImage, focusBar, getSelection }. Export methods work even in loading/error/empty. focusBar(target) takes a display index (clamped) OR a stable key string (unknown key → -1). getSelection() returns { index (display), key (stable), point } or null",
   },
   {
     name: "onBarClick",
@@ -303,14 +321,14 @@ const props: PropRow[] = [
     type: "string",
     default: "undefined",
     description:
-      "Diagonal watermark text — faint pixel-font overlay (≈6% opacity) over the chart. Use for DRAFT, CONFIDENTIAL, brand attribution. Hidden in print. slots.watermark wins over this",
+      "Diagonal watermark text — faint pixel-font overlay (≈6% opacity) over the chart. A document-lifecycle marker (DRAFT, CONFIDENTIAL) — not branding (use source for attribution). Deliberately KEPT in print: a confidential paper report must carry its marking. slots.watermark wins over this",
   },
   {
     name: "annotations",
     type: "ColumnChartAnnotation[]",
     default: "undefined",
     description:
-      "Free-floating editorial annotations at specific (x, y) data points. x accepts a 0-based index or a label string. Each annotation: { x, y, text, anchor?, arrow?, color? }. Optional dashed connector arrow to the exact point. Reproduced in the SVG / PNG export",
+      "Free-floating editorial annotations at (x, y) in data space. x: number = INPUT index (travels with its datum through sort/topN; dropped with a dev warning if that datum collapses into 'Other') or string = key/label match. y may be negative. { x, y, text, anchor?, arrow?, color? }; dashed connector optional. Reproduced in the SVG / PNG export",
   },
   {
     name: "chartType",
@@ -342,10 +360,10 @@ const props: PropRow[] = [
   },
   {
     name: "formatValue",
-    type: "(v: number) => string",
-    default: "toLocaleString",
+    type: "(value, datum?) => string",
+    default: "toLocaleString()",
     description:
-      "Format function for hover tooltip value. Wins over numberFormat",
+      "Custom value formatter for tooltips, data labels, and the sr-only table. Receives the datum as a second argument (key, meta, isOther…) for context-aware formatting. Wins over numberFormat",
   },
   {
     name: "yAxisFormat",
@@ -399,9 +417,10 @@ export default function ColumnChartPage() {
           Column Chart
         </h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Time-series vertical bars for activity, volume, and counts. Data-ink
-          discipline (Tufte) — one accent, no gridlines, monospace numerics.
-          Built-in source attribution and ASCII empty state.
+          Vertical bars for ordered categories — time buckets or ranked
+          categories. Data-ink discipline (Tufte) — one accent, no gridlines,
+          monospace numerics, direct value labels by default. Built-in source
+          attribution and ASCII empty state.
         </p>
       </div>
 
@@ -474,7 +493,7 @@ export default function ColumnChartPage() {
       <Section title="Accessibility">
         <div className="space-y-4 text-sm text-muted-foreground">
           <p className="max-w-2xl">
-            WCAG AA compliant. Keyboard navigable, screen-reader friendly,
+            Built to WCAG 2.2 AA. Keyboard navigable, screen-reader friendly,
             honors{" "}
             <code className="font-mono text-xs text-foreground">
               prefers-reduced-motion
@@ -572,8 +591,11 @@ export default function ColumnChartPage() {
             <code className="mx-1 font-mono text-xs text-foreground">
               --brock-accent
             </code>
-            (orange) for all bars. No gradient, no glow, no per-bar color
-            coding.
+            (orange) for all bars — both sides of zero. No gradient, no glow,
+            no palette coding; per-bar
+            <code className="mx-1 font-mono text-xs text-foreground">color</code>
+            is reserved for single editorial exceptions (the anomaly, the
+            current period).
           </li>
           <li>
             <span className="font-mono text-xs text-foreground">3.</span> No
@@ -607,21 +629,27 @@ export default function ColumnChartPage() {
             <code className="mx-1 font-pixel text-xs tracking-wider">
               ▒▒▒ no data
             </code>
-            ) when the dataset is empty — no separate
+            ) when the dataset is empty; full state machine via
             <code className="mx-1 font-mono text-xs text-foreground">
-              isLoading
+              loading
             </code>
-            prop needed.
+            /
+            <code className="mx-1 font-mono text-xs text-foreground">
+              error
+            </code>
+            (skeleton, refresh overlay, retry) in the same visual language.
           </li>
         </ol>
       </Section>
 
       <Section title="When to use">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Column Chart fits time-series data where each bar is a discrete
-          temporal bucket — hours, days, weeks, monthly buckets, agent calls
-          per minute. Best for showing volume, count, or activity rhythm at a
-          glance with sparse axes that don&rsquo;t compete with the data.
+          Column Chart fits ordered categories where each bar is a discrete
+          bucket: temporal (hours, days, weeks, agent calls per minute) or
+          ranked (traffic by channel via sort + topN, revenue by region,
+          profit/loss by month — negatives are first-class). Best for showing
+          volume, count, or activity rhythm at a glance with sparse axes that
+          don&rsquo;t compete with the data.
         </p>
       </Section>
 
