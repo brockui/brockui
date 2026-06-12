@@ -1,6 +1,12 @@
+import { setRequestLocale } from "next-intl/server";
+import { hasLocale } from "next-intl";
+import { routing, type Locale } from "@/i18n/routing";
+import { localeAlternates } from "@/lib/seo";
+import { RichText } from "@/lib/rich-text";
 import { CopyButton } from "@/components/ui/copy-button";
+import { installationContent } from "./content";
 
-const quickStart = "npx shadcn@latest add brockui.com/r/bar-chart";
+const quickStart = "npx shadcn@latest add https://brockui.com/r/column-chart";
 
 const themeVariables = `:root {
   --brock-accent: oklch(0.646 0.222 41.116); /* #F54900 — Orange */
@@ -14,6 +20,10 @@ const themeInline = `@theme inline {
   --color-brock-accent: var(--brock-accent);
 }`;
 
+export const metadata = {
+  alternates: localeAlternates("/installation"),
+};
+
 function Section({
   title,
   children,
@@ -23,7 +33,7 @@ function Section({
 }) {
   return (
     <section className="mb-12">
-      <h2 className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground mb-4">
+      <h2 className="mb-4 font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
         {title}
       </h2>
       {children}
@@ -44,13 +54,6 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-import { setRequestLocale } from "next-intl/server";
-import { localeAlternates } from "@/lib/seo";
-
-export const metadata = {
-  alternates: localeAlternates("/installation"),
-};
-
 export default async function InstallationPage({
   params,
 }: {
@@ -58,140 +61,70 @@ export default async function InstallationPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t =
+    installationContent[
+      hasLocale(routing.locales, locale)
+        ? (locale as Locale)
+        : routing.defaultLocale
+    ];
 
   return (
     <div className="mx-auto max-w-3xl p-10">
       <div className="mb-12">
-        <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
-          Get Started · Installation
+        <div className="mb-2 font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+          {t.kicker}
         </div>
-        <h1 className="text-3xl font-normal text-foreground tracking-tight mb-3">
-          Installation
+        <h1 className="mb-3 text-3xl font-normal tracking-tight text-foreground">
+          {t.title}
         </h1>
-        <p className="text-sm text-muted-foreground max-w-2xl">
-          Brock UI uses the shadcn registry format. Components are copied into
-          your project — you own the code. No runtime dependency on a Brock UI
-          package.
-        </p>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t.intro}</p>
       </div>
 
-      <Section title="Quick start">
-        <p className="text-sm text-muted-foreground mb-4">
-          Add any component to your project with one command:
+      <Section title={t.quickStart.title}>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {t.quickStart.lead}
         </p>
         <CodeBlock code={quickStart} />
       </Section>
 
-      <Section title="Prerequisites">
-        <ul className="text-sm text-muted-foreground space-y-2">
-          <li>
-            ·{" "}
-            <span className="text-foreground font-mono text-xs">Next.js</span>{" "}
-            16+ (or React 19+ for other frameworks)
-          </li>
-          <li>
-            ·{" "}
-            <span className="text-foreground font-mono text-xs">
-              Tailwind CSS
-            </span>{" "}
-            v4
-          </li>
-          <li>
-            ·{" "}
-            <span className="text-foreground font-mono text-xs">shadcn</span>{" "}
-            CLI:{" "}
-            <code className="font-mono text-xs text-foreground">
-              npm i -D shadcn
-            </code>
-          </li>
-          <li>
-            · A working{" "}
-            <code className="font-mono text-xs text-foreground">
-              components.json
-            </code>{" "}
-            (run{" "}
-            <code className="font-mono text-xs text-foreground">
-              npx shadcn init
-            </code>{" "}
-            if missing)
-          </li>
+      <Section title={t.prerequisites.title}>
+        <ul className="space-y-2 text-sm text-muted-foreground">
+          {t.prerequisites.items.map((item, i) => (
+            <li key={i}>
+              · <RichText segments={item} />
+            </li>
+          ))}
         </ul>
       </Section>
 
-      <Section title="Theme setup">
-        <p className="text-sm text-muted-foreground mb-4">
-          Add the Brock UI accent color to your{" "}
-          <code className="font-mono text-xs text-foreground">
-            globals.css
-          </code>
-          . Without it, components render in default grey.
+      <Section title={t.themeSetup.title}>
+        <p className="mb-4 text-sm text-muted-foreground">
+          <RichText segments={t.themeSetup.lead} />
         </p>
         <CodeBlock code={themeVariables} />
       </Section>
 
-      <Section title="Tailwind v4 token">
-        <p className="text-sm text-muted-foreground mb-4">
-          Expose the variable as a Tailwind token so you can use{" "}
-          <code className="font-mono text-xs text-foreground">
-            bg-brock-accent
-          </code>
-          ,{" "}
-          <code className="font-mono text-xs text-foreground">
-            text-brock-accent
-          </code>{" "}
-          and{" "}
-          <code className="font-mono text-xs text-foreground">
-            border-brock-accent
-          </code>{" "}
-          throughout your project. Add inside your{" "}
-          <code className="font-mono text-xs text-foreground">
-            @theme inline
-          </code>{" "}
-          block:
+      <Section title={t.tailwindToken.title}>
+        <p className="mb-4 text-sm text-muted-foreground">
+          <RichText segments={t.tailwindToken.lead} />
         </p>
         <CodeBlock code={themeInline} />
       </Section>
 
-      <Section title="Customize the accent">
-        <p className="text-sm text-muted-foreground max-w-2xl">
-          One variable controls all accents across every Brock UI component.
-          Change{" "}
-          <code className="font-mono text-xs text-foreground">
-            --brock-accent
-          </code>{" "}
-          once — every chart, every highlight, every active state updates. We
-          recommend a single, distinct color in OKLCH for predictable behavior
-          across themes.
+      <Section title={t.customizeAccent.title}>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          <RichText segments={t.customizeAccent.body} />
         </p>
       </Section>
 
-      <Section title="What you get">
-        <ul className="text-sm text-muted-foreground space-y-2 max-w-2xl">
-          <li>
-            ·{" "}
-            <span className="text-foreground">Source files in your repo</span>{" "}
-            — fully editable, no black-box package
-          </li>
-          <li>
-            ·{" "}
-            <span className="text-foreground">
-              Typed props, zero runtime dependencies
-            </span>{" "}
-            beyond React and Tailwind
-          </li>
-          <li>
-            ·{" "}
-            <span className="text-foreground">
-              Dark mode and light mode parity
-            </span>{" "}
-            out of the box
-          </li>
-          <li>
-            ·{" "}
-            <span className="text-foreground">
-              MIT license, no attribution required
-            </span>
-          </li>
+      <Section title={t.whatYouGet.title}>
+        <ul className="max-w-2xl space-y-2 text-sm text-muted-foreground">
+          {t.whatYouGet.items.map((item, i) => (
+            <li key={i}>
+              · <span className="text-foreground">{item.strong}</span>
+              {item.rest}
+            </li>
+          ))}
         </ul>
       </Section>
     </div>
