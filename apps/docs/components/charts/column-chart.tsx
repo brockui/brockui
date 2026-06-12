@@ -1025,14 +1025,36 @@ function normalize(
   return { points, inputValues: cleaned.map((p) => p.value) };
 }
 
+/**
+ * Auto-generated accessible description following the Amy Cesal alt-text
+ * formula: chart type + data + what it shows. Insight (highest/lowest) is
+ * computed over the DISPLAYED points so screen-reader users get the same
+ * picture as sighted ones.
+ */
 function autoDescription(
   points: NormalizedPoint[],
-  source?: string,
+  source: string | undefined,
+  formatValue: (v: number, d?: ColumnChartDataPoint) => string,
 ): string {
   const base = `Column chart with ${points.length} data point${
     points.length === 1 ? "" : "s"
   }`;
-  return source ? `${base}. Source: ${source}.` : `${base}.`;
+  let insight = "";
+  if (points.length > 1) {
+    const highest = points.reduce((a, b) => (b.value > a.value ? b : a));
+    const lowest = points.reduce((a, b) => (b.value < a.value ? b : a));
+    if (highest.value !== lowest.value) {
+      const name = (pt: NormalizedPoint) => pt.label ?? pt.key;
+      insight = `. Highest: ${name(highest)} (${formatValue(
+        highest.value,
+        toPublicPoint(highest),
+      )}); lowest: ${name(lowest)} (${formatValue(
+        lowest.value,
+        toPublicPoint(lowest),
+      )})`;
+    }
+  }
+  return `${base}${insight}${source ? `. Source: ${source}.` : "."}`;
 }
 
 export function ColumnChart({
@@ -1187,7 +1209,22 @@ export function ColumnChart({
     yAxis?.hideTicks !== undefined
       ? !yAxis.hideTicks
       : !(autoLabels && showLabels);
-  const accessibleDescription = description ?? autoDescription(points, source);
+  const accessibleDescription =
+    description ?? autoDescription(points, source, effectiveFormatValue);
+  // Screen-reader note about local data transformations — a blind user must
+  // not get a silently different picture than a sighted one (sorting and
+  // bucketing change what the chart claims).
+  const otherPoint = points.find((pt) => pt.isOther);
+  const transformNote = [
+    sort !== "none"
+      ? `Sorted by value, ${sort === "asc" ? "ascending" : "descending"}.`
+      : "",
+    otherPoint
+      ? `${otherPoint.items?.length ?? 0} categories combined into "${otherPoint.label}".`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   // ─── Single context-builder reused by the imperative API AND the Toolbar.
   //     Captures the current render's props/derived values; both call sites
@@ -1695,6 +1732,7 @@ export function ColumnChart({
         points={points}
         formatValue={effectiveFormatValue}
         caption={accessibleDescription}
+        transformNote={transformNote}
       />
 
       <BarAnimationStyles />
@@ -1862,10 +1900,7 @@ function ErrorState({
  */
 function LoadingOverlay({ label }: { label: string }) {
   return (
-    <div
-      className="brock-loading-overlay pointer-events-none absolute inset-0 z-20 flex items-start justify-end p-2"
-      aria-hidden
-    >
+    <div className="brock-loading-overlay pointer-events-none absolute inset-0 z-20 flex items-start justify-end p-2">
       <span
         className="brock-loading-spinner bg-background px-1.5 py-0.5 font-pixel text-[10px] tracking-wider text-muted-foreground uppercase"
         role="status"
@@ -1962,7 +1997,7 @@ function Toolbar({
 
   return (
     <div
-      className="brock-toolbar absolute top-0 right-0 z-30 flex gap-1"
+      className="brock-toolbar absolute top-0 end-0 z-30 flex gap-1"
       role="toolbar"
       aria-label="Chart export"
     >
@@ -2087,7 +2122,7 @@ function YAxis({
   const range = max - min;
   return (
     <div
-      className="relative h-full w-10 shrink-0 border-r border-border pr-2 font-mono text-[10px] tabular-nums text-muted-foreground/60"
+      className="relative h-full w-10 shrink-0 border-e border-border pe-2 font-mono text-[10px] tabular-nums text-muted-foreground/60"
       aria-hidden
     >
       {ticks.map((tick) => {
@@ -2099,7 +2134,7 @@ function YAxis({
         return (
           <div
             key={tick}
-            className="absolute right-2 left-0 text-right leading-none"
+            className="absolute start-0 end-2 text-end leading-none"
             style={{ top: `${pct}%`, transform: `translateY(${translate})` }}
           >
             {format(tick)}
@@ -2125,8 +2160,15 @@ function ScrollableBarsArea({
   }
   // Scroll path — overflow wrapper takes the remaining width; the inner shim
   // imposes the minWidth and gives BarsGroup something flex-1 can fill.
+  // Focusable: a scroll region must be keyboard-operable (WCAG 2.1.1) —
+  // Tab in, then arrow keys scroll natively.
   return (
-    <div className="brock-bars-scroll flex min-w-0 flex-1 overflow-x-auto">
+    <div
+      className="brock-bars-scroll flex min-w-0 flex-1 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brock-accent"
+      tabIndex={0}
+      role="group"
+      aria-label="Scrollable chart area"
+    >
       <div className="flex flex-1" style={{ minWidth }}>
         {children}
       </div>
@@ -2337,7 +2379,7 @@ function BarsGroup({
 /** Default `caption` rendering — italic note below source. */
 function Caption({ text }: { text: string }) {
   return (
-    <div className="brock-caption mt-2 border-l-2 border-border bg-muted/20 px-3 py-1.5 font-sans text-xs text-muted-foreground italic">
+    <div className="brock-caption mt-2 border-s-2 border-border bg-muted/20 px-3 py-1.5 font-sans text-xs text-muted-foreground italic">
       {text}
     </div>
   );
@@ -2595,7 +2637,7 @@ function ReferenceLineEl({
       role="img"
       aria-label={`${line.label ?? "Reference"} line at ${formatValue(line.value)}`}
     >
-      <span className="absolute right-0 -top-2.5 bg-background px-1 font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground">
+      <span className="absolute end-0 -top-2.5 bg-background px-1 font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground">
         {labelText}
       </span>
     </div>
@@ -2879,14 +2921,20 @@ function DataTableSummary({
   points,
   formatValue,
   caption,
+  transformNote,
 }: {
   points: NormalizedPoint[];
   formatValue: (v: number, d?: ColumnChartDataPoint) => string;
   caption: string;
+  /** "Sorted by value… / N categories combined…" — announced with the table. */
+  transformNote?: string;
 }) {
   return (
     <table className="sr-only">
-      <caption>{caption}</caption>
+      <caption>
+        {caption}
+        {transformNote ? ` ${transformNote}` : ""}
+      </caption>
       <thead>
         <tr>
           <th scope="col">Label</th>
@@ -2896,7 +2944,11 @@ function DataTableSummary({
       <tbody>
         {points.map((p, i) => (
           <tr key={i}>
-            <th scope="row">{p.label ?? `Bar ${i + 1}`}</th>
+            <th scope="row">
+              {p.isOther
+                ? `${p.label} (${p.items?.length ?? 0} categories combined)`
+                : (p.label ?? `Bar ${i + 1}`)}
+            </th>
             <td>{formatValue(p.value, toPublicPoint(p))}</td>
           </tr>
         ))}
@@ -3012,6 +3064,27 @@ function BarAnimationStyles() {
       @media (prefers-reduced-motion: reduce) {
         .brock-skeleton-bar,
         .brock-loading-spinner { animation: none; }
+      }
+      /* Windows High Contrast / forced-colors: backgrounds are normally
+         stripped, which would make solid bars invisible. Re-assert bars in
+         system colors; hatched stays outlined; the muted "Other" uses
+         GrayText so the aggregate-vs-category distinction survives. */
+      @media (forced-colors: active) {
+        .brock-bar {
+          background: CanvasText !important;
+          forced-color-adjust: none;
+        }
+        .brock-bar-hatched {
+          background: Canvas !important;
+          outline-color: CanvasText !important;
+        }
+        .brock-bar-other {
+          background: GrayText !important;
+        }
+        .brock-bars,
+        .brock-band {
+          border-color: CanvasText !important;
+        }
       }
       /* Print: strip interactive chrome, expand chart inline, force solid
          backgrounds and visible borders so the printed page reads cleanly.

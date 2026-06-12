@@ -135,7 +135,7 @@ describe("ColumnChart — accessibility", () => {
     expect(labelledBy).toBeTruthy();
     const caption = container.querySelector(`#${labelledBy}`);
     expect(caption).toHaveTextContent(
-      "Column chart with 2 data points. Source: Acme.",
+      "Column chart with 2 data points. Highest: 1 (20); lowest: 0 (10). Source: Acme.",
     );
   });
 
@@ -2947,5 +2947,98 @@ describe("renderToHTMLString — negatives kept (C1.1)", () => {
     // Both bars present (two path elements), FEB label rendered.
     expect(html).toContain("FEB");
     expect(html.match(/<path d="/g)?.length).toBe(2);
+  });
+});
+
+
+describe("ColumnChart — a11y package (C3)", () => {
+  it("enriches the auto description with highest/lowest insight", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "Jan", value: 10 },
+          { label: "Feb", value: 40 },
+          { label: "Mar", value: 25 },
+        ]}
+        source="Acme"
+      />,
+    );
+    const figure = container.querySelector("figure");
+    const id = figure?.getAttribute("aria-labelledby");
+    expect(container.querySelector(`#${id}`)).toHaveTextContent(
+      "Highest: Feb (40); lowest: Jan (10)",
+    );
+  });
+
+  it("announces sort + topN transformations in the sr-table caption", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 50 },
+          { label: "B", value: 40 },
+          { label: "C", value: 5 },
+          { label: "D", value: 3 },
+        ]}
+        sort="desc"
+        topN={2}
+      />,
+    );
+    const caption = container.querySelector("table.sr-only caption");
+    expect(caption?.textContent).toContain("Sorted by value, descending.");
+    expect(caption?.textContent).toContain(
+      '2 categories combined into "Other".',
+    );
+  });
+
+  it("labels the Other row as an aggregate in the sr-table", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 50 },
+          { label: "B", value: 5 },
+          { label: "C", value: 3 },
+        ]}
+        topN={1}
+      />,
+    );
+    const rows = within(
+      container.querySelector("table.sr-only") as HTMLElement,
+    ).getAllByRole("row");
+    expect(rows[2]).toHaveTextContent("Other (2 categories combined)");
+  });
+
+  it("refresh overlay live region is NOT muted by aria-hidden", () => {
+    const { container } = render(
+      <ColumnChart data={[10, 20]} loading loadingLabel="Refreshing" />,
+    );
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Refreshing");
+    // No aria-hidden ancestor between the live region and the figure.
+    let node: HTMLElement | null = status.parentElement;
+    while (node && node !== container) {
+      expect(node.getAttribute("aria-hidden")).toBeNull();
+      node = node.parentElement;
+    }
+  });
+
+  it("scroll container is keyboard-focusable (WCAG 2.1.1)", () => {
+    const { container } = render(
+      <ColumnChart
+        data={Array.from({ length: 60 }, (_, i) => i + 1)}
+        scroll="auto"
+        minBarWidth={20}
+      />,
+    );
+    const scroller = container.querySelector(".brock-bars-scroll");
+    expect(scroller).toHaveAttribute("tabindex", "0");
+    expect(scroller).toHaveAttribute("role", "group");
+  });
+
+  it("ships a forced-colors (Windows High Contrast) stylesheet", () => {
+    const { container } = render(<ColumnChart data={[10]} />);
+    const css = container.querySelector("style")?.textContent ?? "";
+    expect(css).toContain("forced-colors: active");
+    expect(css).toContain("CanvasText");
+    expect(css).toContain("GrayText");
   });
 });
