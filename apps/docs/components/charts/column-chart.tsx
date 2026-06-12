@@ -59,7 +59,7 @@ import type {
   ReactNode,
   Ref,
 } from "react";
-import { useId, useImperativeHandle, useRef, useState } from "react";
+import { useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 import {
   computeStat,
   copyImageToClipboard,
@@ -476,11 +476,12 @@ export type ColumnChartProps = {
   /**
    * Inline value labels above each bar (Hack mono).
    *
+   *  - `"auto"` (DEFAULT) — the editorial mode (Datawrapper/FT direct
+   *    labeling): when the chart has ≤ 8 bars, labels are shown AND the
+   *    Y-axis ticks hide — the axis is redundant ink once every value is
+   *    printed (Tufte; this default is the thesis made visible). An explicit
+   *    `yAxis.hideTicks` always wins over the auto behavior.
    *  - `true` / `false` — always / never show.
-   *  - `"auto"` — the editorial mode (Datawrapper/FT direct labeling): when
-   *    the chart has ≤ 8 bars, labels are shown AND the Y-axis ticks hide —
-   *    the axis is redundant ink once every value is printed (Tufte). An
-   *    explicit `yAxis.hideTicks` always wins over the auto behavior.
    */
   dataLabels?: {
     show?: boolean | "auto";
@@ -1152,6 +1153,25 @@ export function ColumnChart({
     setFocusIndex(points.length - 1);
   }
 
+  // Dev-only diagnostic: bars are pointer targets when onBarClick is wired,
+  // and WCAG 2.5.8 (Target Size Minimum) wants >= 24px. We deliberately do
+  // NOT inflate minBarWidth's default (dense long series are the point of
+  // scroll="auto", and keyboard access works at any width) — we warn the one
+  // consumer who actually has the problem.
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" || !onBarClick) return;
+    const el = barRefs.current[0];
+    if (!el) return;
+    const w = el.getBoundingClientRect().width;
+    if (w > 0 && w < 24) {
+      console.warn(
+        `[brock-ui] ColumnChart: bars are ~${Math.round(
+          w,
+        )}px wide and onBarClick is wired — pointer targets under 24px fail WCAG 2.5.8 (Target Size Minimum). Consider scroll="auto" with minBarWidth={24} or fewer bars. Keyboard access is unaffected.`,
+      );
+    }
+  }, [points.length, onBarClick]);
+
   // Number formatting cascade: explicit overrides > numberFormat > default
   const baseFormatter = makeFormatter(numberFormat);
   const effectiveFormatValue = formatValue ?? baseFormatter;
@@ -1201,9 +1221,11 @@ export function ColumnChart({
   // dataLabels "auto" — the editorial mode: direct labels for small N, and the
   // Y axis hides (redundant ink once every value is printed). An explicit
   // yAxis.hideTicks always wins.
-  const autoLabels = dataLabels?.show === "auto";
+  // "auto" is the DEFAULT — direct labeling is the thesis made visible.
+  const labelsMode = dataLabels?.show ?? "auto";
+  const autoLabels = labelsMode === "auto";
   const showLabels =
-    dataLabels?.show === true ||
+    labelsMode === true ||
     (autoLabels && points.length > 0 && points.length <= 8);
   const showYTicks =
     yAxis?.hideTicks !== undefined
@@ -2732,15 +2754,22 @@ function Bar({
       onMouseEnter={onMouseEnter}
       onTouchStart={onTap}
     >
+      {/* Labels + notes anchor to the bar's OUTER end (Datawrapper direct-
+          labeling convention; matches the SVG export, which always did this).
+          Deep negative bars flip the label INSIDE in background color so it
+          never collides with the X-axis row below. */}
       {point.note && !allZero && point.value !== 0 && (
         <span
-          className={`pointer-events-none absolute right-0 left-0 text-center font-mono text-[10px] tracking-wider whitespace-nowrap text-foreground ${
-            isNegative ? "" : "-top-9"
-          }`}
+          className="pointer-events-none absolute right-0 left-0 z-[2] text-center font-mono text-[10px] tracking-wider whitespace-nowrap text-foreground"
           style={
             isNegative
-              ? { top: `calc(${barEndPct}% + ${showLabel ? 18 : 4}px)` }
-              : undefined
+              ? {
+                  top:
+                    barEndPct > 86
+                      ? `calc(${barEndPct}% - ${showLabel ? 28 : 14}px)`
+                      : `calc(${barEndPct}% + ${showLabel ? 16 : 3}px)`,
+                }
+              : { top: `calc(${barTopPct}% - ${showLabel ? 30 : 16}px)` }
           }
           aria-hidden
         >
@@ -2749,11 +2778,20 @@ function Bar({
       )}
       {showLabel && !allZero && point.value !== 0 && (
         <span
-          className={`pointer-events-none absolute right-0 left-0 text-center font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground ${
-            isNegative ? "" : "-top-4"
+          className={`pointer-events-none absolute right-0 left-0 z-[2] text-center font-mono text-[10px] tabular-nums whitespace-nowrap ${
+            isNegative && barEndPct > 86
+              ? "text-background"
+              : "text-muted-foreground"
           }`}
           style={
-            isNegative ? { top: `calc(${barEndPct}% + 2px)` } : undefined
+            isNegative
+              ? {
+                  top:
+                    barEndPct > 86
+                      ? `calc(${barEndPct}% - 14px)`
+                      : `calc(${barEndPct}% + 2px)`,
+                }
+              : { top: `calc(${barTopPct}% - 14px)` }
           }
           aria-hidden
         >

@@ -453,6 +453,7 @@ describe("ColumnChart — xAxis / yAxis config", () => {
         data={[10]}
         yAxisFormat={(v) => `Y${v}`}
         yAxis={{ max: 500 }}
+        dataLabels={{ show: false }}
       />,
     );
     // top tick should be 500, not 10
@@ -509,26 +510,30 @@ describe("ColumnChart — dataLabels", () => {
       />,
     );
     // Inline labels carry the -top-4 class; both values should appear in that slot.
-    const inlineLabels = Array.from(
-      container.querySelectorAll(".-top-4"),
-    ).map((n) => n.textContent);
+    const inlineLabels = Array.from(container.querySelectorAll("span"))
+      .filter((n) => (n as HTMLElement).style.top.includes("calc"))
+      .map((n) => n.textContent);
     expect(inlineLabels).toContain("V100");
     expect(inlineLabels).toContain("V200");
   });
 
-  it("does not render inline labels by default", () => {
-    render(
+  it("auto default: <=8 bars render direct labels and hide the Y axis", () => {
+    const { container } = render(
       <ColumnChart
-        data={[100]}
-        formatValue={(v) => `V${v}`}
+        data={[10, 20]}
+        labels={["A", "B"]}
+        yAxisFormat={(v) => `TICK${v}`}
+        formatValue={(v) => `VAL${v}`}
       />,
     );
-    // tooltip text V100 is in DOM but hidden via classes; check via specific selector
-    const inlineLabels = screen.queryAllByText("V100").filter((el) =>
-      el.classList.contains("pointer-events-none") &&
-      el.classList.contains("-top-4"),
-    );
-    expect(inlineLabels.length).toBe(0);
+    // Direct labels on (the thesis made visible) — the inline label span is
+    // anchored to its bar's tip via a calc() top.
+    const labelSpans = screen
+      .getAllByText("VAL20")
+      .filter((el) => (el as HTMLElement).style.top.includes("calc"));
+    expect(labelSpans).toHaveLength(1);
+    // ...and the now-redundant Y axis hides.
+    expect(container.textContent).not.toContain("TICK20");
   });
 
   it("dataLabels.format overrides default formatter for inline labels", () => {
@@ -2499,6 +2504,7 @@ describe("ColumnChart — yAxis honesty (no min, extend-only max)", () => {
         data={[100]}
         yAxisFormat={(v) => `Y${v}`}
         yAxis={{ max: 50 }}
+        dataLabels={{ show: false }}
       />,
     );
     // Scale stays at the data max (top tick Y100) — no clipped bars.
@@ -2515,6 +2521,7 @@ describe("ColumnChart — yAxis honesty (no min, extend-only max)", () => {
         data={[100]}
         yAxisFormat={(v) => `Y${v}`}
         yAxis={{ max: 200 }}
+        dataLabels={{ show: false }}
       />,
     );
     expect(screen.getByText("Y200")).toBeInTheDocument();
@@ -2852,7 +2859,11 @@ describe("ColumnChart — negative values (C1.1, two-sided baseline)", () => {
 
   it("shows [max, 0, min] Y ticks when negatives are present", () => {
     render(
-      <ColumnChart data={PNL} yAxisFormat={(v) => `T${v}`} />,
+      <ColumnChart
+        data={PNL}
+        yAxisFormat={(v) => `T${v}`}
+        dataLabels={{ show: false }}
+      />,
     );
     expect(screen.getByText("T40")).toBeInTheDocument();
     expect(screen.getByText("T0")).toBeInTheDocument();
@@ -2867,19 +2878,26 @@ describe("ColumnChart — negative values (C1.1, two-sided baseline)", () => {
     expect(bars[1].getAttribute("aria-label")).toBe("Bar 2: -30");
   });
 
-  it("renders value labels below negative bar ends", () => {
-    const { container } = render(
+  it("anchors value labels to bar ends (below for negatives, white inside for deep bars)", () => {
+    render(
       <ColumnChart
-        data={PNL}
+        data={[
+          { label: "A", value: 40 },
+          { label: "B", value: -10 },
+          { label: "C", value: -25 },
+        ]}
         dataLabels={{ show: true, format: (v) => `L${v}` }}
       />,
     );
-    expect(screen.getByText("L-25")).toBeInTheDocument();
-    // Negative label is positioned with an inline top (below the bar end),
-    // not the -top-4 chart-top class.
-    const negLabel = screen.getByText("L-25");
-    expect(negLabel.className).not.toContain("-top-4");
-    expect((negLabel as HTMLElement).style.top).toContain("calc");
+    // Shallow negative (B): label sits OUTSIDE, below the bar end.
+    const shallow = screen.getByText("L-10") as HTMLElement;
+    expect(shallow.style.top).toContain("+ 2px");
+    expect(shallow.className).toContain("text-muted-foreground");
+    // Deepest negative (C, ends at 100%): label flips INSIDE the bar in
+    // background color so it never collides with the X-axis row.
+    const deep = screen.getByText("L-25") as HTMLElement;
+    expect(deep.style.top).toContain("- 14px");
+    expect(deep.className).toContain("text-background");
   });
 
   it("sorts negatives naturally (asc puts the deepest loss first)", () => {
@@ -3040,5 +3058,54 @@ describe("ColumnChart — a11y package (C3)", () => {
     expect(css).toContain("forced-colors: active");
     expect(css).toContain("CanvasText");
     expect(css).toContain("GrayText");
+  });
+});
+
+describe("ColumnChart — pointer target size warning (WCAG 2.5.8)", () => {
+  const mockRect = (width: number) => {
+    const orig = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      return {
+        width,
+        height: 100,
+        top: 0,
+        left: 0,
+        right: width,
+        bottom: 100,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      } as DOMRect;
+    };
+    return () => {
+      HTMLElement.prototype.getBoundingClientRect = orig;
+    };
+  };
+
+  it("warns in dev when onBarClick is wired and bars are narrower than 24px", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const restore = mockRect(10);
+    render(<ColumnChart data={[1, 2, 3]} onBarClick={() => {}} />);
+    restore();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("2.5.8"));
+    warn.mockRestore();
+  });
+
+  it("stays silent without onBarClick (bars are not pointer targets)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const restore = mockRect(10);
+    render(<ColumnChart data={[1, 2, 3]} />);
+    restore();
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("2.5.8"));
+    warn.mockRestore();
+  });
+
+  it("stays silent when bars are wide enough", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const restore = mockRect(48);
+    render(<ColumnChart data={[1, 2, 3]} onBarClick={() => {}} />);
+    restore();
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("2.5.8"));
+    warn.mockRestore();
   });
 });

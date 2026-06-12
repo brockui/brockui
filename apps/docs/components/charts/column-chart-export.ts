@@ -1277,9 +1277,11 @@ export function renderToHTMLString(
 
   // dataLabels "auto": direct labels + hidden Y axis for small N — same
   // editorial rule as the live chart.
-  const autoLabels = input.dataLabels?.show === "auto";
+  // "auto" is the default — mirrors the live chart's editorial default.
+  const labelsMode = input.dataLabels?.show ?? "auto";
+  const autoLabels = labelsMode === "auto";
   const showLabels =
-    input.dataLabels?.show === true ||
+    labelsMode === true ||
     (autoLabels && exportPoints.length > 0 && exportPoints.length <= 8);
   const showYTicks =
     input.yAxis?.hideTicks !== undefined
