@@ -8,16 +8,23 @@
       "name": "column-chart",
       "type": "registry:component",
       "title": "Column Chart",
-      "description": "Time-series vertical bars. Tufte data-ink discipline — one accent, no gridlines. Monospace numerics (Hack), pixel-font label badges (Departure Mono), built-in source attribution and ASCII empty state. Zero dependencies beyond React. WCAG AA accessible with roving tabindex, ARIA Graphics roles, and hidden table summary for screen readers.",
+      "description": "Vertical bars for ordered categories — time buckets or ranked categories. Tufte data-ink discipline: one accent, no gridlines, direct value labels by default, negatives first-class below an always-visible zero baseline. Monospace numerics (Hack), pixel-font label badges (Departure Mono), built-in source attribution, reference line (fixed or mean/median), sort + top-N with an honest 'Other' aggregate, native PNG/SVG/CSV export, JSON portability. Zero dependencies beyond React. Built to WCAG 2.2 AA: roving tabindex, ARIA graphics roles, screen-reader data table, forced-colors support.",
       "author": "Almas Kasymzhanov <almaskasymzhanov@gmail.com>",
       "files": [
         {
           "path": "components/charts/column-chart.tsx",
           "type": "registry:component",
           "target": "components/brockui/column-chart.tsx"
+        },
+        {
+          "path": "components/charts/column-chart-export.ts",
+          "type": "registry:component",
+          "target": "components/brockui/column-chart-export.ts"
         }
       ],
-      "categories": ["charts"]
+      "categories": [
+        "charts"
+      ]
     }
   ]
 }
