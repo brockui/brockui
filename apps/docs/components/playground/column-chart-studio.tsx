@@ -11,7 +11,7 @@
  * The 12 MUST settings (sections):
  *  1. Data (preset)        7.  Color (accent)
  *  2. Header               8.  Bar style (radius + gap)
- *  3. X-axis               9.  Goal line
+ *  3. X-axis               9.  Reference line
  *  4. Y-axis               10. Trend
  *  5. Number format        11. Source
  *  6. Data labels          12. Animation
@@ -282,10 +282,11 @@ type StudioState = {
   emphasisIndex: number;
   emphasisColor: string;
   emphasisNote: string;
-  // goal
-  goalShow: boolean;
-  goalValue: number;
-  goalLabel: string;
+  // reference line
+  refShow: boolean;
+  refStatIdx: number; // 0 = fixed value, 1 = mean, 2 = median
+  refValue: number;
+  refLabel: string;
   // trend
   trendShow: boolean;
   trendValue: number;
@@ -368,9 +369,10 @@ const INITIAL_STATE: StudioState = {
   emphasisIndex: 0,
   emphasisColor: "",
   emphasisNote: "← peak",
-  goalShow: true,
-  goalValue: 190,
-  goalLabel: "Weekly target",
+  refShow: true,
+  refStatIdx: 0,
+  refValue: 190,
+  refLabel: "Weekly target",
   trendShow: true,
   trendValue: 0.184,
   sourceShow: true,
@@ -496,9 +498,19 @@ function generateCode(s: StudioState): string {
   if (s.trendShow) {
     lines.push(`      trend={${s.trendValue}}`);
   }
-  if (s.goalShow) {
+  if (s.refShow) {
+    const refValueCode =
+      s.refStatIdx === 1
+        ? `{ stat: "mean" }`
+        : s.refStatIdx === 2
+          ? `{ stat: "median" }`
+          : `${s.refValue}`;
+    const refLabelCode =
+      s.refStatIdx === 0 && s.refLabel
+        ? `, label: ${quote(s.refLabel)}`
+        : "";
     lines.push(
-      `      goal={{ value: ${s.goalValue}, label: ${quote(s.goalLabel)} }}`,
+      `      referenceLine={{ value: ${refValueCode}${refLabelCode} }}`,
     );
   }
   if (s.sourceShow && s.sourceText) {
@@ -760,8 +772,8 @@ export function ColumnChartStudio() {
     setS((prev) => ({
       ...prev,
       period,
-      goalValue: ds.suggestedGoal,
-      goalLabel: ds.suggestedGoalLabel,
+      refValue: ds.suggestedGoal,
+      refLabel: ds.suggestedGoalLabel,
     }));
   }
 
@@ -962,9 +974,18 @@ export function ColumnChartStudio() {
             })()}
             dataLabels={s.dataLabelsShow ? { show: true } : undefined}
             trend={s.trendShow ? s.trendValue : undefined}
-            goal={
-              s.goalShow
-                ? { value: s.goalValue, label: s.goalLabel }
+            referenceLine={
+              s.refShow
+                ? {
+                    value:
+                      s.refStatIdx === 1
+                        ? { stat: "mean" as const }
+                        : s.refStatIdx === 2
+                          ? { stat: "median" as const }
+                          : s.refValue,
+                    label:
+                      s.refStatIdx === 0 && s.refLabel ? s.refLabel : undefined,
+                  }
                 : undefined
             }
             source={s.sourceShow ? s.sourceText : undefined}
@@ -1031,8 +1052,19 @@ export function ColumnChartStudio() {
                           }
                         : undefined,
                     trend: s.trendShow ? s.trendValue : undefined,
-                    goal: s.goalShow
-                      ? { value: s.goalValue, label: s.goalLabel }
+                    referenceLine: s.refShow
+                      ? {
+                          value:
+                            s.refStatIdx === 1
+                              ? { stat: "mean" as const }
+                              : s.refStatIdx === 2
+                                ? { stat: "median" as const }
+                                : s.refValue,
+                          label:
+                            s.refStatIdx === 0 && s.refLabel
+                              ? s.refLabel
+                              : undefined,
+                        }
                       : undefined,
                     source: s.sourceShow ? s.sourceText : undefined,
                     caption: s.captionText || undefined,
@@ -1063,8 +1095,19 @@ export function ColumnChartStudio() {
                           }
                         : undefined,
                     trend: s.trendShow ? s.trendValue : undefined,
-                    goal: s.goalShow
-                      ? { value: s.goalValue, label: s.goalLabel }
+                    referenceLine: s.refShow
+                      ? {
+                          value:
+                            s.refStatIdx === 1
+                              ? { stat: "mean" as const }
+                              : s.refStatIdx === 2
+                                ? { stat: "median" as const }
+                                : s.refValue,
+                          label:
+                            s.refStatIdx === 0 && s.refLabel
+                              ? s.refLabel
+                              : undefined,
+                        }
                       : undefined,
                     source: s.sourceShow ? s.sourceText : undefined,
                     caption: s.captionText || undefined,
@@ -1600,26 +1643,37 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Goal line">
+          <Accordion label="Reference line">
             <Toggle
-              label="Show goal line"
-              checked={s.goalShow}
-              onChange={(v) => update("goalShow", v)}
+              label="Show reference line"
+              checked={s.refShow}
+              onChange={(v) => update("refShow", v)}
             />
-            {s.goalShow && (
+            {s.refShow && (
               <>
-                <Field label="Value">
-                  <NumberInput
-                    value={s.goalValue}
-                    onChange={(v) => update("goalValue", v)}
+                <Field label="Mode">
+                  <Segmented
+                    options={["Value", "Mean", "Median"]}
+                    selectedIndex={s.refStatIdx}
+                    onSelect={(i) => update("refStatIdx", i)}
                   />
                 </Field>
-                <Field label="Label">
-                  <TextInput
-                    value={s.goalLabel}
-                    onChange={(v) => update("goalLabel", v)}
-                  />
-                </Field>
+                {s.refStatIdx === 0 && (
+                  <>
+                    <Field label="Value">
+                      <NumberInput
+                        value={s.refValue}
+                        onChange={(v) => update("refValue", v)}
+                      />
+                    </Field>
+                    <Field label="Label">
+                      <TextInput
+                        value={s.refLabel}
+                        onChange={(v) => update("refLabel", v)}
+                      />
+                    </Field>
+                  </>
+                )}
               </>
             )}
           </Accordion>

@@ -36,9 +36,9 @@
 import type {
   ColumnChartAnnotation,
   ColumnChartBand,
-  ColumnChartGoal,
   ColumnChartPattern,
   ColumnChartPatternStyle,
+  ColumnChartTopN,
 } from "./column-chart";
 
 /* ─── Public types ──────────────────────────────────────────────────── */
@@ -51,7 +51,104 @@ export type ExportPoint = {
   color?: string;
   highlight?: boolean;
   note?: string;
+  /** Stable addressing key (defaults to label / input index in the component). */
+  key?: string;
+  /** Position in the ORIGINAL input, before sort/topN. Used by annotations. */
+  inputIndex?: number;
 };
+
+/* ─── Shared data transforms (used by the live chart AND the static render
+       path so a JSON config produces the same bars in both worlds) ────── */
+
+/** Fully-resolved topN config (number shorthand expanded, defaults applied). */
+export type ColumnChartTopNConfig = {
+  n: number;
+  label: string;
+  pinned: boolean;
+  distinct: boolean;
+};
+
+/** Expand the `topN` prop (number shorthand or object form) into full config. */
+export function resolveTopNConfig(
+  topN: number | ColumnChartTopN | undefined,
+): ColumnChartTopNConfig | undefined {
+  if (topN === undefined) return undefined;
+  if (typeof topN === "number") {
+    return { n: topN, label: "Other", pinned: true, distinct: true };
+  }
+  return {
+    n: topN.n,
+    label: topN.label ?? "Other",
+    pinned: topN.pinned ?? true,
+    distinct: topN.distinct ?? true,
+  };
+}
+
+/**
+ * Apply topN bucketing + sort to a list of points. Generic over the point
+ * shape so the React component (NormalizedPoint) and the static render path
+ * (ExportPoint) share ONE implementation — no fidelity drift.
+ *
+ * Semantics: topN keeps the N largest by value (stable ties), collapses the
+ * tail into one "Other" point built by `makeOther`. Sort is by value and
+ * stable (native sort, ES2019+). A pinned "Other" is excluded from the sort
+ * and appended last; unpinned participates by its summed value.
+ */
+export function transformDataPoints<P extends { value: number }>(
+  points: P[],
+  sort: "none" | "asc" | "desc",
+  topN: ColumnChartTopNConfig | undefined,
+  makeOther: (sum: number, collapsed: P[], config: ColumnChartTopNConfig) => P,
+): P[] {
+  let result = [...points];
+  let other: P | undefined;
+
+  if (topN && topN.n > 0 && points.length > topN.n) {
+    const keptIndices = new Set(
+      points
+        .map((p, i) => ({ v: p.value, i }))
+        .sort((a, b) => b.v - a.v || a.i - b.i)
+        .slice(0, topN.n)
+        .map((x) => x.i),
+    );
+    const kept: P[] = [];
+    const collapsed: P[] = [];
+    let sum = 0;
+    points.forEach((p, i) => {
+      if (keptIndices.has(i)) {
+        kept.push(p);
+      } else {
+        sum += p.value;
+        collapsed.push(p);
+      }
+    });
+    other = makeOther(sum, collapsed, topN);
+    result = kept;
+  }
+
+  if (other && !topN!.pinned) result.push(other);
+  if (sort !== "none") {
+    result.sort((a, b) => (sort === "asc" ? a.value - b.value : b.value - a.value));
+  }
+  if (other && topN!.pinned) result.push(other);
+  return result;
+}
+
+/** Compute a reference statistic over the ORIGINAL input values. */
+export function computeStat(
+  values: readonly number[],
+  stat: "mean" | "median",
+): number {
+  if (values.length === 0) return 0;
+  if (stat === "mean") {
+    return values.reduce((a, b) => a + b, 0) / values.length;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
 
 /** All the context needed to synthesize a faithful SVG export. */
 export type SynthesisContext = {
@@ -101,7 +198,8 @@ export type SynthesisContext = {
   /** Trend percent (decimal, e.g. 0.184). Renders in the top-right corner. */
   trend?: number;
   /** Goal line. */
-  goal?: ColumnChartGoal;
+  /** Reference line, already resolved to a numeric value by the caller. */
+  referenceLine?: { value: number; label?: string };
   /** Plot bands. */
   bands?: readonly ColumnChartBand[];
   /** Source attribution. */
@@ -154,19 +252,26 @@ function r2(n: number): number {
 }
 
 /**
- * Resolve an annotation's `x` against the export points — supports both a
- * 0-based index (number) and a label string (case-insensitive match).
- * Returns -1 if no match. Mirrors the in-app resolveAnnotationIndex.
+ * Resolve an annotation's `x` against the export points. A number is an
+ * INPUT-order index (resolved via the point's `inputIndex`, so the annotation
+ * travels with its datum through sort/topN; falls back to positional when
+ * inputIndex is absent). A string matches `key` first, then `label`
+ * (case-insensitive). Returns -1 if no match — e.g. the datum was collapsed
+ * into "Other". Mirrors the in-app resolveAnnotationIndex.
  */
 function resolveAnnotationIndexForExport(
   x: number | string,
   points: ExportPoint[],
 ): number {
   if (typeof x === "number") {
-    if (x < 0 || x >= points.length) return -1;
-    return x;
+    const byInput = points.findIndex((p) => p.inputIndex === x);
+    if (byInput !== -1) return byInput;
+    if (points.some((p) => p.inputIndex !== undefined)) return -1;
+    return x >= 0 && x < points.length ? x : -1;
   }
   const target = x.toLowerCase();
+  const byKey = points.findIndex((p) => (p.key ?? "").toLowerCase() === target);
+  if (byKey !== -1) return byKey;
   return points.findIndex((p) => (p.label ?? "").toLowerCase() === target);
 }
 
@@ -261,7 +366,7 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
     headerTitle,
     headerSubtitle,
     trend,
-    goal,
+    referenceLine,
     bands,
     source,
     caption,
@@ -552,14 +657,19 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
   }
 
   // Goal line (drawn on top of bars)
-  if (goal && Number.isFinite(goal.value) && goal.value > 0 && max > 0) {
-    const goalY = barsBottom - (goal.value / max) * barsAreaHeight;
+  if (
+    referenceLine &&
+    Number.isFinite(referenceLine.value) &&
+    referenceLine.value > 0 &&
+    max > 0
+  ) {
+    const goalY = barsBottom - (referenceLine.value / max) * barsAreaHeight;
     parts.push(
       `<line x1="${r2(barsLeft)}" y1="${r2(goalY)}" x2="${r2(width)}" y2="${r2(goalY)}" stroke="${muted}" stroke-width="1" stroke-dasharray="4 2"/>`,
     );
-    const goalText = goal.label
-      ? `${goal.label} · ${ctx.formatValue(goal.value)}`
-      : `Goal: ${ctx.formatValue(goal.value)}`;
+    const goalText = referenceLine.label
+      ? `${referenceLine.label} · ${ctx.formatValue(referenceLine.value)}`
+      : ctx.formatValue(referenceLine.value);
     // White background chip so the label reads on top of bars
     const txt = escapeXml(goalText);
     const approxW = goalText.length * 5.5 + 8;
@@ -795,9 +905,12 @@ export type ColumnChartJSON = {
     style?: "decimal" | "currency" | "percent";
     currency?: string;
   };
-  dataLabels?: { show?: boolean };
+  dataLabels?: { show?: boolean | "auto" };
   trend?: number;
-  goal?: { value: number; label?: string };
+  referenceLine?: {
+    value: number | { stat: "mean" | "median" };
+    label?: string;
+  };
   source?: string;
   description?: string;
   pattern?: ColumnChartPattern;
@@ -848,7 +961,7 @@ const JSON_SAFE_KEYS: Array<keyof ColumnChartJSON> = [
   "numberFormat",
   "dataLabels",
   "trend",
-  "goal",
+  "referenceLine",
   "source",
   "description",
   "pattern",
@@ -917,9 +1030,11 @@ export function toJSON(props: Record<string, any>): ColumnChartJSON {
       continue;
     }
     if (key === "dataLabels") {
-      // Drop the `format` function; keep declarative.
+      // Drop the `format` function; keep declarative ("auto" survives).
       if (typeof value === "object" && value !== null) {
-        out.dataLabels = { show: !!value.show };
+        out.dataLabels = {
+          show: value.show === "auto" ? "auto" : !!value.show,
+        };
       }
       continue;
     }
@@ -993,6 +1108,8 @@ export type RenderToHTMLOptions = {
     muted: string;
     border: string;
     background: string;
+    /** Fill for the muted "Other" aggregate bar created by topN. */
+    otherFill: string;
   }>;
   /** Number formatter to apply across Y-axis / tooltip / inline labels. */
   formatValue?: (v: number) => string;
@@ -1004,6 +1121,7 @@ const DEFAULT_RENDER_COLORS = {
   muted: "#666666",
   border: "#e5e5e5",
   background: "#ffffff",
+  otherFill: "#a1a1aa",
 };
 
 /**
@@ -1028,15 +1146,19 @@ export function renderToHTMLString(
   const fmt: (v: number) => string =
     options.formatValue ?? ((v: number) => v.toLocaleString());
 
-  // Normalize raw `data` (number[] or object[]) into ExportPoints.
+  // Normalize raw `data` (number[] or object[]) into ExportPoints, stamped
+  // with input order + key so annotations resolve identically to the live
+  // chart, then run the SAME transform pipeline (topN -> sort).
   const labels = input.labels ?? [];
-  const exportPoints: ExportPoint[] = input.data
+  const inputPoints: ExportPoint[] = input.data
     .map((d, i) => {
       if (typeof d === "number") {
         return {
           label: labels[i],
           value: d,
           pattern: "solid" as ColumnChartPattern,
+          key: labels[i] ?? String(i),
+          inputIndex: i,
         };
       }
       return {
@@ -1046,18 +1168,68 @@ export function renderToHTMLString(
         color: d.color,
         highlight: d.highlight,
         note: d.note,
+        key: d.label ?? String(i),
+        inputIndex: i,
       };
     })
     .filter((p) => Number.isFinite(p.value) && p.value >= 0);
 
+  const topNConfig = resolveTopNConfig(input.topN);
+  const exportPoints = transformDataPoints(
+    inputPoints,
+    input.sort ?? "none",
+    topNConfig,
+    (sum, _collapsed, config): ExportPoint => ({
+      label: config.label,
+      value: sum,
+      pattern: "solid",
+      // The muted "Other" fill, resolved to a concrete color for the SVG.
+      color: config.distinct ? colors.otherFill : undefined,
+      key: config.label,
+    }),
+  );
+
+  // Reference line: resolve a stat ({ stat: "mean" | "median" }) against the
+  // ORIGINAL input values — bucketing must not move the statistic.
+  const referenceLine = input.referenceLine
+    ? {
+        value:
+          typeof input.referenceLine.value === "number"
+            ? input.referenceLine.value
+            : computeStat(
+                inputPoints.map((p) => p.value),
+                input.referenceLine.value.stat,
+              ),
+        label:
+          input.referenceLine.label ??
+          (typeof input.referenceLine.value === "object"
+            ? input.referenceLine.value.stat === "mean"
+              ? "Mean"
+              : "Median"
+            : undefined),
+      }
+    : undefined;
+
   const dataMax = exportPoints.reduce((m, p) => Math.max(m, p.value), 0);
-  const goalBased =
-    input.goal && Number.isFinite(input.goal.value) && input.goal.value > 0
-      ? Math.max(dataMax, input.goal.value)
+  const refBased =
+    referenceLine && Number.isFinite(referenceLine.value) && referenceLine.value > 0
+      ? Math.max(dataMax, referenceLine.value)
       : dataMax;
-  const max = input.yAxis?.max !== undefined ? input.yAxis.max : goalBased;
+  const max =
+    input.yAxis?.max !== undefined ? Math.max(input.yAxis.max, refBased) : refBased;
   const allZero = max === 0;
   const yTicks = allZero ? [0] : [max, Math.round(max / 2), 0];
+
+  // dataLabels "auto": direct labels + hidden Y axis for small N — same
+  // editorial rule as the live chart.
+  const autoLabels = input.dataLabels?.show === "auto";
+  const showLabels =
+    input.dataLabels?.show === true ||
+    (autoLabels && exportPoints.length > 0 && exportPoints.length <= 8);
+  const showYTicks =
+    input.yAxis?.hideTicks !== undefined
+      ? !input.yAxis.hideTicks
+      : !(autoLabels && showLabels);
 
   const description =
     input.description ??
@@ -1083,15 +1255,15 @@ export function renderToHTMLString(
     yAxisFormat: fmt,
     formatValue: fmt,
     labelFormat: fmt,
-    showLabels: input.dataLabels?.show ?? false,
-    showYTicks: !input.yAxis?.hideTicks,
+    showLabels,
+    showYTicks,
     showXTicks: !input.xAxis?.hideTicks,
     yAxisTitle: input.yAxis?.title,
     xAxisTitle: input.xAxis?.title,
     headerTitle: input.header?.title,
     headerSubtitle: input.header?.subtitle,
     trend: input.trend,
-    goal: input.goal,
+    referenceLine,
     bands: input.bands,
     source: input.source,
     caption: input.caption,

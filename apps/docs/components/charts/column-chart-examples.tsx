@@ -127,14 +127,14 @@ export function ColumnChartExamples() {
       </ExampleCard>
 
       <ExampleCard
-        title="Goal line + plot band"
-        subtitle="KPI threshold + Q3 highlight zone"
+        title="Reference line + plot band"
+        subtitle="fixed KPI threshold + Q3 highlight zone — or pass a mean/median stat"
       >
         <ColumnChart
           data={weeklyData}
           labels={weeklyLabels}
           height={200}
-          goal={{ value: 190, label: "Weekly target" }}
+          referenceLine={{ value: 190, label: "Weekly target" }}
           bands={[{ from: 4, to: 6, label: "Q3 push" }]}
           source="Brock Analytics, 2026"
         />

@@ -18,8 +18,8 @@
  *     { label, value, pattern, color, highlight, note } — emphasis without
  *     a separate annotations API. Optional `sort` (asc/desc) + `topN` (with an
  *     "Other" bucket) turn the chart into a ranking without reshaping data.
- *  6. Plot bands (`bands`) for range highlights; goal line that participates
- *     in scale; free-floating annotations (`annotations`) with optional
+ *  6. Plot bands (`bands`) for range highlights; reference line (fixed value
+ *     or computed mean/median stat) that participates in scale; free-floating annotations (`annotations`) with optional
  *     dashed connector arrows for FT-style call-outs.
  *  7. Editorial extras: short `caption` below source; diagonal `watermark`
  *     overlay for DRAFT / CONFIDENTIAL; both reproduced in SVG export.
@@ -61,11 +61,14 @@ import type {
 } from "react";
 import { useId, useImperativeHandle, useRef, useState } from "react";
 import {
+  computeStat,
   copyImageToClipboard,
   downloadBlob,
   pointsToCSV,
+  resolveTopNConfig,
   svgToPNG,
   synthesizeSVG,
+  transformDataPoints,
   type ExportPoint,
   type SynthesisContext,
 } from "./column-chart-export";
@@ -121,6 +124,20 @@ export type ColumnChartDataPoint = {
    */
   note?: string;
   /**
+   * Stable addressing key for this datum. Defaults to `label` (or the input
+   * index for plain `number[]` data). Used by `annotations` (string form),
+   * `focusBar(key)`, and `getSelection()`. Survives `sort` / `topN` because
+   * it travels with the datum, unlike a display position.
+   */
+  key?: string;
+  /**
+   * Arbitrary consumer payload (e.g. the original DataFrame row / API object).
+   * Passed through untouched and returned on every callback datum — wire
+   * `onBarClick` to a detail panel without re-joining by label. Must be
+   * JSON-safe if you plan to round-trip configs through `toJSON()`.
+   */
+  meta?: unknown;
+  /**
    * OUTPUT-ONLY — set by the component on the synthetic "Other" bar created by
    * `topN`. Ignored on input. An aggregate is not a category: callbacks receive
    * this flag so consumers can branch ("open drill-down list" vs "open detail").
@@ -157,11 +174,21 @@ export type ColumnChartTopN = {
   distinct?: boolean;
 };
 
-/** Goal/threshold reference line drawn across the chart. */
-export type ColumnChartGoal = {
-  /** Value at which to draw the line. Included in max scale calculation. */
-  value: number;
-  /** Optional label (e.g. "Q3 target"). Rendered with the value in Hack mono. */
+/**
+ * Reference line drawn across the chart — a fixed threshold/goal, or a
+ * computed statistic. The data-journalism workhorse: "40% above the mean".
+ */
+export type ColumnChartReferenceLine = {
+  /**
+   * A fixed value, or `{ stat: "mean" | "median" }` to compute it from the
+   * ORIGINAL input data (before `sort`/`topN` — bucketing must not move a
+   * statistic). Included in the max scale calculation so the line stays visible.
+   */
+  value: number | { stat: "mean" | "median" };
+  /**
+   * Optional label (e.g. "Q3 target"). Stats auto-label as "Mean"/"Median"
+   * when omitted. Rendered with the value in Hack mono.
+   */
   label?: string;
 };
 
@@ -170,15 +197,18 @@ export type ColumnChartGoal = {
  * space. Use sparingly — the FT/Bloomberg "callout + arrow" pattern for
  * marking inflection points, anomalies, deployment cuts, etc.
  *
- * `x` accepts either a 0-based bar index (number) or a label string (matched
- * case-insensitively against the bar's `label` field). `y` is in data-value
- * space — the renderer maps it into pixels using the chart's `max`.
+ * `x` accepts either a 0-based INPUT index (number — the position in your
+ * original `data` array; the annotation travels with its datum through
+ * `sort`/`topN`, and is dropped with a dev warning if that datum collapses
+ * into "Other") or a string (matched case-insensitively against the bar's
+ * `key`, which defaults to `label`). `y` is in data-value space — the
+ * renderer maps it into pixels using the chart's `max`.
  *
  * When `arrow=true`, a thin dashed line is drawn from the text card to the
  * exact (x, y) point in the chart.
  */
 export type ColumnChartAnnotation = {
-  /** Bar index (number) or label match (string). */
+  /** INPUT-order bar index (number) or key/label match (string). */
   x: number | string;
   /** Value on the Y-axis in data space. */
   y: number;
@@ -335,12 +365,12 @@ export type ColumnChartProps = {
   trend?: number;
 
   /**
-   * Goal/threshold reference line. Drawn as a dashed horizontal line across the chart
-   * at the specified value, with an optional label in Hack mono. The goal value is
-   * included in the chart's max scale calculation so bars adjust to keep the goal
-   * visible (FT/Bloomberg KPI dashboard pattern).
+   * Reference line — a dashed horizontal line at a fixed value ("Q3 target")
+   * or a computed statistic (`{ stat: "mean" }` / `{ stat: "median" }`,
+   * calculated over the original input data). Included in the max scale so
+   * the line stays visible (FT/Bloomberg KPI + data-journalism pattern).
    */
-  goal?: ColumnChartGoal;
+  referenceLine?: ColumnChartReferenceLine;
 
   /** Source attribution rendered below the chart (FT/Bloomberg pattern). */
   source?: string;
@@ -369,7 +399,7 @@ export type ColumnChartProps = {
   yAxisFormat?: (value: number) => string;
 
   /** Custom formatter for hover-tooltip value. Default uses `toLocaleString`. */
-  formatValue?: (value: number) => string;
+  formatValue?: (value: number, datum?: ColumnChartDataPoint) => string;
 
   /** Pass-through className for the outer wrapper. */
   className?: string;
@@ -439,13 +469,18 @@ export type ColumnChartProps = {
   };
 
   /**
-   * Show inline value labels above each bar (Hack mono).
-   * Useful for compact dashboards where comparing exact values matters.
+   * Inline value labels above each bar (Hack mono).
+   *
+   *  - `true` / `false` — always / never show.
+   *  - `"auto"` — the editorial mode (Datawrapper/FT direct labeling): when
+   *    the chart has ≤ 8 bars, labels are shown AND the Y-axis ticks hide —
+   *    the axis is redundant ink once every value is printed (Tufte). An
+   *    explicit `yAxis.hideTicks` always wins over the auto behavior.
    */
   dataLabels?: {
-    show?: boolean;
+    show?: boolean | "auto";
     /** Optional override of the value formatter for these labels. */
-    format?: (value: number) => string;
+    format?: (value: number, datum?: ColumnChartDataPoint) => string;
   };
 
   /** Animation configuration. */
@@ -783,21 +818,28 @@ export type ColumnChartHandle = {
     height?: number;
   }) => Promise<void>;
   /**
-   * Move keyboard focus to a specific bar by 0-based index. Out-of-range
-   * indices are clamped to the data range. Returns the index that received
-   * focus, or `-1` if no bars are rendered (loading/error/empty states).
+   * Move keyboard focus to a specific bar — by 0-based DISPLAY index (the
+   * on-screen position; out-of-range clamps into the data range) or by stable
+   * `key` (defaults to the datum's label; unknown keys return `-1` without
+   * moving focus). Returns the display index that received focus, or `-1` if
+   * no bars are rendered (loading/error/empty states).
    *
    * Use this for "drive focus from external UI" patterns — e.g. when the user
-   * clicks an entry in a side legend, you want the corresponding bar to focus
+   * clicks an entry in a side panel, you want the corresponding bar to focus
    * so a screen reader announces it.
    */
-  focusBar: (index: number) => number;
+  focusBar: (target: number | string) => number;
   /**
    * Return the currently keyboard-focused bar, or `null` if no bars are
-   * rendered. Mirrors the internal roving-tabindex position regardless of
-   * whether the chart actually has DOM focus right now.
+   * rendered. `index` is the DISPLAY position (changes under sort/topN);
+   * `key` is the stable datum identifier. Mirrors the internal
+   * roving-tabindex position regardless of whether the chart has DOM focus.
    */
-  getSelection: () => { point: ColumnChartDataPoint; index: number } | null;
+  getSelection: () => {
+    point: ColumnChartDataPoint;
+    index: number;
+    key: string;
+  } | null;
 };
 
 type NormalizedPoint = {
@@ -807,14 +849,18 @@ type NormalizedPoint = {
   color?: string;
   highlight?: boolean;
   note?: string;
+  /** Stable addressing key — datum.key ?? label ?? String(inputIndex). */
+  key: string;
+  /** Position in the ORIGINAL input array (pre sort/topN). -1 for "Other". */
+  inputIndex: number;
+  /** Consumer payload passed through untouched. */
+  meta?: unknown;
   /** Set on the synthetic "Other" bar created by topN. */
   isOther?: boolean;
   /** Collapsed tail behind "Other", in input order (public shape). */
   items?: ColumnChartDataPoint[];
   /** "Other" with distinct=true renders in the muted --brock-other fill. */
   muted?: boolean;
-  /** "Other" with pinned=true is excluded from sort and appended last. */
-  pinnedLast?: boolean;
 };
 
 /**
@@ -830,6 +876,8 @@ function toPublicPoint(p: NormalizedPoint): ColumnChartDataPoint {
     color: p.color,
     highlight: p.highlight,
     note: p.note,
+    key: p.key,
+    ...(p.meta !== undefined ? { meta: p.meta } : {}),
     ...(p.isOther ? { isOther: true, items: p.items } : {}),
   };
 }
@@ -878,85 +926,6 @@ function isObjectForm(
   return data.length > 0 && typeof data[0] === "object" && data[0] !== null;
 }
 
-/** Resolve the `topN` prop (number shorthand or object form) into full config. */
-function resolveTopN(
-  topN: number | ColumnChartTopN | undefined,
-): Required<ColumnChartTopN> | undefined {
-  if (topN === undefined) return undefined;
-  if (typeof topN === "number") {
-    return { n: topN, label: "Other", pinned: true, distinct: true };
-  }
-  return {
-    n: topN.n,
-    label: topN.label ?? "Other",
-    pinned: topN.pinned ?? true,
-    distinct: topN.distinct ?? true,
-  };
-}
-
-/**
- * Roll all but the N largest bars (by value) into a single "Other" bucket.
- * No-op when `topN` is unset, ≤ 0, or ≥ the number of points. The kept bars
- * preserve their input order; the "Other" bar is appended last. The aggregate
- * carries `isOther` + the collapsed `items` (so onBarClick can drill into the
- * tail), renders muted when `distinct`, and is excluded from `sort` when
- * `pinned` — an aggregate standing mid-ranking would read as a category.
- */
-function applyTopN(
-  points: NormalizedPoint[],
-  config: Required<ColumnChartTopN> | undefined,
-  defaultPattern: ColumnChartPattern,
-): NormalizedPoint[] {
-  if (config === undefined || config.n <= 0 || points.length <= config.n)
-    return points;
-
-  // Indices of the N largest by value (stable: ties resolve by input order).
-  const keptIndices = new Set(
-    points
-      .map((p, i) => ({ v: p.value, i }))
-      .sort((a, b) => b.v - a.v || a.i - b.i)
-      .slice(0, config.n)
-      .map((x) => x.i),
-  );
-
-  const result: NormalizedPoint[] = [];
-  const collapsed: ColumnChartDataPoint[] = [];
-  let otherSum = 0;
-  points.forEach((p, i) => {
-    if (keptIndices.has(i)) {
-      result.push(p);
-    } else {
-      otherSum += p.value;
-      collapsed.push(toPublicPoint(p));
-    }
-  });
-  result.push({
-    label: config.label,
-    value: otherSum,
-    pattern: defaultPattern,
-    isOther: true,
-    items: collapsed,
-    muted: config.distinct,
-    pinnedLast: config.pinned,
-  });
-  return result;
-}
-
-/**
- * Sort points by value. `"none"` preserves order; the sort is stable. A
- * pinned "Other" bar is excluded from the ranking and re-appended last.
- */
-function applySort(
-  points: NormalizedPoint[],
-  sort: "none" | "asc" | "desc",
-): NormalizedPoint[] {
-  if (sort === "none") return points;
-  const pinned = points.filter((p) => p.pinnedLast);
-  const sortable = pinned.length > 0 ? points.filter((p) => !p.pinnedLast) : [...points];
-  sortable.sort((a, b) => (sort === "asc" ? a.value - b.value : b.value - a.value));
-  return pinned.length > 0 ? [...sortable, ...pinned] : sortable;
-}
-
 function normalize(
   data: readonly number[] | readonly ColumnChartDataPoint[],
   labels: readonly string[] | undefined,
@@ -965,7 +934,7 @@ function normalize(
   hatchFromIndex: number | undefined,
   sort: "none" | "asc" | "desc",
   topN: number | ColumnChartTopN | undefined,
-): NormalizedPoint[] {
+): { points: NormalizedPoint[]; inputValues: number[] } {
   const patternFor = (i: number, override?: ColumnChartPattern): ColumnChartPattern => {
     if (override) return override;
     if (hatchUntilIndex !== undefined && i < hatchUntilIndex) return "hatched";
@@ -981,11 +950,16 @@ function normalize(
         color: d.color,
         highlight: d.highlight,
         note: d.note,
+        meta: d.meta,
+        key: d.key ?? d.label ?? String(i),
+        inputIndex: i,
       }))
     : (data as readonly number[]).map((value, i) => ({
         label: labels?.[i],
         value,
         pattern: patternFor(i),
+        key: labels?.[i] ?? String(i),
+        inputIndex: i,
       }));
 
   let negativeCount = 0;
@@ -1022,9 +996,41 @@ function normalize(
     }
   }
 
-  // Long-tail compression first, then ranking. The "Other" aggregate is
+  // Duplicate keys break string addressing (annotations / focusBar match the
+  // FIRST hit) — warn so the consumer can set explicit `key`s.
+  if (process.env.NODE_ENV !== "production") {
+    const seen = new Set<string>();
+    for (const p of cleaned) {
+      const k = p.key.toLowerCase();
+      if (seen.has(k)) {
+        console.warn(
+          `[brock-ui] ColumnChart: duplicate key "${p.key}". String addressing (annotations, focusBar) matches the first occurrence — set an explicit \`key\` on each datum to disambiguate.`,
+        );
+        break;
+      }
+      seen.add(k);
+    }
+  }
+
+  // Long-tail compression first, then ranking — via the SAME shared transform
+  // the static render path uses (no fidelity drift). The "Other" aggregate is
   // pinned last by default; with pinned=false it ranks by its summed value.
-  return applySort(applyTopN(cleaned, resolveTopN(topN), defaultPattern), sort);
+  const points = transformDataPoints(
+    cleaned,
+    sort,
+    resolveTopNConfig(topN),
+    (sum, collapsed, config): NormalizedPoint => ({
+      label: config.label,
+      value: sum,
+      pattern: defaultPattern,
+      key: config.label,
+      inputIndex: -1,
+      isOther: true,
+      items: collapsed.map(toPublicPoint),
+      muted: config.distinct,
+    }),
+  );
+  return { points, inputValues: cleaned.map((p) => p.value) };
 }
 
 function autoDescription(
@@ -1043,7 +1049,7 @@ export function ColumnChart({
   height = 200,
   gap = 4,
   trend,
-  goal,
+  referenceLine,
   source,
   accent,
   barRadius = 0,
@@ -1089,7 +1095,7 @@ export function ColumnChart({
   dataDescription,
   "data-testid": dataTestId,
 }: ColumnChartProps) {
-  const points = normalize(
+  const { points, inputValues } = normalize(
     data,
     labels,
     pattern,
@@ -1098,6 +1104,23 @@ export function ColumnChart({
     sort,
     topN,
   );
+  // Resolve the reference line to a number once: stats are computed over the
+  // ORIGINAL input values (pre sort/topN), and auto-label as Mean/Median.
+  const resolvedReference = referenceLine
+    ? {
+        value:
+          typeof referenceLine.value === "number"
+            ? referenceLine.value
+            : computeStat(inputValues, referenceLine.value.stat),
+        label:
+          referenceLine.label ??
+          (typeof referenceLine.value === "object"
+            ? referenceLine.value.stat === "mean"
+              ? "Mean"
+              : "Median"
+            : undefined),
+      }
+    : undefined;
   const captionId = useId();
   const figureRef = useRef<HTMLElement>(null);
   const barRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -1124,26 +1147,39 @@ export function ColumnChart({
   // ─── Derived values (lifted above the state machine so the imperative
   //     export API can synthesize an SVG even from loading/error/empty). ───
   const dataMax = points.reduce((m, p) => Math.max(m, p.value), 0);
-  const goalBased =
-    goal && Number.isFinite(goal.value) && goal.value > 0
-      ? Math.max(dataMax, goal.value)
+  const refBased =
+    resolvedReference &&
+    Number.isFinite(resolvedReference.value) &&
+    resolvedReference.value > 0
+      ? Math.max(dataMax, resolvedReference.value)
       : dataMax;
   // yAxis.max is extend-only: a max below the data would clip bars (the
   // truncated-bar lie). Ignore + warn instead of silently distorting.
   const max =
-    yAxis?.max !== undefined ? Math.max(yAxis.max, goalBased) : goalBased;
+    yAxis?.max !== undefined ? Math.max(yAxis.max, refBased) : refBased;
   if (
     process.env.NODE_ENV !== "production" &&
     yAxis?.max !== undefined &&
-    yAxis.max < goalBased
+    yAxis.max < refBased
   ) {
     console.warn(
-      `[brock-ui] ColumnChart: yAxis.max (${yAxis.max}) is below the data/goal max (${goalBased}) and was ignored — a clipped baseline-zero chart would distort bar lengths. yAxis.max can only extend the scale.`,
+      `[brock-ui] ColumnChart: yAxis.max (${yAxis.max}) is below the data/reference max (${refBased}) and was ignored — a clipped baseline-zero chart would distort bar lengths. yAxis.max can only extend the scale.`,
     );
   }
   const allZero = max === 0;
   const effectiveGap = points.length > 60 ? Math.max(1, gap - 2) : gap;
   const yTicks = allZero ? [0] : [max, Math.round(max / 2), 0];
+  // dataLabels "auto" — the editorial mode: direct labels for small N, and the
+  // Y axis hides (redundant ink once every value is printed). An explicit
+  // yAxis.hideTicks always wins.
+  const autoLabels = dataLabels?.show === "auto";
+  const showLabels =
+    dataLabels?.show === true ||
+    (autoLabels && points.length > 0 && points.length <= 8);
+  const showYTicks =
+    yAxis?.hideTicks !== undefined
+      ? !yAxis.hideTicks
+      : !(autoLabels && showLabels);
   const accessibleDescription = description ?? autoDescription(points, source);
 
   // ─── Single context-builder reused by the imperative API AND the Toolbar.
@@ -1172,6 +1208,8 @@ export function ColumnChart({
       color: p.muted ? (p.color ?? otherFill) : p.color,
       highlight: p.highlight,
       note: p.note,
+      key: p.key,
+      inputIndex: p.inputIndex,
     }));
     return {
       width,
@@ -1191,15 +1229,15 @@ export function ColumnChart({
       yAxisFormat: effectiveYAxisFormat,
       formatValue: effectiveFormatValue,
       labelFormat: effectiveLabelFormat,
-      showLabels: dataLabels?.show ?? false,
-      showYTicks: !yAxis?.hideTicks,
+      showLabels,
+      showYTicks,
       showXTicks: !xAxis?.hideTicks,
       yAxisTitle: yAxis?.title,
       xAxisTitle: xAxis?.title,
       headerTitle: header?.title,
       headerSubtitle: header?.subtitle,
       trend,
-      goal,
+      referenceLine: resolvedReference,
       bands,
       source,
       caption,
@@ -1276,9 +1314,16 @@ export function ColumnChart({
         await copyImageToClipboard(blob);
         onExport?.("copy", blob);
       },
-      focusBar: (index) => {
+      focusBar: (target) => {
         if (points.length === 0) return -1;
-        const clamped = Math.max(0, Math.min(points.length - 1, index));
+        let clamped: number;
+        if (typeof target === "string") {
+          const t = target.toLowerCase();
+          clamped = points.findIndex((p) => p.key.toLowerCase() === t);
+          if (clamped === -1) return -1; // unknown key — don't move focus
+        } else {
+          clamped = Math.max(0, Math.min(points.length - 1, target));
+        }
         setFocusIndex(clamped);
         // Defer DOM focus so the post-render barRefs map is up to date.
         if (typeof window !== "undefined") {
@@ -1295,7 +1340,7 @@ export function ColumnChart({
           0,
           Math.min(points.length - 1, focusIndexRef.current),
         );
-        return { index: i, point: toPublicPoint(points[i]) };
+        return { index: i, key: points[i].key, point: toPublicPoint(points[i]) };
       },
     }),
     // Closure captures the latest props/derived values on every render —
@@ -1311,11 +1356,11 @@ export function ColumnChart({
       effectiveLabelFormat,
       effectiveYAxisFormat,
       exportFileName,
-      goal,
       header?.subtitle,
       header?.title,
       max,
       allZero,
+      resolvedReference,
       onExport,
       patternStyle,
       points,
@@ -1450,7 +1495,6 @@ export function ColumnChart({
   } as CSSProperties;
   const animationEnabled = animation?.enabled !== false;
 
-  const showYTicks = !yAxis?.hideTicks;
   const showXTicks = !xAxis?.hideTicks;
   const hasYAxisTitle = !!yAxis?.title;
   const yAxisPaddingLeft = showYTicks ? 40 : 0;
@@ -1580,10 +1624,10 @@ export function ColumnChart({
                 gap={effectiveGap}
                 formatValue={effectiveFormatValue}
                 ariaLabel={accessibleDescription}
-                goal={goal}
+                referenceLine={resolvedReference}
                 barRadius={barRadius}
                 animationEnabled={animationEnabled}
-                showLabels={dataLabels?.show ?? false}
+                showLabels={showLabels}
                 labelFormat={effectiveLabelFormat}
                 patternStyle={patternStyle}
                 bands={bands}
@@ -2064,7 +2108,7 @@ function BarsGroup({
   gap,
   formatValue,
   ariaLabel,
-  goal,
+  referenceLine,
   barRadius,
   animationEnabled,
   showLabels,
@@ -2084,13 +2128,13 @@ function BarsGroup({
   max: number;
   allZero: boolean;
   gap: number;
-  formatValue: (v: number) => string;
+  formatValue: (v: number, d?: ColumnChartDataPoint) => string;
   ariaLabel: string;
-  goal?: ColumnChartGoal;
+  referenceLine?: { value: number; label?: string };
   barRadius: number;
   animationEnabled: boolean;
   showLabels: boolean;
-  labelFormat: (v: number) => string;
+  labelFormat: (v: number, d?: ColumnChartDataPoint) => string;
   patternStyle: ColumnChartPatternStyle;
   bands: readonly ColumnChartBand[] | undefined;
   focusIndex: number;
@@ -2164,7 +2208,10 @@ function BarsGroup({
   }
 
   const showGoal =
-    goal && Number.isFinite(goal.value) && goal.value > 0 && max > 0;
+    referenceLine &&
+    Number.isFinite(referenceLine.value) &&
+    referenceLine.value > 0 &&
+    max > 0;
 
   return (
     <div
@@ -2229,7 +2276,7 @@ function BarsGroup({
       ))}
 
       {showGoal && (
-        <GoalLine goal={goal} max={max} formatValue={formatValue} />
+        <ReferenceLineEl line={referenceLine} max={max} formatValue={formatValue} />
       )}
     </div>
   );
@@ -2262,18 +2309,22 @@ function Watermark({ text }: { text: string }) {
 }
 
 /**
- * Resolve an annotation `x` (number index or string label) against the
- * normalized points. Returns the matched index or `-1` if no match.
+ * Resolve an annotation `x` against the normalized points. A number is an
+ * INPUT-order index — the annotation travels with its datum through
+ * sort/topN. A string matches `key` first (defaults to label), then `label`.
+ * Returns the DISPLAY index, or `-1` when the datum is gone (collapsed into
+ * "Other" / filtered / out of range) — the caller warns in dev.
  */
 function resolveAnnotationIndex(
   x: number | string,
   points: NormalizedPoint[],
 ): number {
   if (typeof x === "number") {
-    if (x < 0 || x >= points.length) return -1;
-    return x;
+    return points.findIndex((p) => p.inputIndex === x);
   }
   const target = x.toLowerCase();
+  const byKey = points.findIndex((p) => p.key.toLowerCase() === target);
+  if (byKey !== -1) return byKey;
   return points.findIndex((p) => (p.label ?? "").toLowerCase() === target);
 }
 
@@ -2306,6 +2357,11 @@ function AnnotationsLayer({
     <>
       {annotations.map((annotation, i) => {
         const idx = resolveAnnotationIndex(annotation.x, points);
+        if (idx === -1 && process.env.NODE_ENV !== "production") {
+          console.warn(
+            `[brock-ui] ColumnChart: annotation x=${JSON.stringify(annotation.x)} matches no visible bar (collapsed into "Other", filtered, or out of range) and was skipped.`,
+          );
+        }
         if (idx < 0) return null;
         const xCenter = `calc((${idx} + 0.5) * (100% + ${gap}px) / ${total} - ${gap / 2}px)`;
         const yRatio = Math.max(0, Math.min(1, annotation.y / max));
@@ -2455,26 +2511,26 @@ function BandsOverlay({
   );
 }
 
-function GoalLine({
-  goal,
+function ReferenceLineEl({
+  line,
   max,
   formatValue,
 }: {
-  goal: ColumnChartGoal;
+  line: { value: number; label?: string };
   max: number;
-  formatValue: (v: number) => string;
+  formatValue: (v: number, d?: ColumnChartDataPoint) => string;
 }) {
-  const bottomPercent = (goal.value / max) * 100;
-  const labelText = goal.label
-    ? `${goal.label} · ${formatValue(goal.value)}`
-    : `Goal: ${formatValue(goal.value)}`;
+  const bottomPercent = (line.value / max) * 100;
+  const labelText = line.label
+    ? `${line.label} · ${formatValue(line.value)}`
+    : formatValue(line.value);
 
   return (
     <div
       className="pointer-events-none absolute right-0 left-0 z-[5] border-t border-dashed border-muted-foreground/50"
       style={{ bottom: `${bottomPercent}%` }}
       role="img"
-      aria-label={`${goal.label ?? "Goal"} reference line at ${formatValue(goal.value)}`}
+      aria-label={`${line.label ?? "Reference"} line at ${formatValue(line.value)}`}
     >
       <span className="absolute right-0 -top-2.5 bg-background px-1 font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground">
         {labelText}
@@ -2511,13 +2567,13 @@ function Bar({
   point: NormalizedPoint;
   max: number;
   allZero: boolean;
-  formatValue: (v: number) => string;
+  formatValue: (v: number, d?: ColumnChartDataPoint) => string;
   isTabStop: boolean;
   edge: EdgePosition;
   barRadius: number;
   animationEnabled: boolean;
   showLabel: boolean;
-  labelFormat: (v: number) => string;
+  labelFormat: (v: number, d?: ColumnChartDataPoint) => string;
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   onFocus: () => void;
   onClick?: (e: ReactMouseEvent<HTMLDivElement>) => void;
@@ -2532,9 +2588,10 @@ function Bar({
       ? 0
       : Math.max((point.value / max) * 100, 1);
 
+  const publicDatum = toPublicPoint(point);
   const accessibleName = point.label
-    ? `${point.label}: ${formatValue(point.value)}`
-    : `Bar ${index + 1}: ${formatValue(point.value)}`;
+    ? `${point.label}: ${formatValue(point.value, publicDatum)}`
+    : `Bar ${index + 1}: ${formatValue(point.value, publicDatum)}`;
 
   // Cursor hints affordance — only when a click handler is wired.
   const cursorClass = onClick ? "cursor-pointer" : "";
@@ -2572,7 +2629,7 @@ function Bar({
           className="pointer-events-none absolute right-0 left-0 -top-4 text-center font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground"
           aria-hidden
         >
-          {labelFormat(point.value)}
+          {labelFormat(point.value, publicDatum)}
         </span>
       )}
       <div
@@ -2624,7 +2681,7 @@ function Bar({
                     note: point.note,
                   }}
                   index={index}
-                  value={formatValue(point.value)}
+                  value={formatValue(point.value, publicDatum)}
                   label={point.label}
                   edge={edge}
                 />
@@ -2634,7 +2691,7 @@ function Bar({
         ) : (
           <Tooltip
             label={point.label}
-            value={formatValue(point.value)}
+            value={formatValue(point.value, publicDatum)}
             edge={edge}
             forceVisible={isTapActive}
           />
@@ -2726,7 +2783,7 @@ function DataTableSummary({
   caption,
 }: {
   points: NormalizedPoint[];
-  formatValue: (v: number) => string;
+  formatValue: (v: number, d?: ColumnChartDataPoint) => string;
   caption: string;
 }) {
   return (
@@ -2742,7 +2799,7 @@ function DataTableSummary({
         {points.map((p, i) => (
           <tr key={i}>
             <th scope="row">{p.label ?? `Bar ${i + 1}`}</th>
-            <td>{formatValue(p.value)}</td>
+            <td>{formatValue(p.value, toPublicPoint(p))}</td>
           </tr>
         ))}
       </tbody>

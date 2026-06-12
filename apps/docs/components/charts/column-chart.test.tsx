@@ -259,41 +259,40 @@ describe("ColumnChart — trend indicator", () => {
   });
 });
 
-describe("ColumnChart — goal line", () => {
-  it("renders goal line with label + value when both provided", () => {
+describe("ColumnChart — reference line", () => {
+  it("renders reference line with label + value when both provided", () => {
     render(
       <ColumnChart
         data={[100, 150, 200]}
-        goal={{ value: 180, label: "Q3 target" }}
+        referenceLine={{ value: 180, label: "Q3 target" }}
         formatValue={(v) => String(v)}
       />,
     );
     expect(screen.getByText(/Q3 target · 180/)).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/Q3 target reference line at 180/),
+      screen.getByLabelText(/Q3 target line at 180/),
     ).toBeInTheDocument();
   });
 
-  it("renders 'Goal: value' fallback when label omitted", () => {
+  it("renders the bare value when label omitted", () => {
     render(
       <ColumnChart
         data={[100]}
-        goal={{ value: 50 }}
+        referenceLine={{ value: 50 }}
         formatValue={(v) => String(v)}
       />,
     );
-    expect(screen.getByText(/Goal: 50/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Reference line at 50/)).toBeInTheDocument();
   });
 
-  it("includes goal in max calc so goal > data still renders bars correctly", () => {
+  it("includes the reference in max calc so ref > data still renders bars", () => {
     render(
       <ColumnChart
         data={[100]}
-        goal={{ value: 500, label: "Stretch" }}
+        referenceLine={{ value: 500, label: "Stretch" }}
         formatValue={(v) => String(v)}
       />,
     );
-    // Goal line present
     expect(screen.getByText(/Stretch · 500/)).toBeInTheDocument();
     // Bar still renders (would be at 100/500 = 20% height)
     expect(screen.getByRole("graphics-symbol")).toHaveAttribute(
@@ -302,22 +301,57 @@ describe("ColumnChart — goal line", () => {
     );
   });
 
-  it("skips goal line when value is 0, negative, or non-finite", () => {
-    const { rerender } = render(
-      <ColumnChart data={[100]} goal={{ value: 0 }} />,
+  it("computes stat: 'mean' over the ORIGINAL input (sort/topN must not move it)", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 10 },
+          { label: "B", value: 20 },
+          { label: "C", value: 30 },
+          { label: "D", value: 40 },
+        ]}
+        topN={2}
+        sort="desc"
+        referenceLine={{ value: { stat: "mean" } }}
+        formatValue={(v) => String(v)}
+      />,
     );
-    expect(screen.queryByText(/Goal/)).not.toBeInTheDocument();
-
-    rerender(<ColumnChart data={[100]} goal={{ value: -50 }} />);
-    expect(screen.queryByText(/Goal/)).not.toBeInTheDocument();
-
-    rerender(<ColumnChart data={[100]} goal={{ value: NaN }} />);
-    expect(screen.queryByText(/Goal/)).not.toBeInTheDocument();
+    // Mean of the INPUT (10+20+30+40)/4 = 25 — not of the displayed bars.
+    expect(screen.getByText(/Mean · 25/)).toBeInTheDocument();
   });
 
-  it("skips goal when no data renders (empty array)", () => {
-    render(<ColumnChart data={[]} goal={{ value: 100, label: "Target" }} />);
-    // Empty state shown instead — no goal line
+  it("computes stat: 'median' with even-count interpolation + custom label", () => {
+    render(
+      <ColumnChart
+        data={[10, 20, 30, 100]}
+        referenceLine={{ value: { stat: "median" }, label: "Typical week" }}
+        formatValue={(v) => String(v)}
+      />,
+    );
+    expect(screen.getByText(/Typical week · 25/)).toBeInTheDocument();
+  });
+
+  it("skips reference line when value is 0, negative, or non-finite", () => {
+    const { rerender } = render(
+      <ColumnChart data={[100]} referenceLine={{ value: 0, label: "Ref" }} />,
+    );
+    expect(screen.queryByText(/Ref/)).not.toBeInTheDocument();
+
+    rerender(
+      <ColumnChart data={[100]} referenceLine={{ value: -50, label: "Ref" }} />,
+    );
+    expect(screen.queryByText(/Ref/)).not.toBeInTheDocument();
+
+    rerender(
+      <ColumnChart data={[100]} referenceLine={{ value: NaN, label: "Ref" }} />,
+    );
+    expect(screen.queryByText(/Ref/)).not.toBeInTheDocument();
+  });
+
+  it("skips reference line when no data renders (empty array)", () => {
+    render(
+      <ColumnChart data={[]} referenceLine={{ value: 100, label: "Target" }} />,
+    );
     expect(screen.queryByText(/Target/)).not.toBeInTheDocument();
   });
 });
@@ -1177,7 +1211,7 @@ describe("toJSON / fromJSON", () => {
       accent: "#F54900",
       header: { title: "Active users", subtitle: "Last 7 days" },
       trend: 0.184,
-      goal: { value: 25, label: "Target" },
+      referenceLine: { value: 25, label: "Target" },
       source: "FT",
       caption: "Excludes weekends",
       watermark: "DRAFT",
@@ -1779,10 +1813,10 @@ describe("synthesizeSVG", () => {
     expect(svg).toContain('stroke="#0a0a0a"');
   });
 
-  it("renders a dashed goal line + labelled chip when goal is set", () => {
+  it("renders a dashed reference line + labelled chip when set", () => {
     const svg = synthesizeSVG(
       ctx({
-        goal: { value: 25, label: "Target" },
+        referenceLine: { value: 25, label: "Target" },
         max: 30,
       }),
     );
@@ -2106,11 +2140,13 @@ describe("ColumnChart — imperative focusBar / getSelection", () => {
     render(<FocusHarness refOut={refOut} />);
     expect(refOut.handle!.current!.getSelection()).toEqual({
       index: 0,
+      key: "A",
       point: expect.objectContaining({ label: "A", value: 10 }),
     });
     refOut.handle!.current!.focusBar(2);
     expect(refOut.handle!.current!.getSelection()).toEqual({
       index: 2,
+      key: "C",
       point: expect.objectContaining({ label: "C", value: 30 }),
     });
   });
@@ -2529,5 +2565,233 @@ describe("ColumnChart — touch tooltip (tap to pin)", () => {
     fireEvent.touchStart(bars[1]);
     expect(tooltipOf(bars[1]).classList.contains("flex")).toBe(true);
     expect(within(bars[1]).getByTestId("custom-tip")).toBeInTheDocument();
+  });
+});
+
+describe("ColumnChart — key addressing (C2)", () => {
+  const DATA = [
+    { label: "Jan", value: 30 },
+    { label: "Feb", value: 10 },
+    { label: "Mar", value: 20 },
+  ];
+
+  it("numeric annotation x is an INPUT index — travels with its datum through sort", () => {
+    render(
+      <ColumnChart
+        data={DATA}
+        sort="asc"
+        annotations={[{ x: 0, y: 28, text: "January spike" }]}
+      />,
+    );
+    // Jan (input index 0, value 30) is displayed LAST after asc sort,
+    // but the annotation still belongs to it.
+    expect(screen.getByText("January spike")).toBeInTheDocument();
+  });
+
+  it("string annotation x matches an explicit datum key", () => {
+    render(
+      <ColumnChart
+        data={[
+          { key: "q1-2026", label: "Q1", value: 10 },
+          { key: "q2-2026", label: "Q2", value: 20 },
+        ]}
+        annotations={[{ x: "q2-2026", y: 18, text: "record" }]}
+      />,
+    );
+    expect(screen.getByText("record")).toBeInTheDocument();
+  });
+
+  it("annotation pointing at a datum collapsed into 'Other' is dropped with a dev warning", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 50 },
+          { label: "B", value: 40 },
+          { label: "C", value: 1 },
+        ]}
+        topN={2}
+        annotations={[{ x: 2, y: 5, text: "ghost" }]}
+      />,
+    );
+    expect(screen.queryByText("ghost")).not.toBeInTheDocument();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("matches no visible bar"),
+    );
+    warn.mockRestore();
+  });
+
+  it("focusBar accepts a key and returns the display index", () => {
+    let api: ColumnChartHandle | undefined;
+    const Harness = () => {
+      const ref = useRef<ColumnChartHandle>(null);
+      return (
+        <>
+          <button onClick={() => (api = ref.current ?? undefined)}>grab</button>
+          <ColumnChart ref={ref} data={DATA} sort="asc" />
+        </>
+      );
+    };
+    render(<Harness />);
+    fireEvent.click(screen.getByText("grab"));
+    // asc order: Feb(10), Mar(20), Jan(30) — "jan" is display index 2.
+    expect(api!.focusBar("jan")).toBe(2);
+    const sel = api!.getSelection();
+    expect(sel?.key).toBe("Jan");
+    expect(sel?.point.label).toBe("Jan");
+  });
+
+  it("focusBar with an unknown key returns -1 without moving focus", () => {
+    let api: ColumnChartHandle | undefined;
+    const Harness = () => {
+      const ref = useRef<ColumnChartHandle>(null);
+      return (
+        <>
+          <button onClick={() => (api = ref.current ?? undefined)}>grab</button>
+          <ColumnChart ref={ref} data={DATA} />
+        </>
+      );
+    };
+    render(<Harness />);
+    fireEvent.click(screen.getByText("grab"));
+    expect(api!.focusBar("nope")).toBe(-1);
+  });
+
+  it("warns in dev about duplicate keys", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    render(
+      <ColumnChart
+        data={[
+          { label: "Jan", value: 10 },
+          { label: "Jan", value: 20 },
+        ]}
+      />,
+    );
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("duplicate key"),
+    );
+    warn.mockRestore();
+  });
+});
+
+describe("ColumnChart — meta passthrough (C2)", () => {
+  it("returns the original meta payload on callback datums", async () => {
+    const user = userEvent.setup();
+    const onBarClick = vi.fn();
+    const row = { id: 42, region: "KZ" };
+    render(
+      <ColumnChart
+        data={[{ label: "A", value: 10, meta: row }]}
+        onBarClick={onBarClick}
+      />,
+    );
+    await user.click(screen.getByRole("graphics-symbol"));
+    expect(onBarClick.mock.calls[0][0].meta).toBe(row);
+  });
+
+  it("meta survives sort and is absent when not provided", async () => {
+    const user = userEvent.setup();
+    const onBarClick = vi.fn();
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 30, meta: "a-meta" },
+          { label: "B", value: 10 },
+        ]}
+        sort="asc"
+        onBarClick={onBarClick}
+      />,
+    );
+    await user.click(screen.getByRole("graphics-symbol", { name: "A: 30" }));
+    expect(onBarClick.mock.calls[0][0].meta).toBe("a-meta");
+    await user.click(screen.getByRole("graphics-symbol", { name: "B: 10" }));
+    expect(onBarClick.mock.calls[1][0].meta).toBeUndefined();
+  });
+});
+
+describe("ColumnChart — dataLabels 'auto' (C2, editorial mode)", () => {
+  it("auto with <=8 bars shows labels and hides the Y axis", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20, 30]}
+        yAxisFormat={(v) => `TICK${v}`}
+        dataLabels={{ show: "auto", format: (v) => `LBL${v}` }}
+      />,
+    );
+    expect(screen.getByText("LBL30")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("TICK30");
+  });
+
+  it("auto with >8 bars shows no labels and keeps the Y axis", () => {
+    const data = Array.from({ length: 12 }, (_, i) => (i + 1) * 10);
+    const { container } = render(
+      <ColumnChart
+        data={data}
+        yAxisFormat={(v) => `TICK${v}`}
+        dataLabels={{ show: "auto", format: (v) => `LBL${v}` }}
+      />,
+    );
+    expect(screen.queryByText("LBL120")).not.toBeInTheDocument();
+    expect(container.textContent).toContain("TICK120");
+  });
+
+  it("explicit yAxis.hideTicks=false wins over auto-hide", () => {
+    const { container } = render(
+      <ColumnChart
+        data={[10, 20]}
+        yAxisFormat={(v) => `TICK${v}`}
+        yAxis={{ hideTicks: false }}
+        dataLabels={{ show: "auto" }}
+      />,
+    );
+    expect(container.textContent).toContain("TICK20");
+  });
+
+  it("'auto' survives the toJSON round-trip", () => {
+    const json = toJSON({ data: [1], dataLabels: { show: "auto" } });
+    expect(json.dataLabels?.show).toBe("auto");
+  });
+});
+
+describe("ColumnChart — formatValue(value, datum) (C2)", () => {
+  it("passes the public datum as the second formatter argument", () => {
+    const formatValue = vi.fn(
+      (v: number, d?: { label?: string }) => `${d?.label ?? "?"}=${v}`,
+    );
+    render(
+      <ColumnChart data={[{ label: "A", value: 10 }]} formatValue={formatValue} />,
+    );
+    expect(
+      screen.getByRole("graphics-symbol", { name: "A: A=10" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("renderToHTMLString — live-render parity (C2)", () => {
+  it("applies sort + topN from the JSON config (same transform as the live chart)", () => {
+    const html = renderToHTMLString({
+      $schema: COLUMN_CHART_JSON_SCHEMA,
+      data: [
+        { label: "A", value: 50 },
+        { label: "B", value: 5 },
+        { label: "C", value: 4 },
+      ],
+      sort: "desc",
+      topN: 1,
+    });
+    // Other = 9, pinned last, rendered muted (the default otherFill color).
+    expect(html).toContain("OTHER");
+    expect(html).toContain("#a1a1aa");
+  });
+
+  it("resolves a stat referenceLine against the input values", () => {
+    const html = renderToHTMLString({
+      $schema: COLUMN_CHART_JSON_SCHEMA,
+      data: [10, 20, 30],
+      referenceLine: { value: { stat: "mean" } },
+    });
+    // mean = 20 -> dashed line + auto "Mean" chip in the SVG.
+    expect(html).toContain('stroke-dasharray="4 2"');
+    expect(html).toContain("Mean");
   });
 });
