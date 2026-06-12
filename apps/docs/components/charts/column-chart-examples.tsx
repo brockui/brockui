@@ -152,6 +152,26 @@ export function ColumnChartExamples() {
       </ExampleCard>
 
       <ExampleCard
+        title="Profit & loss"
+        subtitle="negatives are first-class — bars grow down from the zero baseline"
+      >
+        <ColumnChart
+          data={[
+            { label: "JAN", value: 42 },
+            { label: "FEB", value: 18 },
+            { label: "MAR", value: -12 },
+            { label: "APR", value: -28 },
+            { label: "MAY", value: 9 },
+            { label: "JUN", value: 31 },
+          ]}
+          height={200}
+          referenceLine={{ value: { stat: "mean" } }}
+          numberFormat={{ prefix: "$", suffix: "k" }}
+          source="Brock Analytics — monthly P&L"
+        />
+      </ExampleCard>
+
+      <ExampleCard
         title="Top-N ranking"
         subtitle="sort='desc' + topN — the 'Other' aggregate stays muted and pinned last"
       >

@@ -157,8 +157,10 @@ export type SynthesisContext = {
   height: number;
   /** Bars data (already normalized — see normalize() in column-chart.tsx). */
   points: ExportPoint[];
-  /** Max value used for bar-height scaling (includes goal if needed). */
+  /** Max value used for bar-height scaling (includes the reference line). */
   max: number;
+  /** Min value (<= 0). Non-zero when the data has negatives — bars grow down. */
+  min: number;
   /** True if every value is zero — only the baseline is drawn. */
   allZero: boolean;
   /** Gap between bars in px. */
@@ -197,7 +199,6 @@ export type SynthesisContext = {
   headerSubtitle?: string;
   /** Trend percent (decimal, e.g. 0.184). Renders in the top-right corner. */
   trend?: number;
-  /** Goal line. */
   /** Reference line, already resolved to a numeric value by the caller. */
   referenceLine?: { value: number; label?: string };
   /** Plot bands. */
@@ -334,6 +335,32 @@ function topRoundedBarPath(
 }
 
 /**
+ * Mirror of topRoundedBarPath for NEGATIVE bars — rounds the bottom corners,
+ * top edge stays flat (anchored to the zero baseline).
+ */
+function bottomRoundedBarPath(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): string {
+  const safe = Math.min(r, w / 2, h);
+  if (safe <= 0) {
+    return `M ${r2(x)} ${r2(y)} h ${r2(w)} v ${r2(h)} h ${r2(-w)} Z`;
+  }
+  return [
+    `M ${r2(x)} ${r2(y)}`,
+    `L ${r2(x + w)} ${r2(y)}`,
+    `L ${r2(x + w)} ${r2(y + h - safe)}`,
+    `Q ${r2(x + w)} ${r2(y + h)} ${r2(x + w - safe)} ${r2(y + h)}`,
+    `L ${r2(x + safe)} ${r2(y + h)}`,
+    `Q ${r2(x)} ${r2(y + h)} ${r2(x)} ${r2(y + h - safe)}`,
+    `Z`,
+  ].join(" ");
+}
+
+/**
  * Synthesize a standalone, self-contained SVG string of the chart.
  *
  * The output uses no external fonts (system fallbacks are listed) and no CSS
@@ -356,6 +383,7 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
     border,
     background,
     yTicks,
+    min,
     yAxisFormat,
     labelFormat,
     showLabels,
@@ -407,6 +435,11 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
   const barsTop = headerHeight + headerPad + notesPad + labelsPad;
   const barsBottom = height - sourceHeight - xAxisLabelHeight - xAxisTitleHeight;
   const barsAreaHeight = Math.max(20, barsBottom - barsTop);
+  // Zero baseline: with negatives the axis line moves up from the bottom edge.
+  // range = max - min; when min === 0 baselineY === barsBottom (unchanged).
+  const range = max - min;
+  const baselineY =
+    range > 0 ? barsTop + (max / range) * barsAreaHeight : barsBottom;
   const barsLeft = yAxisTotalWidth;
   const barsAreaWidth = Math.max(20, width - barsLeft);
 
@@ -468,12 +501,15 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
   // Y-axis ticks (right-aligned at axis edge)
   if (showYTicks) {
     yTicks.forEach((tick, i) => {
+      // Position by value so the 0-tick sits exactly on the baseline when the
+      // scale spans negatives. (For the all-positive [max, mid, 0] scale this
+      // is identical to even spacing.)
+      const rawY =
+        range > 0
+          ? barsTop + ((max - tick) / range) * barsAreaHeight
+          : barsBottom;
       const tickY =
-        i === 0
-          ? barsTop + 4
-          : i === yTicks.length - 1
-            ? barsBottom - 2
-            : barsTop + (barsAreaHeight * i) / (yTicks.length - 1) + 4;
+        i === 0 ? rawY + 4 : i === yTicks.length - 1 ? rawY - 2 : rawY + 4;
       parts.push(
         `<text x="${r2(barsLeft - 6)}" y="${r2(tickY)}" text-anchor="end" font-family="${monoFont}" font-size="10" font-variant-numeric="tabular-nums" fill="${muted}">${escapeXml(yAxisFormat(tick))}</text>`,
       );
@@ -484,9 +520,10 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
     );
   }
 
-  // Baseline (X-axis)
+  // Baseline (X-axis) — drawn at the ZERO line, which equals the bottom edge
+  // only when the data has no negatives.
   parts.push(
-    `<line x1="${r2(barsLeft)}" y1="${r2(barsBottom)}" x2="${r2(width)}" y2="${r2(barsBottom)}" stroke="${border}" stroke-width="1"/>`,
+    `<line x1="${r2(barsLeft)}" y1="${r2(baselineY)}" x2="${r2(width)}" y2="${r2(baselineY)}" stroke="${border}" stroke-width="1"/>`,
   );
 
   // Watermark — diagonal text at low opacity, drawn BEFORE bars/bands so
@@ -528,13 +565,19 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
       const patternId = useHatched ? ensurePattern(fillColor) : null;
 
       const x = barsLeft + i * (barWidth + gap);
+      const isNegative = point.value < 0;
       const ratio =
-        max > 0 ? Math.max(point.value / max, point.value > 0 ? 0.01 : 0) : 0;
+        range > 0
+          ? Math.max(Math.abs(point.value) / range, point.value !== 0 ? 0.01 : 0)
+          : 0;
       const h = ratio * barsAreaHeight;
-      const y = barsBottom - h;
+      // Positive bars grow up from the baseline; negative bars grow down.
+      const y = isNegative ? baselineY : baselineY - h;
 
       const fill = useHatched ? `url(#${patternId})` : fillColor;
-      const path = topRoundedBarPath(x, y, barWidth, h, barRadius);
+      const path = isNegative
+        ? bottomRoundedBarPath(x, y, barWidth, h, barRadius)
+        : topRoundedBarPath(x, y, barWidth, h, barRadius);
       const strokeAttr = useHatched
         ? ` stroke="${fillColor}" stroke-width="1"`
         : "";
@@ -542,28 +585,30 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
 
       // Highlight outline (2px foreground)
       if (point.highlight) {
-        const hpath = topRoundedBarPath(
-          x - 1,
-          y - 1,
-          barWidth + 2,
-          h + 1,
-          barRadius + 1,
-        );
+        const hpath = isNegative
+          ? bottomRoundedBarPath(x - 1, y, barWidth + 2, h + 1, barRadius + 1)
+          : topRoundedBarPath(x - 1, y - 1, barWidth + 2, h + 1, barRadius + 1);
         parts.push(
           `<path d="${hpath}" fill="none" stroke="${foreground}" stroke-width="2"/>`,
         );
       }
 
-      // Inline data label above bar
-      if (showLabels && point.value > 0) {
+      // Inline data label at the OUTER end of the bar (above for positive,
+      // below for negative — the Datawrapper convention).
+      if (showLabels && point.value !== 0) {
+        const labelY = isNegative ? y + h + 12 : y - 4;
         parts.push(
-          `<text x="${r2(x + barWidth / 2)}" y="${r2(y - 4)}" text-anchor="middle" font-family="${monoFont}" font-size="10" font-variant-numeric="tabular-nums" fill="${muted}">${escapeXml(labelFormat(point.value))}</text>`,
+          `<text x="${r2(x + barWidth / 2)}" y="${r2(labelY)}" text-anchor="middle" font-family="${monoFont}" font-size="10" font-variant-numeric="tabular-nums" fill="${muted}">${escapeXml(labelFormat(point.value))}</text>`,
         );
       }
 
-      // Note above bar (sits above data label if present)
-      if (point.note && point.value > 0) {
-        const noteY = showLabels ? y - 18 : y - 4;
+      // Note at the outer end (sits beyond the data label if present)
+      if (point.note && point.value !== 0) {
+        const noteY = isNegative
+          ? y + h + (showLabels ? 26 : 12)
+          : showLabels
+            ? y - 18
+            : y - 4;
         parts.push(
           `<text x="${r2(x + barWidth / 2)}" y="${r2(noteY)}" text-anchor="middle" font-family="${monoFont}" font-size="10" letter-spacing="0.06em" fill="${foreground}">${escapeXml(point.note)}</text>`,
         );
@@ -578,8 +623,9 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
       const idx = resolveAnnotationIndexForExport(annotation.x, points);
       if (idx < 0) continue;
       const xCenter = barsLeft + idx * (barWidth + gap) + barWidth / 2;
-      const yRatio = Math.max(0, Math.min(1, annotation.y / max));
-      const yPoint = barsBottom - yRatio * barsAreaHeight;
+      const yRatio =
+        range > 0 ? Math.max(0, Math.min(1, (max - annotation.y) / range)) : 1;
+      const yPoint = barsTop + yRatio * barsAreaHeight;
       const anchor = annotation.anchor ?? "top";
       const cardColor = annotation.color ?? foreground;
       // Approximate card width — 5.5px per char + 8px padding for the chip.
@@ -657,13 +703,9 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
   }
 
   // Goal line (drawn on top of bars)
-  if (
-    referenceLine &&
-    Number.isFinite(referenceLine.value) &&
-    referenceLine.value > 0 &&
-    max > 0
-  ) {
-    const goalY = barsBottom - (referenceLine.value / max) * barsAreaHeight;
+  if (referenceLine && Number.isFinite(referenceLine.value) && range > 0) {
+    const goalY =
+      barsTop + ((max - referenceLine.value) / range) * barsAreaHeight;
     parts.push(
       `<line x1="${r2(barsLeft)}" y1="${r2(goalY)}" x2="${r2(width)}" y2="${r2(goalY)}" stroke="${muted}" stroke-width="1" stroke-dasharray="4 2"/>`,
     );
@@ -1172,7 +1214,7 @@ export function renderToHTMLString(
         inputIndex: i,
       };
     })
-    .filter((p) => Number.isFinite(p.value) && p.value >= 0);
+    .filter((p) => Number.isFinite(p.value));
 
   const topNConfig = resolveTopNConfig(input.topN);
   const exportPoints = transformDataPoints(
@@ -1211,14 +1253,27 @@ export function renderToHTMLString(
     : undefined;
 
   const dataMax = exportPoints.reduce((m, p) => Math.max(m, p.value), 0);
+  const dataMin = exportPoints.reduce((m, p) => Math.min(m, p.value), 0);
+  const refValue =
+    referenceLine && Number.isFinite(referenceLine.value)
+      ? referenceLine.value
+      : undefined;
   const refBased =
-    referenceLine && Number.isFinite(referenceLine.value) && referenceLine.value > 0
-      ? Math.max(dataMax, referenceLine.value)
+    refValue !== undefined && refValue > 0
+      ? Math.max(dataMax, refValue)
       : dataMax;
   const max =
     input.yAxis?.max !== undefined ? Math.max(input.yAxis.max, refBased) : refBased;
-  const allZero = max === 0;
-  const yTicks = allZero ? [0] : [max, Math.round(max / 2), 0];
+  const min =
+    refValue !== undefined && refValue < 0
+      ? Math.min(dataMin, refValue)
+      : dataMin;
+  const allZero = max === 0 && min === 0;
+  const yTicks = allZero
+    ? [0]
+    : min < 0
+      ? [max, 0, min]
+      : [max, Math.round(max / 2), 0];
 
   // dataLabels "auto": direct labels + hidden Y axis for small N — same
   // editorial rule as the live chart.
@@ -1242,6 +1297,7 @@ export function renderToHTMLString(
     height,
     points: exportPoints,
     max,
+    min,
     allZero,
     gap: input.gap ?? 4,
     barRadius: input.barRadius ?? 0,

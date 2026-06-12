@@ -97,7 +97,12 @@ export type ColumnChartPatternStyle =
 export type ColumnChartDataPoint = {
   /** X-axis label (rendered in Departure Mono pixel font). Optional. */
   label?: string;
-  /** Y-axis value. Negative values are clamped to 0 (use Diverging Bar Chart for ±). */
+  /**
+   * Y-axis value. Negative values are first-class: bars grow DOWN from an
+   * always-visible zero baseline (profit/loss, YoY change, anomalies — the
+   * data-journalism staple). Silently distorting them would violate the
+   * library's honesty thesis.
+   */
   value: number;
   /**
    * Fill pattern override for this specific bar. When omitted, falls back to the
@@ -962,7 +967,6 @@ function normalize(
         inputIndex: i,
       }));
 
-  let negativeCount = 0;
   let invalidCount = 0;
 
   const cleaned: NormalizedPoint[] = [];
@@ -975,25 +979,13 @@ function normalize(
       invalidCount += 1;
       continue;
     }
-    if (point.value < 0) {
-      negativeCount += 1;
-      cleaned.push({ ...point, value: 0 });
-    } else {
-      cleaned.push(point);
-    }
+    cleaned.push(point);
   }
 
-  if (process.env.NODE_ENV !== "production") {
-    if (invalidCount > 0) {
-      console.warn(
-        `[brock-ui] ColumnChart: skipped ${invalidCount} non-finite value(s) (NaN/Infinity).`,
-      );
-    }
-    if (negativeCount > 0) {
-      console.warn(
-        `[brock-ui] ColumnChart: clamped ${negativeCount} negative value(s) to 0. For positive+negative data use Diverging Bar Chart (coming).`,
-      );
-    }
+  if (process.env.NODE_ENV !== "production" && invalidCount > 0) {
+    console.warn(
+      `[brock-ui] ColumnChart: skipped ${invalidCount} non-finite value(s) (NaN/Infinity).`,
+    );
   }
 
   // Duplicate keys break string addressing (annotations / focusBar match the
@@ -1147,11 +1139,16 @@ export function ColumnChart({
   // ─── Derived values (lifted above the state machine so the imperative
   //     export API can synthesize an SVG even from loading/error/empty). ───
   const dataMax = points.reduce((m, p) => Math.max(m, p.value), 0);
+  const dataMin = points.reduce((m, p) => Math.min(m, p.value), 0);
+  // The reference line participates in the scale on BOTH sides so it always
+  // stays visible — a positive ref extends the top, a negative one the bottom.
+  const refValue =
+    resolvedReference && Number.isFinite(resolvedReference.value)
+      ? resolvedReference.value
+      : undefined;
   const refBased =
-    resolvedReference &&
-    Number.isFinite(resolvedReference.value) &&
-    resolvedReference.value > 0
-      ? Math.max(dataMax, resolvedReference.value)
+    refValue !== undefined && refValue > 0
+      ? Math.max(dataMax, refValue)
       : dataMax;
   // yAxis.max is extend-only: a max below the data would clip bars (the
   // truncated-bar lie). Ignore + warn instead of silently distorting.
@@ -1166,9 +1163,19 @@ export function ColumnChart({
       `[brock-ui] ColumnChart: yAxis.max (${yAxis.max}) is below the data/reference max (${refBased}) and was ignored — a clipped baseline-zero chart would distort bar lengths. yAxis.max can only extend the scale.`,
     );
   }
-  const allZero = max === 0;
+  const min =
+    refValue !== undefined && refValue < 0
+      ? Math.min(dataMin, refValue)
+      : dataMin;
+  const allZero = max === 0 && min === 0;
   const effectiveGap = points.length > 60 ? Math.max(1, gap - 2) : gap;
-  const yTicks = allZero ? [0] : [max, Math.round(max / 2), 0];
+  // Tufte-sparse ticks: [max, mid, 0] normally; [max, 0, min] with negatives
+  // (the 0-tick then sits exactly on the baseline).
+  const yTicks = allZero
+    ? [0]
+    : min < 0
+      ? [max, 0, min]
+      : [max, Math.round(max / 2), 0];
   // dataLabels "auto" — the editorial mode: direct labels for small N, and the
   // Y axis hides (redundant ink once every value is printed). An explicit
   // yAxis.hideTicks always wins.
@@ -1216,6 +1223,7 @@ export function ColumnChart({
       height,
       points: exportPoints,
       max,
+      min,
       allZero,
       gap: effectiveGap,
       barRadius,
@@ -1602,7 +1610,12 @@ export function ColumnChart({
         )}
         {showYTicks && (
           <div style={{ height }}>
-            <YAxis ticks={yTicks} format={effectiveYAxisFormat} />
+            <YAxis
+              ticks={yTicks}
+              max={max}
+              min={min}
+              format={effectiveYAxisFormat}
+            />
           </div>
         )}
 
@@ -1620,6 +1633,7 @@ export function ColumnChart({
               <BarsGroup
                 points={points}
                 max={max}
+                min={min}
                 allZero={allZero}
                 gap={effectiveGap}
                 formatValue={effectiveFormatValue}
@@ -2058,21 +2072,40 @@ function TrendIndicator({ value }: { value: number }) {
 
 function YAxis({
   ticks,
+  max,
+  min,
   format,
 }: {
   ticks: number[];
+  max: number;
+  min: number;
   format: (v: number) => string;
 }) {
+  // Ticks are positioned by VALUE so the 0-tick sits exactly on the zero
+  // baseline when the scale spans negatives. For the all-positive
+  // [max, mid, 0] scale this is identical to even spacing.
+  const range = max - min;
   return (
     <div
-      className="flex w-10 shrink-0 flex-col justify-between border-r border-border pr-2 font-mono text-[10px] tabular-nums text-muted-foreground/60"
+      className="relative h-full w-10 shrink-0 border-r border-border pr-2 font-mono text-[10px] tabular-nums text-muted-foreground/60"
       aria-hidden
     >
-      {ticks.map((tick) => (
-        <div key={tick} className="text-right leading-none">
-          {format(tick)}
-        </div>
-      ))}
+      {ticks.map((tick) => {
+        const pct = range > 0 ? ((max - tick) / range) * 100 : 100;
+        // Edge ticks hug the chart edges (top tick hangs down, bottom tick
+        // sits up) — mirrors the old justify-between alignment.
+        const translate =
+          pct <= 0 ? "0" : pct >= 100 ? "-100%" : "-50%";
+        return (
+          <div
+            key={tick}
+            className="absolute right-2 left-0 text-right leading-none"
+            style={{ top: `${pct}%`, transform: `translateY(${translate})` }}
+          >
+            {format(tick)}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -2104,6 +2137,7 @@ function ScrollableBarsArea({
 function BarsGroup({
   points,
   max,
+  min,
   allZero,
   gap,
   formatValue,
@@ -2126,6 +2160,7 @@ function BarsGroup({
 }: {
   points: NormalizedPoint[];
   max: number;
+  min: number;
   allZero: boolean;
   gap: number;
   formatValue: (v: number, d?: ColumnChartDataPoint) => string;
@@ -2208,21 +2243,31 @@ function BarsGroup({
   }
 
   const showGoal =
-    referenceLine &&
-    Number.isFinite(referenceLine.value) &&
-    referenceLine.value > 0 &&
-    max > 0;
+    referenceLine && Number.isFinite(referenceLine.value) && !allZero;
+
+  // Zero baseline: with negatives the 1px axis line moves up from the bottom
+  // edge to the zero position; the container's bottom edge goes quiet.
+  const hasNegative = min < 0;
+  const range = max - min;
+  const baselineTopPct = hasNegative && range > 0 ? (max / range) * 100 : 100;
 
   return (
     <div
-      className={`brock-bars brock-bars-pattern-${patternStyle} relative flex flex-1 items-end border-b border-border ${
-        animationEnabled ? "brock-bars-animated" : ""
-      }`}
+      className={`brock-bars brock-bars-pattern-${patternStyle} relative flex flex-1 items-end ${
+        hasNegative ? "" : "border-b border-border"
+      } ${animationEnabled ? "brock-bars-animated" : ""}`}
       style={{ gap }}
       role="img"
       aria-label={ariaLabel}
       onMouseLeave={onBarHover ? () => onBarHover(null, null) : undefined}
     >
+      {hasNegative && (
+        <div
+          className="pointer-events-none absolute right-0 left-0 z-[1] border-t border-border"
+          style={{ top: `${baselineTopPct}%` }}
+          aria-hidden
+        />
+      )}
       {bands && bands.length > 0 && (
         <BandsOverlay bands={bands} total={total} gap={gap} />
       )}
@@ -2234,6 +2279,7 @@ function BarsGroup({
           total={total}
           gap={gap}
           max={max}
+          min={min}
         />
       )}
 
@@ -2246,6 +2292,7 @@ function BarsGroup({
           index={i}
           point={point}
           max={max}
+          min={min}
           allZero={allZero}
           formatValue={formatValue}
           isTabStop={i === focusIndex}
@@ -2276,7 +2323,12 @@ function BarsGroup({
       ))}
 
       {showGoal && (
-        <ReferenceLineEl line={referenceLine} max={max} formatValue={formatValue} />
+        <ReferenceLineEl
+          line={referenceLine}
+          max={max}
+          min={min}
+          formatValue={formatValue}
+        />
       )}
     </div>
   );
@@ -2345,14 +2397,17 @@ function AnnotationsLayer({
   total,
   gap,
   max,
+  min,
 }: {
   annotations: readonly ColumnChartAnnotation[];
   points: NormalizedPoint[];
   total: number;
   gap: number;
   max: number;
+  min: number;
 }) {
-  if (total <= 0 || max <= 0) return null;
+  const range = max - min;
+  if (total <= 0 || range <= 0) return null;
   return (
     <>
       {annotations.map((annotation, i) => {
@@ -2364,8 +2419,13 @@ function AnnotationsLayer({
         }
         if (idx < 0) return null;
         const xCenter = `calc((${idx} + 0.5) * (100% + ${gap}px) / ${total} - ${gap / 2}px)`;
-        const yRatio = Math.max(0, Math.min(1, annotation.y / max));
-        const yPct = `${(1 - yRatio) * 100}%`;
+        // Value-based mapping across the full [min..max] range — negative y
+        // annotates below the baseline.
+        const yRatio = Math.max(
+          0,
+          Math.min(1, (max - annotation.y) / range),
+        );
+        const yPct = `${yRatio * 100}%`;
         const anchor = annotation.anchor ?? "top";
         const cardColor = annotation.color ?? "var(--foreground)";
 
@@ -2514,13 +2574,16 @@ function BandsOverlay({
 function ReferenceLineEl({
   line,
   max,
+  min,
   formatValue,
 }: {
   line: { value: number; label?: string };
   max: number;
+  min: number;
   formatValue: (v: number, d?: ColumnChartDataPoint) => string;
 }) {
-  const bottomPercent = (line.value / max) * 100;
+  const range = max - min;
+  const topPercent = range > 0 ? ((max - line.value) / range) * 100 : 0;
   const labelText = line.label
     ? `${line.label} · ${formatValue(line.value)}`
     : formatValue(line.value);
@@ -2528,7 +2591,7 @@ function ReferenceLineEl({
   return (
     <div
       className="pointer-events-none absolute right-0 left-0 z-[5] border-t border-dashed border-muted-foreground/50"
-      style={{ bottom: `${bottomPercent}%` }}
+      style={{ top: `${topPercent}%` }}
       role="img"
       aria-label={`${line.label ?? "Reference"} line at ${formatValue(line.value)}`}
     >
@@ -2546,6 +2609,7 @@ function Bar({
   index,
   point,
   max,
+  min,
   allZero,
   formatValue,
   isTabStop,
@@ -2566,6 +2630,7 @@ function Bar({
   index: number;
   point: NormalizedPoint;
   max: number;
+  min: number;
   allZero: boolean;
   formatValue: (v: number, d?: ColumnChartDataPoint) => string;
   isTabStop: boolean;
@@ -2582,11 +2647,19 @@ function Bar({
   onTap: () => void;
   tooltipSlot?: ComponentType<ColumnChartTooltipSlotProps>;
 }) {
-  const barHeight = allZero
-    ? 0
-    : point.value === 0
+  // Two-sided geometry: positive bars hang DOWN-from-top to the baseline
+  // (top = (max - v) / range), negative bars start AT the baseline and grow
+  // down by |v| / range. With min === 0 this is pixel-identical to the old
+  // bottom-anchored layout.
+  const range = max - min;
+  const isNegative = point.value < 0;
+  const barHeight =
+    allZero || point.value === 0 || range <= 0
       ? 0
-      : Math.max((point.value / max) * 100, 1);
+      : Math.max((Math.abs(point.value) / range) * 100, 1);
+  const baselinePct = range > 0 ? (max / range) * 100 : 100;
+  const barTopPct = isNegative ? baselinePct : baselinePct - barHeight;
+  const barEndPct = barTopPct + barHeight;
 
   const publicDatum = toPublicPoint(point);
   const accessibleName = point.label
@@ -2616,24 +2689,38 @@ function Bar({
       onMouseEnter={onMouseEnter}
       onTouchStart={onTap}
     >
-      {point.note && !allZero && point.value > 0 && (
+      {point.note && !allZero && point.value !== 0 && (
         <span
-          className="pointer-events-none absolute right-0 left-0 -top-9 text-center font-mono text-[10px] tracking-wider whitespace-nowrap text-foreground"
+          className={`pointer-events-none absolute right-0 left-0 text-center font-mono text-[10px] tracking-wider whitespace-nowrap text-foreground ${
+            isNegative ? "" : "-top-9"
+          }`}
+          style={
+            isNegative
+              ? { top: `calc(${barEndPct}% + ${showLabel ? 18 : 4}px)` }
+              : undefined
+          }
           aria-hidden
         >
           {point.note}
         </span>
       )}
-      {showLabel && !allZero && point.value > 0 && (
+      {showLabel && !allZero && point.value !== 0 && (
         <span
-          className="pointer-events-none absolute right-0 left-0 -top-4 text-center font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground"
+          className={`pointer-events-none absolute right-0 left-0 text-center font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground ${
+            isNegative ? "" : "-top-4"
+          }`}
+          style={
+            isNegative ? { top: `calc(${barEndPct}% + 2px)` } : undefined
+          }
           aria-hidden
         >
           {labelFormat(point.value, publicDatum)}
         </span>
       )}
       <div
-        className={`brock-bar w-full transition-[filter] duration-150 group-hover/bar:brightness-110 group-focus/bar:brightness-110 ${
+        className={`brock-bar absolute inset-x-0 transition-[filter] duration-150 group-hover/bar:brightness-110 group-focus/bar:brightness-110 ${
+          isNegative ? "brock-bar-neg" : ""
+        } ${
           point.pattern === "hatched"
             ? "brock-bar-hatched"
             : point.color
@@ -2644,10 +2731,21 @@ function Bar({
         } ${point.highlight ? "brock-bar-highlighted" : ""}`}
         style={
           {
+            top: `${barTopPct}%`,
             height: `${barHeight}%`,
             animationDelay: animationEnabled ? `${index * 30}ms` : undefined,
-            borderTopLeftRadius: barRadius > 0 ? barRadius : undefined,
-            borderTopRightRadius: barRadius > 0 ? barRadius : undefined,
+            // Corners round at the OUTER end: top for positive bars,
+            // bottom for negative ones (anchored to the baseline).
+            ...(isNegative
+              ? {
+                  borderBottomLeftRadius: barRadius > 0 ? barRadius : undefined,
+                  borderBottomRightRadius:
+                    barRadius > 0 ? barRadius : undefined,
+                }
+              : {
+                  borderTopLeftRadius: barRadius > 0 ? barRadius : undefined,
+                  borderTopRightRadius: barRadius > 0 ? barRadius : undefined,
+                }),
             // Per-bar color: overrides --brock-accent (so hatched fills + outline
             // pick it up via CSS var) and sets backgroundColor for solid fills.
             ...(point.color
@@ -2816,6 +2914,15 @@ function BarAnimationStyles() {
       @keyframes brock-bar-rise {
         from { transform: scaleY(0); transform-origin: bottom; }
         to   { transform: scaleY(1); transform-origin: bottom; }
+      }
+      /* Negative bars are anchored to the zero baseline at their TOP edge,
+         so the rise animation mirrors: they grow downward. */
+      .brock-bars-animated .brock-bar-neg {
+        animation-name: brock-bar-fall;
+      }
+      @keyframes brock-bar-fall {
+        from { transform: scaleY(0); transform-origin: top; }
+        to   { transform: scaleY(1); transform-origin: top; }
       }
       @media (prefers-reduced-motion: reduce) {
         .brock-bars-animated .brock-bar { animation: none; }

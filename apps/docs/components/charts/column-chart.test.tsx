@@ -90,15 +90,13 @@ describe("ColumnChart — empty + edge cases", () => {
     spy.mockRestore();
   });
 
-  it("clamps negative values to 0 with console.warn", () => {
+  it("renders negative values honestly (no clamping, no warning)", () => {
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
     render(<ColumnChart data={[10, -5, 20]} />);
     const bars = screen.getAllByRole("graphics-symbol");
     expect(bars).toHaveLength(3);
-    expect(bars[1]).toHaveAttribute("aria-label", "Bar 2: 0");
-    expect(spy).toHaveBeenCalledWith(
-      expect.stringContaining("clamped 1 negative value(s)"),
-    );
+    expect(bars[1]).toHaveAttribute("aria-label", "Bar 2: -5");
+    expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
 
@@ -331,18 +329,29 @@ describe("ColumnChart — reference line", () => {
     expect(screen.getByText(/Typical week · 25/)).toBeInTheDocument();
   });
 
-  it("skips reference line when value is 0, negative, or non-finite", () => {
+  it("renders 0 and negative reference values (break-even / loss thresholds)", () => {
     const { rerender } = render(
-      <ColumnChart data={[100]} referenceLine={{ value: 0, label: "Ref" }} />,
+      <ColumnChart
+        data={[100]}
+        referenceLine={{ value: 0, label: "Break-even" }}
+        formatValue={(v) => String(v)}
+      />,
     );
-    expect(screen.queryByText(/Ref/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Break-even · 0/)).toBeInTheDocument();
 
+    // A negative reference extends the scale below zero so it stays visible.
     rerender(
-      <ColumnChart data={[100]} referenceLine={{ value: -50, label: "Ref" }} />,
+      <ColumnChart
+        data={[100]}
+        referenceLine={{ value: -50, label: "Floor" }}
+        formatValue={(v) => String(v)}
+      />,
     );
-    expect(screen.queryByText(/Ref/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Floor · -50/)).toBeInTheDocument();
+  });
 
-    rerender(
+  it("skips the reference line when its value is non-finite", () => {
+    render(
       <ColumnChart data={[100]} referenceLine={{ value: NaN, label: "Ref" }} />,
     );
     expect(screen.queryByText(/Ref/)).not.toBeInTheDocument();
@@ -1711,6 +1720,7 @@ function ctx(overrides: Partial<SynthesisContext> = {}): SynthesisContext {
     height: 400,
     points,
     max: 30,
+    min: 0,
     allZero: false,
     gap: 4,
     barRadius: 2,
@@ -2793,5 +2803,149 @@ describe("renderToHTMLString — live-render parity (C2)", () => {
     // mean = 20 -> dashed line + auto "Mean" chip in the SVG.
     expect(html).toContain('stroke-dasharray="4 2"');
     expect(html).toContain("Mean");
+  });
+});
+
+describe("ColumnChart — negative values (C1.1, two-sided baseline)", () => {
+  const PNL = [
+    { label: "JAN", value: 40 },
+    { label: "FEB", value: -25 },
+    { label: "MAR", value: 10 },
+  ];
+
+  it("renders negative bars with the downward brock-bar-neg class", () => {
+    const { container } = render(<ColumnChart data={PNL} />);
+    const neg = container.querySelectorAll(".brock-bar-neg");
+    expect(neg.length).toBe(1);
+    expect(
+      neg[0].closest('[role="graphics-symbol"]')?.getAttribute("aria-label"),
+    ).toBe("FEB: -25");
+  });
+
+  it("draws the zero baseline as an inner line and drops the bottom border", () => {
+    const { container } = render(<ColumnChart data={PNL} />);
+    const bars = container.querySelector(".brock-bars") as HTMLElement;
+    expect(bars.className).not.toContain("border-b");
+    // The dedicated zero-line element is present at max/range from the top.
+    const zeroLine = bars.querySelector(".border-t.border-border") as HTMLElement;
+    expect(zeroLine).toBeTruthy();
+    // range = 40 - (-25) = 65; baseline at 40/65 ≈ 61.5%.
+    expect(zeroLine.style.top).toMatch(/^61\.5/);
+  });
+
+  it("keeps the classic bottom border when no negatives exist", () => {
+    const { container } = render(<ColumnChart data={[10, 20]} />);
+    const bars = container.querySelector(".brock-bars") as HTMLElement;
+    expect(bars.className).toContain("border-b");
+  });
+
+  it("positions bars by |value| / range on both sides of the baseline", () => {
+    const { container } = render(<ColumnChart data={PNL} />);
+    const barEls = container.querySelectorAll(".brock-bar");
+    // JAN: top = (40-40)/65 = 0%, height = 40/65 ≈ 61.5%
+    expect((barEls[0] as HTMLElement).style.top).toMatch(/^0/);
+    expect((barEls[0] as HTMLElement).style.height).toMatch(/^61\.5/);
+    // FEB (negative): starts AT the baseline, height = 25/65 ≈ 38.4%
+    expect((barEls[1] as HTMLElement).style.top).toMatch(/^61\.5/);
+    expect((barEls[1] as HTMLElement).style.height).toMatch(/^38\.4/);
+  });
+
+  it("shows [max, 0, min] Y ticks when negatives are present", () => {
+    render(
+      <ColumnChart data={PNL} yAxisFormat={(v) => `T${v}`} />,
+    );
+    expect(screen.getByText("T40")).toBeInTheDocument();
+    expect(screen.getByText("T0")).toBeInTheDocument();
+    expect(screen.getByText("T-25")).toBeInTheDocument();
+  });
+
+  it("renders all-negative data below a top baseline", () => {
+    const { container } = render(<ColumnChart data={[-10, -30, -20]} />);
+    // max = 0 → baseline at the very top; every bar grows down.
+    expect(container.querySelectorAll(".brock-bar-neg").length).toBe(3);
+    const bars = screen.getAllByRole("graphics-symbol");
+    expect(bars[1].getAttribute("aria-label")).toBe("Bar 2: -30");
+  });
+
+  it("renders value labels below negative bar ends", () => {
+    const { container } = render(
+      <ColumnChart
+        data={PNL}
+        dataLabels={{ show: true, format: (v) => `L${v}` }}
+      />,
+    );
+    expect(screen.getByText("L-25")).toBeInTheDocument();
+    // Negative label is positioned with an inline top (below the bar end),
+    // not the -top-4 chart-top class.
+    const negLabel = screen.getByText("L-25");
+    expect(negLabel.className).not.toContain("-top-4");
+    expect((negLabel as HTMLElement).style.top).toContain("calc");
+  });
+
+  it("sorts negatives naturally (asc puts the deepest loss first)", () => {
+    render(<ColumnChart data={PNL} sort="asc" />);
+    const labels = screen
+      .getAllByRole("graphics-symbol")
+      .map((b) => b.getAttribute("aria-label"));
+    expect(labels).toEqual(["FEB: -25", "MAR: 10", "JAN: 40"]);
+  });
+
+  it("supports annotations at negative y values", () => {
+    render(
+      <ColumnChart
+        data={PNL}
+        annotations={[{ x: "FEB", y: -20, text: "loss event" }]}
+      />,
+    );
+    expect(screen.getByText("loss event")).toBeInTheDocument();
+  });
+});
+
+describe("synthesizeSVG — negative values parity (C1.1)", () => {
+  const negCtx = () =>
+    ctx({
+      points: [
+        { label: "A", value: 40, pattern: "solid" },
+        { label: "B", value: -25, pattern: "solid" },
+      ],
+      max: 40,
+      min: -25,
+      yTicks: [40, 0, -25],
+    });
+
+  it("draws the baseline at the zero position, not the bottom edge", () => {
+    const svg = synthesizeSVG(negCtx());
+    // Baseline line y must equal the zero position; with min=0 it would be
+    // the bars-bottom. Assert the three tick labels are present instead of
+    // pinning exact pixel math: ticks are value-positioned.
+    expect(svg).toContain(">40<");
+    expect(svg).toContain(">0<");
+    expect(svg).toContain(">-25<");
+  });
+
+  it("renders the negative bar with a path anchored at the baseline", () => {
+    const svg = synthesizeSVG(negCtx());
+    // Two bar paths (plus none for highlight) — both present and well-formed.
+    expect(svg.match(/<path d="/g)?.length).toBe(2);
+  });
+
+  it("places inline labels below negative bars in the export", () => {
+    const svg = synthesizeSVG({ ...negCtx(), showLabels: true });
+    expect(svg).toContain(">-25<");
+  });
+});
+
+describe("renderToHTMLString — negatives kept (C1.1)", () => {
+  it("does not filter out negative values in the static render", () => {
+    const html = renderToHTMLString({
+      $schema: COLUMN_CHART_JSON_SCHEMA,
+      data: [
+        { label: "JAN", value: 40 },
+        { label: "FEB", value: -25 },
+      ],
+    });
+    // Both bars present (two path elements), FEB label rendered.
+    expect(html).toContain("FEB");
+    expect(html.match(/<path d="/g)?.length).toBe(2);
   });
 });
