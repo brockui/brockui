@@ -782,7 +782,7 @@ export type ColumnChartJSON = {
   xAxis?: { title?: string; hideTicks?: boolean };
   yAxis?: {
     title?: string;
-    min?: number;
+    /** Extend-only headroom; values below the data max are ignored. */
     max?: number;
     hideTicks?: boolean;
   };
@@ -807,8 +807,9 @@ export type ColumnChartJSON = {
   minBarWidth?: number;
   scroll?: "none" | "auto";
   sort?: "none" | "asc" | "desc";
-  topN?: number;
-  otherLabel?: string;
+  topN?:
+    | number
+    | { n: number; label?: string; pinned?: boolean; distinct?: boolean };
   bands?: ColumnChartBand[];
   animation?: { enabled?: boolean; duration?: number };
   loading?: boolean;
@@ -858,7 +859,6 @@ const JSON_SAFE_KEYS: Array<keyof ColumnChartJSON> = [
   "scroll",
   "sort",
   "topN",
-  "otherLabel",
   "bands",
   "animation",
   "loading",

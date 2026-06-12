@@ -120,6 +120,41 @@ export type ColumnChartDataPoint = {
    * not with chart-level config.
    */
   note?: string;
+  /**
+   * OUTPUT-ONLY — set by the component on the synthetic "Other" bar created by
+   * `topN`. Ignored on input. An aggregate is not a category: callbacks receive
+   * this flag so consumers can branch ("open drill-down list" vs "open detail").
+   */
+  isOther?: boolean;
+  /**
+   * OUTPUT-ONLY — the collapsed tail behind the "Other" bar, in input order.
+   * Present only when `isOther` is true. Ignored on input.
+   */
+  items?: readonly ColumnChartDataPoint[];
+};
+
+/**
+ * Object form of `topN`. The number shorthand `topN={5}` is equivalent to
+ * `topN={{ n: 5 }}` with all defaults.
+ */
+export type ColumnChartTopN = {
+  /** Keep the N largest bars by value; the rest collapse into one "Other" bar. */
+  n: number;
+  /** Label for the aggregate bar. Default `"Other"`. */
+  label?: string;
+  /**
+   * Keep the "Other" bar pinned at the end regardless of `sort`. Default `true` —
+   * an aggregate standing mid-ranking reads as a category, which it is not.
+   * Set `false` to let it participate in the sort by its summed value.
+   */
+  pinned?: boolean;
+  /**
+   * Render the "Other" bar in a muted fill (`--brock-other` token) so the
+   * aggregate is visually distinct from real categories. Default `true` —
+   * Tufte: an aggregate carries less ink. Hatching is NOT used here; that
+   * encoding is reserved for historical/projected semantics.
+   */
+  distinct?: boolean;
 };
 
 /** Goal/threshold reference line drawn across the chart. */
@@ -356,13 +391,22 @@ export type ColumnChartProps = {
     hideTicks?: boolean;
   };
 
-  /** Y-axis configuration. */
+  /**
+   * Y-axis configuration.
+   *
+   * There is deliberately no `min`: a column chart's baseline is always zero.
+   * A truncated baseline turns bar length into a lie (the one thing the entire
+   * canon — Tufte's lie factor, Datawrapper's hard rule — agrees on). For data
+   * where deviation-from-a-baseline is the story, use a different chart shape.
+   */
   yAxis?: {
     /** Title rendered rotated -90° to the left of the Y-axis. */
     title?: string;
-    /** Override min value (default 0). */
-    min?: number;
-    /** Override max value (default = max of data). */
+    /**
+     * Extend the max value beyond the data (headroom — e.g. to align scales
+     * across a series of charts). EXTEND-ONLY: a value below the data max
+     * would clip bars, so it is ignored with a dev warning.
+     */
     max?: number;
     /** Hide Y-axis tick labels (default: show). */
     hideTicks?: boolean;
@@ -483,14 +527,16 @@ export type ColumnChartProps = {
   /**
    * Keep only the N largest bars by value and roll the remainder into a single
    * "Other" bar (sum of the dropped values). The long-tail-compression pattern
-   * from Datawrapper / editorial ranking charts. `topN <= 0` or
-   * `topN >= data.length` is a no-op. The "Other" bar is solid (chart default
-   * pattern), uncolored, and carries no note/highlight.
+   * from Datawrapper / editorial ranking charts. `n <= 0` or `n >= data.length`
+   * is a no-op.
+   *
+   * The aggregate is NOT a category, and the defaults treat it honestly:
+   * pinned last regardless of `sort`, rendered in a muted fill
+   * (`--brock-other`), and carrying `isOther: true` + the collapsed `items`
+   * in every callback payload. Number shorthand `topN={5}` = all defaults;
+   * object form `topN={{ n, label, pinned, distinct }}` for control.
    */
-  topN?: number;
-
-  /** Label for the bucketed remainder bar created by `topN`. Default `"Other"`. */
-  otherLabel?: string;
+  topN?: number | ColumnChartTopN;
 
   /**
    * Plot bands — vertical highlighted zones spanning a range of bar indices.
@@ -761,7 +807,32 @@ type NormalizedPoint = {
   color?: string;
   highlight?: boolean;
   note?: string;
+  /** Set on the synthetic "Other" bar created by topN. */
+  isOther?: boolean;
+  /** Collapsed tail behind "Other", in input order (public shape). */
+  items?: ColumnChartDataPoint[];
+  /** "Other" with distinct=true renders in the muted --brock-other fill. */
+  muted?: boolean;
+  /** "Other" with pinned=true is excluded from sort and appended last. */
+  pinnedLast?: boolean;
 };
+
+/**
+ * Strip the internal NormalizedPoint down to the public datum shape handed to
+ * callbacks, exports, and the imperative API. Single source of truth — every
+ * surface that exposes a datum goes through here.
+ */
+function toPublicPoint(p: NormalizedPoint): ColumnChartDataPoint {
+  return {
+    label: p.label,
+    value: p.value,
+    pattern: p.pattern,
+    color: p.color,
+    highlight: p.highlight,
+    note: p.note,
+    ...(p.isOther ? { isOther: true, items: p.items } : {}),
+  };
+}
 
 const defaultFormat = (v: number): string => v.toLocaleString();
 
@@ -807,47 +878,83 @@ function isObjectForm(
   return data.length > 0 && typeof data[0] === "object" && data[0] !== null;
 }
 
+/** Resolve the `topN` prop (number shorthand or object form) into full config. */
+function resolveTopN(
+  topN: number | ColumnChartTopN | undefined,
+): Required<ColumnChartTopN> | undefined {
+  if (topN === undefined) return undefined;
+  if (typeof topN === "number") {
+    return { n: topN, label: "Other", pinned: true, distinct: true };
+  }
+  return {
+    n: topN.n,
+    label: topN.label ?? "Other",
+    pinned: topN.pinned ?? true,
+    distinct: topN.distinct ?? true,
+  };
+}
+
 /**
  * Roll all but the N largest bars (by value) into a single "Other" bucket.
  * No-op when `topN` is unset, ≤ 0, or ≥ the number of points. The kept bars
- * preserve their input order; the "Other" bar is appended last (later `sort`
- * may reorder everything, including "Other").
+ * preserve their input order; the "Other" bar is appended last. The aggregate
+ * carries `isOther` + the collapsed `items` (so onBarClick can drill into the
+ * tail), renders muted when `distinct`, and is excluded from `sort` when
+ * `pinned` — an aggregate standing mid-ranking would read as a category.
  */
 function applyTopN(
   points: NormalizedPoint[],
-  topN: number | undefined,
-  otherLabel: string,
+  config: Required<ColumnChartTopN> | undefined,
   defaultPattern: ColumnChartPattern,
 ): NormalizedPoint[] {
-  if (topN === undefined || topN <= 0 || points.length <= topN) return points;
+  if (config === undefined || config.n <= 0 || points.length <= config.n)
+    return points;
 
   // Indices of the N largest by value (stable: ties resolve by input order).
   const keptIndices = new Set(
     points
       .map((p, i) => ({ v: p.value, i }))
       .sort((a, b) => b.v - a.v || a.i - b.i)
-      .slice(0, topN)
+      .slice(0, config.n)
       .map((x) => x.i),
   );
 
   const result: NormalizedPoint[] = [];
+  const collapsed: ColumnChartDataPoint[] = [];
   let otherSum = 0;
   points.forEach((p, i) => {
-    if (keptIndices.has(i)) result.push(p);
-    else otherSum += p.value;
+    if (keptIndices.has(i)) {
+      result.push(p);
+    } else {
+      otherSum += p.value;
+      collapsed.push(toPublicPoint(p));
+    }
   });
-  result.push({ label: otherLabel, value: otherSum, pattern: defaultPattern });
+  result.push({
+    label: config.label,
+    value: otherSum,
+    pattern: defaultPattern,
+    isOther: true,
+    items: collapsed,
+    muted: config.distinct,
+    pinnedLast: config.pinned,
+  });
   return result;
 }
 
-/** Sort points by value. `"none"` preserves order; the sort is stable. */
+/**
+ * Sort points by value. `"none"` preserves order; the sort is stable. A
+ * pinned "Other" bar is excluded from the ranking and re-appended last.
+ */
 function applySort(
   points: NormalizedPoint[],
   sort: "none" | "asc" | "desc",
 ): NormalizedPoint[] {
-  if (sort === "asc") return [...points].sort((a, b) => a.value - b.value);
-  if (sort === "desc") return [...points].sort((a, b) => b.value - a.value);
-  return points;
+  if (sort === "none") return points;
+  const pinned = points.filter((p) => p.pinnedLast);
+  const sortable = pinned.length > 0 ? points.filter((p) => !p.pinnedLast) : [...points];
+  sortable.sort((a, b) => (sort === "asc" ? a.value - b.value : b.value - a.value));
+  return pinned.length > 0 ? [...sortable, ...pinned] : sortable;
 }
 
 function normalize(
@@ -857,8 +964,7 @@ function normalize(
   hatchUntilIndex: number | undefined,
   hatchFromIndex: number | undefined,
   sort: "none" | "asc" | "desc",
-  topN: number | undefined,
-  otherLabel: string,
+  topN: number | ColumnChartTopN | undefined,
 ): NormalizedPoint[] {
   const patternFor = (i: number, override?: ColumnChartPattern): ColumnChartPattern => {
     if (override) return override;
@@ -916,12 +1022,9 @@ function normalize(
     }
   }
 
-  // Long-tail compression first, then ranking — so an "Other" bar sorts by
-  // its summed value alongside the rest.
-  return applySort(
-    applyTopN(cleaned, topN, otherLabel, defaultPattern),
-    sort,
-  );
+  // Long-tail compression first, then ranking. The "Other" aggregate is
+  // pinned last by default; with pinned=false it ranks by its summed value.
+  return applySort(applyTopN(cleaned, resolveTopN(topN), defaultPattern), sort);
 }
 
 function autoDescription(
@@ -962,7 +1065,6 @@ export function ColumnChart({
   scroll = "none",
   sort = "none",
   topN,
-  otherLabel = "Other",
   bands,
   loading = false,
   error,
@@ -995,7 +1097,6 @@ export function ColumnChart({
     hatchFromIndex,
     sort,
     topN,
-    otherLabel,
   );
   const captionId = useId();
   const figureRef = useRef<HTMLElement>(null);
@@ -1027,7 +1128,19 @@ export function ColumnChart({
     goal && Number.isFinite(goal.value) && goal.value > 0
       ? Math.max(dataMax, goal.value)
       : dataMax;
-  const max = yAxis?.max !== undefined ? yAxis.max : goalBased;
+  // yAxis.max is extend-only: a max below the data would clip bars (the
+  // truncated-bar lie). Ignore + warn instead of silently distorting.
+  const max =
+    yAxis?.max !== undefined ? Math.max(yAxis.max, goalBased) : goalBased;
+  if (
+    process.env.NODE_ENV !== "production" &&
+    yAxis?.max !== undefined &&
+    yAxis.max < goalBased
+  ) {
+    console.warn(
+      `[brock-ui] ColumnChart: yAxis.max (${yAxis.max}) is below the data/goal max (${goalBased}) and was ignored — a clipped baseline-zero chart would distort bar lengths. yAxis.max can only extend the scale.`,
+    );
+  }
   const allZero = max === 0;
   const effectiveGap = points.length > 60 ? Math.max(1, gap - 2) : gap;
   const yTicks = allZero ? [0] : [max, Math.round(max / 2), 0];
@@ -1047,11 +1160,16 @@ export function ColumnChart({
       return v || fallback;
     };
     const resolvedAccent = accent ?? resolve("--brock-accent", "#F54900");
+    // The muted "Other" fill resolves to a concrete color at export time so
+    // the SVG/PNG reproduces the aggregate's visual distinction.
+    const otherFill = points.some((p) => p.muted)
+      ? resolve("--brock-other", "#a1a1aa")
+      : undefined;
     const exportPoints: ExportPoint[] = points.map((p) => ({
       label: p.label,
       value: p.value,
       pattern: p.pattern,
-      color: p.color,
+      color: p.muted ? (p.color ?? otherFill) : p.color,
       highlight: p.highlight,
       note: p.note,
     }));
@@ -1141,14 +1259,7 @@ export function ColumnChart({
       },
       exportCSV: (opts) => {
         const csv = pointsToCSV(
-          points.map((p) => ({
-            label: p.label,
-            value: p.value,
-            pattern: p.pattern,
-            color: p.color,
-            highlight: p.highlight,
-            note: p.note,
-          })),
+          points.map((p) => ({ ...toPublicPoint(p), pattern: p.pattern })),
         );
         if (opts?.download !== false) {
           const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -1175,18 +1286,7 @@ export function ColumnChart({
             barRefs.current[clamped]?.focus();
           });
         }
-        const point = points[clamped];
-        onBarFocus?.(
-          {
-            label: point.label,
-            value: point.value,
-            pattern: point.pattern,
-            color: point.color,
-            highlight: point.highlight,
-            note: point.note,
-          },
-          clamped,
-        );
+        onBarFocus?.(toPublicPoint(points[clamped]), clamped);
         return clamped;
       },
       getSelection: () => {
@@ -1195,18 +1295,7 @@ export function ColumnChart({
           0,
           Math.min(points.length - 1, focusIndexRef.current),
         );
-        const p = points[i];
-        return {
-          index: i,
-          point: {
-            label: p.label,
-            value: p.value,
-            pattern: p.pattern,
-            color: p.color,
-            highlight: p.highlight,
-            note: p.note,
-          },
-        };
+        return { index: i, point: toPublicPoint(points[i]) };
       },
     }),
     // Closure captures the latest props/derived values on every render —
@@ -2022,23 +2111,11 @@ function BarsGroup({
   tooltipSlot?: ComponentType<ColumnChartTooltipSlotProps>;
   annotations?: readonly ColumnChartAnnotation[];
 }) {
-  /** Strip the internal NormalizedPoint shape down to the public DataPoint. */
-  function publicPoint(p: NormalizedPoint): ColumnChartDataPoint {
-    return {
-      label: p.label,
-      value: p.value,
-      pattern: p.pattern,
-      color: p.color,
-      highlight: p.highlight,
-      note: p.note,
-    };
-  }
-
   function moveFocus(target: number) {
     const clamped = Math.max(0, Math.min(points.length - 1, target));
     setFocusIndex(clamped);
     barRefs.current[clamped]?.focus();
-    onBarFocus?.(publicPoint(points[clamped]), clamped);
+    onBarFocus?.(toPublicPoint(points[clamped]), clamped);
   }
 
   function handleKey(event: KeyboardEvent<HTMLDivElement>, currentIndex: number) {
@@ -2066,7 +2143,7 @@ function BarsGroup({
         // Activation: trigger the click handler with the keyboard event.
         if (onBarClick) {
           event.preventDefault();
-          onBarClick(publicPoint(points[currentIndex]), currentIndex, event);
+          onBarClick(toPublicPoint(points[currentIndex]), currentIndex, event);
         }
         break;
     }
@@ -2133,16 +2210,16 @@ function BarsGroup({
           onKeyDown={(e) => handleKey(e, i)}
           onFocus={() => {
             setFocusIndex(i);
-            onBarFocus?.(publicPoint(point), i);
+            onBarFocus?.(toPublicPoint(point), i);
           }}
           onClick={
             onBarClick
-              ? (e) => onBarClick(publicPoint(point), i, e)
+              ? (e) => onBarClick(toPublicPoint(point), i, e)
               : undefined
           }
           onMouseEnter={
             onBarHover
-              ? () => onBarHover(publicPoint(point), i)
+              ? () => onBarHover(toPublicPoint(point), i)
               : undefined
           }
           isTapActive={tapIndex === i}
@@ -2504,7 +2581,9 @@ function Bar({
             ? "brock-bar-hatched"
             : point.color
               ? ""
-              : "bg-brock-accent"
+              : point.muted
+                ? "brock-bar-other"
+                : "bg-brock-accent"
         } ${point.highlight ? "brock-bar-highlighted" : ""}`}
         style={
           {
@@ -2683,6 +2762,13 @@ function BarAnimationStyles() {
       }
       @media (prefers-reduced-motion: reduce) {
         .brock-bars-animated .brock-bar { animation: none; }
+      }
+      /* "Other" aggregate fill — muted, visually distinct from real categories
+         (an aggregate carries less ink). Hatching is NOT used here: that
+         encoding is reserved for historical/projected semantics. Themeable via
+         --brock-other. */
+      .brock-bar-other {
+        background: var(--brock-other, color-mix(in oklab, var(--muted-foreground) 35%, transparent));
       }
       /* Hatched fill — stripe or dot pattern at the accent color.
          Outline keeps the bar shape readable when stripes thin out near baseline.

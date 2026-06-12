@@ -248,8 +248,6 @@ type StudioState = {
   // y-axis
   yAxisTitle: string;
   yAxisHideTicks: boolean;
-  yAxisMinEnabled: boolean;
-  yAxisMin: number;
   yAxisMaxEnabled: boolean;
   yAxisMax: number;
   // number format
@@ -344,8 +342,6 @@ const INITIAL_STATE: StudioState = {
   xAxisHideTicks: false,
   yAxisTitle: "",
   yAxisHideTicks: false,
-  yAxisMinEnabled: false,
-  yAxisMin: 0,
   yAxisMaxEnabled: false,
   yAxisMax: 250,
   numberPrefix: "",
@@ -466,12 +462,10 @@ function generateCode(s: StudioState): string {
   if (
     s.yAxisTitle ||
     s.yAxisHideTicks ||
-    s.yAxisMinEnabled ||
     s.yAxisMaxEnabled
   ) {
     const parts: string[] = [];
     if (s.yAxisTitle) parts.push(`title: ${quote(s.yAxisTitle)}`);
-    if (s.yAxisMinEnabled) parts.push(`min: ${s.yAxisMin}`);
     if (s.yAxisMaxEnabled) parts.push(`max: ${s.yAxisMax}`);
     if (s.yAxisHideTicks) parts.push(`hideTicks: true`);
     lines.push(`      yAxis={{ ${parts.join(", ")} }}`);
@@ -938,12 +932,10 @@ export function ColumnChartStudio() {
             yAxis={
               s.yAxisTitle ||
               s.yAxisHideTicks ||
-              s.yAxisMinEnabled ||
               s.yAxisMaxEnabled
                 ? {
                     title: s.yAxisTitle || undefined,
                     hideTicks: s.yAxisHideTicks,
-                    min: s.yAxisMinEnabled ? s.yAxisMin : undefined,
                     max: s.yAxisMaxEnabled ? s.yAxisMax : undefined,
                   }
                 : undefined
@@ -1379,19 +1371,6 @@ export function ColumnChartStudio() {
                 placeholder="Users"
               />
             </Field>
-            <Toggle
-              label="Custom min"
-              checked={s.yAxisMinEnabled}
-              onChange={(v) => update("yAxisMinEnabled", v)}
-            />
-            {s.yAxisMinEnabled && (
-              <Field label="Min value">
-                <NumberInput
-                  value={s.yAxisMin}
-                  onChange={(v) => update("yAxisMin", v)}
-                />
-              </Field>
-            )}
             <Toggle
               label="Custom max"
               checked={s.yAxisMaxEnabled}

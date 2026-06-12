@@ -153,14 +153,13 @@ export function ColumnChartExamples() {
 
       <ExampleCard
         title="Top-N ranking"
-        subtitle="sort='desc' + topN with an 'Other' bucket"
+        subtitle="sort='desc' + topN — the 'Other' aggregate stays muted and pinned last"
       >
         <ColumnChart
           data={rankingData}
           height={200}
           sort="desc"
-          topN={4}
-          otherLabel="OTHER"
+          topN={{ n: 4, label: "OTHER" }}
           numberFormat={{ notation: "compact" }}
           source="Brock Analytics — traffic by channel"
         />

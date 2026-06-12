@@ -2301,7 +2301,7 @@ describe("ColumnChart — sort & topN", () => {
     expect(labelsOf()).toEqual(["A: 50", "B: 40", "Other: 10"]);
   });
 
-  it("topN respects a custom otherLabel", () => {
+  it("topN object form respects a custom label", () => {
     render(
       <ColumnChart
         data={[
@@ -2309,8 +2309,7 @@ describe("ColumnChart — sort & topN", () => {
           { label: "B", value: 5 },
           { label: "C", value: 5 },
         ]}
-        topN={1}
-        otherLabel="Rest"
+        topN={{ n: 1, label: "Rest" }}
       />,
     );
     expect(labelsOf()).toEqual(["A: 50", "Rest: 10"]);
@@ -2330,7 +2329,7 @@ describe("ColumnChart — sort & topN", () => {
     expect(screen.queryByText("Other")).not.toBeInTheDocument();
   });
 
-  it("topN runs before sort — 'Other' participates in the ranking", () => {
+  it("'Other' is pinned last by default, even when it outweighs ranked bars", () => {
     render(
       <ColumnChart
         data={[
@@ -2343,20 +2342,136 @@ describe("ColumnChart — sort & topN", () => {
         sort="desc"
       />,
     );
-    // Kept: A(50), B(40). Other = C+D = 55 → sorts to the front on desc.
+    // Kept: A(50), B(40). Other = C+D = 55 — bigger than A, but an aggregate
+    // is not a category: it stays pinned at the end.
+    expect(labelsOf()).toEqual(["A: 50", "B: 40", "Other: 55"]);
+  });
+
+  it("pinned: false lets 'Other' participate in the ranking", () => {
+    render(
+      <ColumnChart
+        data={[
+          { label: "A", value: 50 },
+          { label: "B", value: 40 },
+          { label: "C", value: 30 },
+          { label: "D", value: 25 },
+        ]}
+        topN={{ n: 2, pinned: false }}
+        sort="desc"
+      />,
+    );
     expect(labelsOf()).toEqual(["Other: 55", "A: 50", "B: 40"]);
   });
 
-  it("serializes sort / topN / otherLabel through toJSON", () => {
-    const json = toJSON({
-      data: [1, 2, 3],
-      sort: "desc",
-      topN: 2,
-      otherLabel: "Rest",
-    });
+  it("serializes sort / topN (number and object form) through toJSON", () => {
+    const json = toJSON({ data: [1, 2, 3], sort: "desc", topN: 2 });
     expect(json.sort).toBe("desc");
     expect(json.topN).toBe(2);
-    expect(json.otherLabel).toBe("Rest");
+
+    const obj = toJSON({
+      data: [1, 2, 3],
+      topN: { n: 2, label: "Rest", pinned: false },
+    });
+    expect(obj.topN).toEqual({ n: 2, label: "Rest", pinned: false });
+  });
+});
+
+describe("ColumnChart — 'Other' aggregate contract", () => {
+  const RANKED = [
+    { label: "A", value: 50 },
+    { label: "B", value: 40 },
+    { label: "C", value: 5 },
+    { label: "D", value: 3 },
+  ];
+
+  it("renders the Other bar with the muted brock-bar-other fill by default", () => {
+    const { container } = render(<ColumnChart data={RANKED} topN={2} />);
+    const muted = container.querySelectorAll(".brock-bar-other");
+    expect(muted.length).toBe(1);
+    expect(
+      muted[0]
+        .closest('[role="graphics-symbol"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Other: 8");
+  });
+
+  it("distinct: false renders Other like a regular accent bar", () => {
+    const { container } = render(
+      <ColumnChart data={RANKED} topN={{ n: 2, distinct: false }} />,
+    );
+    expect(container.querySelector(".brock-bar-other")).toBeFalsy();
+  });
+
+  it("onBarClick on Other receives isOther + the collapsed items", async () => {
+    const user = userEvent.setup();
+    const onBarClick = vi.fn();
+    render(<ColumnChart data={RANKED} topN={2} onBarClick={onBarClick} />);
+    await user.click(screen.getByRole("graphics-symbol", { name: "Other: 8" }));
+    const [point] = onBarClick.mock.calls[0];
+    expect(point.isOther).toBe(true);
+    expect(point.items).toEqual([
+      expect.objectContaining({ label: "C", value: 5 }),
+      expect.objectContaining({ label: "D", value: 3 }),
+    ]);
+  });
+
+  it("regular bars carry no isOther / items fields", async () => {
+    const user = userEvent.setup();
+    const onBarClick = vi.fn();
+    render(<ColumnChart data={RANKED} topN={2} onBarClick={onBarClick} />);
+    await user.click(screen.getByRole("graphics-symbol", { name: "A: 50" }));
+    const [point] = onBarClick.mock.calls[0];
+    expect(point.isOther).toBeUndefined();
+    expect(point.items).toBeUndefined();
+  });
+
+  it("getSelection on a focused Other bar exposes the aggregate payload", () => {
+    let api: ColumnChartHandle | undefined;
+    const Harness = () => {
+      const ref = useRef<ColumnChartHandle>(null);
+      return (
+        <>
+          <button onClick={() => (api = ref.current ?? undefined)}>grab</button>
+          <ColumnChart ref={ref} data={RANKED} topN={2} />
+        </>
+      );
+    };
+    render(<Harness />);
+    fireEvent.click(screen.getByText("grab"));
+    api!.focusBar(2); // Other is pinned last (index 2 of A, B, Other)
+    const sel = api!.getSelection();
+    expect(sel?.point.isOther).toBe(true);
+    expect(sel?.point.items).toHaveLength(2);
+  });
+});
+
+describe("ColumnChart — yAxis honesty (no min, extend-only max)", () => {
+  it("yAxis.max below the data max is ignored with a dev warning", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    render(
+      <ColumnChart
+        data={[100]}
+        yAxisFormat={(v) => `Y${v}`}
+        yAxis={{ max: 50 }}
+      />,
+    );
+    // Scale stays at the data max (top tick Y100) — no clipped bars.
+    expect(screen.getByText("Y100")).toBeInTheDocument();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("yAxis.max"),
+    );
+    warn.mockRestore();
+  });
+
+  it("yAxis.max above the data max extends the scale (headroom)", () => {
+    render(
+      <ColumnChart
+        data={[100]}
+        yAxisFormat={(v) => `Y${v}`}
+        yAxis={{ max: 200 }}
+      />,
+    );
+    expect(screen.getByText("Y200")).toBeInTheDocument();
   });
 });
 
