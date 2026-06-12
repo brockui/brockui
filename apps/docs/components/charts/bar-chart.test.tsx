@@ -2546,3 +2546,32 @@ describe("BarChart — props type smoke test", () => {
     expect(container.querySelector("figure")).toBeTruthy();
   });
 });
+
+describe("docs page — props table drift guard (canon §14)", () => {
+  it("every public prop of BarChartProps is mentioned on the docs page", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const componentSrc = fs.readFileSync(
+      path.resolve(__dirname, "./bar-chart.tsx"),
+      "utf-8",
+    );
+    const pageSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../app/[locale]/components/bar-chart/page.tsx"),
+      "utf-8",
+    );
+    const ifaceStart = componentSrc.indexOf("export type BarChartProps = {");
+    const ifaceEnd = componentSrc.indexOf(
+      String.fromCharCode(10) + "};",
+      ifaceStart,
+    );
+    const iface = componentSrc.slice(ifaceStart, ifaceEnd);
+    const propNames = [
+      ...iface.matchAll(/^  (?:"([\w-]+)"|([a-zA-Z]\w*))\??:/gm),
+    ]
+      .map((m) => m[1] ?? m[2])
+      .filter(Boolean);
+    expect(propNames.length).toBeGreaterThan(30);
+    const missing = propNames.filter((name) => !pageSrc.includes(name));
+    expect(missing).toEqual([]);
+  });
+});

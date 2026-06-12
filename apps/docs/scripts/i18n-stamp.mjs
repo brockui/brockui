@@ -32,6 +32,7 @@ const FILES = [
   "app/[locale]/installation/content.ts",
   "app/[locale]/components/sparkline/content.ts",
   "app/[locale]/components/column-chart/content.ts",
+  "app/[locale]/components/bar-chart/content.ts",
   "messages/en.json",
 ];
 

@@ -20,6 +20,39 @@
           "path": "components/charts/column-chart-export.ts",
           "type": "registry:component",
           "target": "components/brockui/column-chart-export.ts"
+        },
+        {
+          "path": "components/charts/chart-transforms.ts",
+          "type": "registry:component",
+          "target": "components/brockui/chart-transforms.ts"
+        }
+      ],
+      "categories": [
+        "charts"
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "bar-chart",
+      "type": "registry:component",
+      "title": "Bar Chart",
+      "description": "Horizontal bars for ranked categories. The ranking shape: sort + top-N with an honest 'Other' aggregate, height derived from the item count, explicit label-column width with a CSS-only truncation policy. Tufte data-ink discipline: one accent, no gridlines, direct value labels by default, negatives first-class growing left of an always-visible zero baseline. Reference line (fixed or mean/median), native PNG/SVG/CSV export, JSON portability. Zero dependencies beyond React. Built to WCAG 2.2 AA: roving tabindex, ARIA graphics roles, screen-reader data table, forced-colors support.",
+      "author": "Almas Kasymzhanov <almaskasymzhanov@gmail.com>",
+      "files": [
+        {
+          "path": "components/charts/bar-chart.tsx",
+          "type": "registry:component",
+          "target": "components/brockui/bar-chart.tsx"
+        },
+        {
+          "path": "components/charts/bar-chart-export.ts",
+          "type": "registry:component",
+          "target": "components/brockui/bar-chart-export.ts"
+        },
+        {
+          "path": "components/charts/chart-transforms.ts",
+          "type": "registry:component",
+          "target": "components/brockui/chart-transforms.ts"
         }
       ],
       "categories": [

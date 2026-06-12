@@ -8,7 +8,15 @@
  * Column Chart and Bar Chart target the same copy.
  */
 
-import type { ColumnChartTopN } from "./column-chart";
+/**
+ * topN input shape — defined HERE (not imported from a chart) so this file is
+ * fully self-contained: a consumer may install only one chart, and the math
+ * core must never depend on any specific chart's types. Each chart exposes
+ * its own structurally-identical public alias (ColumnChartTopN, BarChartTopN).
+ */
+export type ChartTopNInput =
+  | number
+  | { n: number; label?: string; pinned?: boolean; distinct?: boolean };
 
 /* ─── Shared data transforms (used by the live chart AND the static render
        path so a JSON config produces the same bars in both worlds) ────── */
@@ -23,7 +31,7 @@ export type ColumnChartTopNConfig = {
 
 /** Expand the `topN` prop (number shorthand or object form) into full config. */
 export function resolveTopNConfig(
-  topN: number | ColumnChartTopN | undefined,
+  topN: ChartTopNInput | undefined,
 ): ColumnChartTopNConfig | undefined {
   if (topN === undefined) return undefined;
   if (typeof topN === "number") {

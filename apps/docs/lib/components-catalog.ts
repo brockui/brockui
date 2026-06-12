@@ -39,7 +39,7 @@ export const components: ComponentItem[] = [
     id: "bar-chart",
     name: "Bar Chart",
     category: "Charts",
-    status: "SOON",
+    status: "NEW",
     href: "/components/bar-chart",
     description: {
       en: "Horizontal bars for ranked categorical comparisons.",

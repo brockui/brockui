@@ -166,7 +166,7 @@ export function ColumnChartExamples() {
           ]}
           height={200}
           referenceLine={{ value: { stat: "mean" } }}
-          numberFormat={{ prefix: "$", suffix: "k" }}
+          numberFormat={{ prefix: "$", suffix: "k", locale: "en-US" }}
           source="Brock Analytics — monthly P&L"
         />
       </ExampleCard>
@@ -180,7 +180,7 @@ export function ColumnChartExamples() {
           height={200}
           sort="desc"
           topN={{ n: 4, label: "OTHER" }}
-          numberFormat={{ notation: "compact" }}
+          numberFormat={{ notation: "compact", locale: "en-US" }}
           source="Brock Analytics — traffic by channel"
         />
       </ExampleCard>
