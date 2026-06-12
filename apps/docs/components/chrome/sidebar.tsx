@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { components, type ComponentItem } from "@/lib/components-catalog";
 
 type IconProps = { className?: string };

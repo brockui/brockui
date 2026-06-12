@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { Dialog } from "radix-ui";
 import { Search } from "lucide-react";
 import {
@@ -15,6 +16,8 @@ type Props = {
 };
 
 export function CommandPalette({ open, onOpenChange }: Props) {
+  const t = useTranslations("palette");
+  const locale = useLocale() as "en" | "ru";
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -23,11 +26,14 @@ export function CommandPalette({ open, onOpenChange }: Props) {
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     if (!q) return components;
+    // Search across the name, category, and BOTH language descriptions —
+    // a Russian query must find components even on the EN site.
     return components.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.category.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q),
+        c.description.en.toLowerCase().includes(q) ||
+        c.description.ru.toLowerCase().includes(q),
     );
   }, [query]);
 
@@ -85,7 +91,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Search components..."
+              placeholder={t("placeholder")}
               className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
             <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
@@ -96,7 +102,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
           <div className="max-h-[60vh] overflow-y-auto p-1">
             {filtered.length === 0 ? (
               <div className="px-3 py-8 text-center font-mono text-xs text-muted-foreground">
-                No results for &ldquo;{query}&rdquo;
+                {t("noResults", { query })}
               </div>
             ) : (
               filtered.map((item, i) => {
@@ -135,9 +141,12 @@ export function CommandPalette({ open, onOpenChange }: Props) {
           </div>
 
           <div className="flex items-center justify-between border-t border-border px-4 py-2 font-mono text-[10px] text-muted-foreground">
-            <span>↑↓ navigate · ⏎ open · ESC close</span>
+            <span>{t("hints")}</span>
             <span>
-              {filtered.length} of {components.length}
+              {t("countOf", {
+                filtered: filtered.length,
+                total: components.length,
+              })}
             </span>
           </div>
         </Dialog.Content>

@@ -1,30 +1,37 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import localFont from "next/font/local";
-import "./globals.css";
+import { notFound } from "next/navigation";
+import { hasLocale, NextIntlClientProvider } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
+import { routing } from "@/i18n/routing";
+import "../globals.css";
 import { Sidebar } from "@/components/chrome/sidebar";
 import { Header } from "@/components/chrome/header";
+import { LocaleNotice } from "@/components/chrome/locale-notice";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  // "cyrillic" affects PRELOAD only (all unicode-range subsets always load
+  // on demand) — without it, RU pages flash a fallback font first.
+  subsets: ["latin", "cyrillic"],
 });
 
 const hack = localFont({
   variable: "--font-hack",
   display: "swap",
   src: [
-    { path: "./fonts/hack/Hack-Regular.ttf", weight: "400", style: "normal" },
-    { path: "./fonts/hack/Hack-Italic.ttf", weight: "400", style: "italic" },
-    { path: "./fonts/hack/Hack-Bold.ttf", weight: "700", style: "normal" },
-    { path: "./fonts/hack/Hack-BoldItalic.ttf", weight: "700", style: "italic" },
+    { path: "../fonts/hack/Hack-Regular.ttf", weight: "400", style: "normal" },
+    { path: "../fonts/hack/Hack-Italic.ttf", weight: "400", style: "italic" },
+    { path: "../fonts/hack/Hack-Bold.ttf", weight: "700", style: "normal" },
+    { path: "../fonts/hack/Hack-BoldItalic.ttf", weight: "700", style: "italic" },
   ],
 });
 
 const departureMono = localFont({
   variable: "--font-departure-mono",
   display: "swap",
-  src: "./fonts/departure-mono/DepartureMono-Regular.woff2",
+  src: "../fonts/departure-mono/DepartureMono-Regular.woff2",
   weight: "400",
   style: "normal",
 });
@@ -48,14 +55,24 @@ const themeInitScript = `
 })();
 `;
 
-export default function RootLayout({
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
+export default async function RootLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }>) {
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  setRequestLocale(locale);
+
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${geistSans.variable} ${hack.variable} ${departureMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
@@ -63,11 +80,14 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground">
-        <Header />
-        <div className="flex min-h-0 flex-1">
-          <Sidebar />
-          <main className="min-w-0 flex-1 overflow-auto">{children}</main>
-        </div>
+        <NextIntlClientProvider>
+          <Header />
+          <div className="flex min-h-0 flex-1">
+            <Sidebar />
+            <main className="min-w-0 flex-1 overflow-auto">{children}</main>
+          </div>
+          <LocaleNotice />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

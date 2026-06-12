@@ -1,0 +1,21 @@
+{
+  "chrome": {
+    "homeAria": "Brock UI home",
+    "searchPlaceholder": "Search components...",
+    "themeToLight": "Switch to light theme",
+    "themeToDark": "Switch to dark theme",
+    "localeSwitchTo": "Русская версия",
+    "localeSwitchAria": "Switch language to Russian"
+  },
+  "palette": {
+    "placeholder": "Search components...",
+    "noResults": "No results for “{query}”",
+    "hints": "↑↓ navigate · ⏎ open · ESC close",
+    "countOf": "{filtered} of {total}"
+  },
+  "banner": {
+    "text": "Эта страница доступна на русском языке.",
+    "open": "Открыть русскую версию",
+    "dismiss": "Скрыть"
+  }
+}

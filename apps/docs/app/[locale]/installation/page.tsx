@@ -44,7 +44,21 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-export default function InstallationPage() {
+import { setRequestLocale } from "next-intl/server";
+import { localeAlternates } from "@/lib/seo";
+
+export const metadata = {
+  alternates: localeAlternates("/installation"),
+};
+
+export default async function InstallationPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   return (
     <div className="mx-auto max-w-3xl p-10">
       <div className="mb-12">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 type Theme = "light" | "dark";
 const STORAGE_KEY = "brockui-theme";
@@ -11,6 +12,7 @@ function getInitialTheme(): Theme {
 }
 
 export function ThemeSwitcher() {
+  const t = useTranslations("chrome");
   const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
@@ -36,8 +38,8 @@ export function ThemeSwitcher() {
   // Avoid mismatch during hydration — render a neutral button until mounted
   const ariaLabel = mounted
     ? theme === "dark"
-      ? "Switch to light theme"
-      : "Switch to dark theme"
+      ? t("themeToLight")
+      : t("themeToDark")
     : "Toggle theme";
 
   return (

@@ -406,7 +406,21 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-export default function ColumnChartPage() {
+import { setRequestLocale } from "next-intl/server";
+import { localeAlternates } from "@/lib/seo";
+
+export const metadata = {
+  alternates: localeAlternates("/components/column-chart"),
+};
+
+export default async function ColumnChartPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   return (
     <div className="mx-auto max-w-6xl p-10">
       <div className="mb-12 max-w-4xl">

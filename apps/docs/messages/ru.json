@@ -1,0 +1,21 @@
+{
+  "chrome": {
+    "homeAria": "Brock UI — главная",
+    "searchPlaceholder": "Поиск компонентов...",
+    "themeToLight": "Включить светлую тему",
+    "themeToDark": "Включить тёмную тему",
+    "localeSwitchTo": "English version",
+    "localeSwitchAria": "Switch language to English"
+  },
+  "palette": {
+    "placeholder": "Поиск компонентов...",
+    "noResults": "Ничего не найдено по запросу «{query}»",
+    "hints": "↑↓ навигация · ⏎ открыть · ESC закрыть",
+    "countOf": "{filtered} из {total}"
+  },
+  "banner": {
+    "text": "This page is also available in English.",
+    "open": "Open the English version",
+    "dismiss": "Hide"
+  }
+}

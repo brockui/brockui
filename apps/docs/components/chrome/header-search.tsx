@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
 import { CommandPalette } from "./command-palette";
 
 export function HeaderSearch() {
+  const t = useTranslations("chrome");
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -25,7 +27,9 @@ export function HeaderSearch() {
         className="flex h-8 w-full items-center gap-2 rounded-[2px] border border-border bg-muted/40 px-2.5 text-xs text-muted-foreground transition-colors hover:border-brock-accent/60 hover:bg-muted"
       >
         <Search className="h-3.5 w-3.5 shrink-0" />
-        <span className="flex-1 truncate text-left">Search components...</span>
+        <span className="flex-1 truncate text-left">
+          {t("searchPlaceholder")}
+        </span>
         <kbd className="rounded-[2px] border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
           ⌘K
         </kbd>

@@ -3170,7 +3170,7 @@ describe("docs page — props table drift guard (canon §14)", () => {
       "utf-8",
     );
     const pageSrc = fs.readFileSync(
-      path.resolve(__dirname, "../../app/components/column-chart/page.tsx"),
+      path.resolve(__dirname, "../../app/[locale]/components/column-chart/page.tsx"),
       "utf-8",
     );
     // Extract top-level prop names from the ColumnChartProps interface:
