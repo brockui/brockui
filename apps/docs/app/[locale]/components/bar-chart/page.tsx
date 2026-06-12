@@ -4,6 +4,7 @@ import { routing, type Locale } from "@/i18n/routing";
 import { localeAlternates } from "@/lib/seo";
 import { RichText } from "@/lib/rich-text";
 import { BarChartExamples } from "@/components/charts/bar-chart-examples";
+import { BarChartStudio } from "@/components/playground/bar-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
 import { barChartContent } from "./content";
 
@@ -177,6 +178,13 @@ export default async function BarChartPage({
         </h1>
         <p className="max-w-2xl text-sm text-muted-foreground">{t.intro}</p>
       </div>
+
+      <Section title={t.studio.title} wide>
+        <p className="mb-4 max-w-2xl text-xs text-muted-foreground">
+          {t.studio.lead}
+        </p>
+        <BarChartStudio />
+      </Section>
 
       <Section title={t.examples.title} wide>
         <p className="mb-6 max-w-2xl text-xs text-muted-foreground">

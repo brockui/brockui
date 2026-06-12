@@ -11,6 +11,7 @@ export type BarChartPageContent = {
   kicker: string;
   title: string;
   intro: string;
+  studio: { title: string; lead: string };
   examples: { title: string; lead: string; cards: BarChartExamplesCopy };
   installation: string;
   usage: string;
@@ -34,6 +35,10 @@ const en: BarChartPageContent = {
   title: "Bar Chart",
   intro:
     "Horizontal bars for ranked categories — the ranking shape. Long category labels read horizontally (the reason bar charts exist), height derives from the data, negatives grow left of an always-visible zero baseline. Same Tufte discipline as Column Chart: one accent, no gridlines, direct value labels by default.",
+  studio: {
+    title: "Studio · Code, chart, settings",
+    lead: "Three-panel workbench. Tweak any setting on the right — chart in the middle updates live and the code on the left regenerates ready to paste into your app.",
+  },
   examples: {
     title: "Examples · Drop-in patterns",
     lead: "Curated configurations covering the prop surface. Each one is a live chart — view source to see the exact prop set, copy into your app, adjust.",
@@ -236,6 +241,10 @@ const ru: BarChartPageContent = {
   title: "Bar Chart",
   intro:
     "Горизонтальные полосы для ранжированных категорий — форма рейтинга. Длинные подписи категорий читаются горизонтально (ради этого bar chart и существует), высота выводится из данных, отрицательные значения растут влево от всегда видимой нулевой базы. Та же дисциплина Тафти, что и в Column Chart: один акцент, без сетки, прямые подписи значений по умолчанию.",
+  studio: {
+    title: "Studio · Код, график, настройки",
+    lead: "Трёхпанельный верстак. Меняйте любую настройку справа — график в центре обновляется вживую, а код слева перегенерируется, готовый к вставке в ваш проект.",
+  },
   examples: {
     title: "Примеры · Готовые паттерны",
     lead: "Отобранные конфигурации, покрывающие поверхность пропов. Каждая — живой график: откройте исходник, скопируйте набор пропов в проект и подстройте.",
