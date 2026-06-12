@@ -1589,13 +1589,14 @@ export function ColumnChart({
     <figure
       ref={figureRef}
       className={`brock-chart relative ${className ?? ""}`}
+      style={{ ...figureStyle, containerType: "inline-size" }}
       role="figure"
       aria-labelledby={captionId}
       aria-busy={loading || undefined}
       data-chart-type={chartType}
       data-description={dataDescription || undefined}
       data-testid={dataTestId}
-      style={figureStyle}
+
     >
       {toolbarConfig &&
         (slots?.toolbar ? (
@@ -2896,7 +2897,7 @@ function XAxis({
 }) {
   return (
     <div
-      className="mt-2 flex font-pixel text-[10px] tracking-wider text-muted-foreground/70 uppercase"
+      className="brock-xaxis mt-2 flex font-pixel text-[10px] tracking-wider text-muted-foreground/70 uppercase"
       style={{ gap, paddingLeft }}
       aria-hidden
     >
@@ -3064,6 +3065,18 @@ function BarAnimationStyles() {
       @media (prefers-reduced-motion: reduce) {
         .brock-skeleton-bar,
         .brock-loading-spinner { animation: none; }
+      }
+      /* Container queries — the chart adapts to ITS OWN width (sidebar widget
+         vs full-bleed article), not the viewport. CSS-only tick decimation:
+         in narrow containers every other X label hides; in very narrow ones
+         only first/last survive. Full labels remain in tooltips + sr-table. */
+      @container (max-width: 420px) {
+        .brock-xaxis span:nth-child(even) { visibility: hidden; }
+      }
+      @container (max-width: 240px) {
+        .brock-xaxis span { visibility: hidden; }
+        .brock-xaxis span:first-child,
+        .brock-xaxis span:last-child { visibility: visible; }
       }
       /* Windows High Contrast / forced-colors: backgrounds are normally
          stripped, which would make solid bars invisible. Re-assert bars in
