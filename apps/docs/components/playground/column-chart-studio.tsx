@@ -19,7 +19,7 @@
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import {
   ColumnChart,
@@ -676,6 +676,24 @@ export function ColumnChartStudio() {
   const [s, setS] = useState<StudioState>(INITIAL_STATE);
   const chartRef = useRef<ColumnChartHandle>(null);
 
+  // Chart-preview theme. Follows the site theme until the user explicitly
+  // overrides it via the toggle in the Chart panel header — then it sticks,
+  // so flipping the global switch doesn't yank the preview around.
+  const [previewTheme, setPreviewTheme] = useState<"light" | "dark">("light");
+  const previewOverridden = useRef(false);
+  useEffect(() => {
+    const root = document.documentElement;
+    const sync = () => {
+      if (!previewOverridden.current) {
+        setPreviewTheme(root.classList.contains("dark") ? "dark" : "light");
+      }
+    };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
   // Inline demo slot components — show what slot overrides look like
   // without requiring users to wire their own. Each is a tiny illustrative
   // implementation that drops Brock UI defaults.
@@ -844,8 +862,20 @@ export function ColumnChartStudio() {
 
       {/* ── Chart panel (center) ──────────────────────────────────── */}
       <div className="border border-border bg-card">
-        <PanelHeader label="Chart" />
-        <div className="p-6">
+        <PanelHeader label="Chart">
+          <PreviewThemeToggle
+            value={previewTheme}
+            onChange={(t) => {
+              previewOverridden.current = true;
+              setPreviewTheme(t);
+            }}
+          />
+        </PanelHeader>
+        {/* Scoped theme: the resolved class re-binds every semantic CSS token
+            inside this subtree, so the preview (and exports — they resolve
+            vars off the live figure) render in the chosen theme regardless of
+            the site theme. */}
+        <div className={`${previewTheme} bg-background p-6`}>
           <ColumnChart
             ref={chartRef}
             slots={slots}
@@ -1880,6 +1910,76 @@ function PanelHeader({
         {label}
       </span>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Light/dark toggle for the chart PREVIEW only — independent of the site
+ * theme. Two explicit, always-visible states (aria-pressed) rather than a
+ * blind cycler: the user can see which theme they're looking at.
+ */
+function PreviewThemeToggle({
+  value,
+  onChange,
+}: {
+  value: "light" | "dark";
+  onChange: (t: "light" | "dark") => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-1"
+      role="group"
+      aria-label="Chart preview theme"
+    >
+      {(["light", "dark"] as const).map((t) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => onChange(t)}
+          aria-pressed={value === t}
+          aria-label={
+            t === "light" ? "Preview in light theme" : "Preview in dark theme"
+          }
+          title={
+            t === "light" ? "Preview in light theme" : "Preview in dark theme"
+          }
+          className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-[2px] border transition-colors ${
+            value === t
+              ? "border-brock-accent/70 bg-brock-accent/10 text-foreground"
+              : "border-border bg-muted/40 text-muted-foreground hover:border-brock-accent/60 hover:text-foreground"
+          }`}
+        >
+          {t === "light" ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="square"
+              className="h-3 w-3"
+              aria-hidden
+            >
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="square"
+              className="h-3 w-3"
+              aria-hidden
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
+        </button>
+      ))}
     </div>
   );
 }
