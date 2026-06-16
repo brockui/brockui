@@ -717,6 +717,34 @@ function generateCode(
 
 /* ─── Main component ─────────────────────────────────────────────────── */
 
+/**
+ * The demo custom tooltip — shared by the live `slots.tooltip` AND the inline
+ * preview in the Slots panel, so the panel shows EXACTLY what renders on the
+ * chart (a tooltip is hover-only; the preview makes its appearance visible
+ * without hovering).
+ */
+const DemoTooltip: React.FC<ColumnChartTooltipSlotProps> = ({
+  point,
+  index,
+  value,
+  label,
+}) => (
+  <div className="flex flex-col gap-1 rounded-[2px] border-2 border-brock-accent bg-background p-2 shadow-lg">
+    <span className="font-pixel text-[10px] tracking-wider text-brock-accent uppercase">
+      Bar #{index + 1}
+      {label ? ` · ${label}` : ""}
+    </span>
+    <span className="font-mono text-sm tabular-nums text-foreground">
+      {value}
+    </span>
+    {point.note && (
+      <span className="font-mono text-[10px] text-muted-foreground">
+        {point.note}
+      </span>
+    )}
+  </div>
+);
+
 export function ColumnChartStudio() {
   const t = useTranslations("studio");
   const locale: StudioLocale = useLocale() === "ru" ? "ru" : "en";
@@ -746,6 +774,16 @@ export function ColumnChartStudio() {
     annotationLabel: locale === "ru" ? "ПТ" : "FRI",
   }));
   const chartRef = useRef<ColumnChartHandle>(null);
+
+  // When the custom-tooltip slot is switched on, reveal it ON the chart too
+  // (a tooltip is hover-only — focusing a bar makes it visible immediately, so
+  // toggling the slot has a visible result without the user guessing to hover).
+  useEffect(() => {
+    if (s.slotTooltip) {
+      const id = requestAnimationFrame(() => chartRef.current?.focusBar(3));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [s.slotTooltip]);
 
   // Chart-preview theme. Follows the site theme until the user explicitly
   // overrides it via the toggle in the Chart panel header — then it sticks,
@@ -779,28 +817,6 @@ export function ColumnChartStudio() {
     }
     const out: ColumnChartSlots = {};
     if (s.slotTooltip) {
-      const DemoTooltip: React.FC<ColumnChartTooltipSlotProps> = ({
-        point,
-        index,
-        value,
-        label,
-      }) => {
-        return (
-          <div className="flex flex-col gap-1 rounded-[2px] border-2 border-brock-accent bg-background p-2 shadow-lg">
-            <span className="font-pixel text-[10px] tracking-wider text-brock-accent uppercase">
-              Bar #{index + 1}{label ? ` · ${label}` : ""}
-            </span>
-            <span className="font-mono text-sm tabular-nums text-foreground">
-              {value}
-            </span>
-            {point.note && (
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {point.note}
-              </span>
-            )}
-          </div>
-        );
-      };
       out.tooltip = DemoTooltip;
     }
     if (s.slotEmpty) {
@@ -1414,8 +1430,22 @@ export function ColumnChartStudio() {
               </div>
             )}
             {s.slotTooltip && (
-              <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                {t("hints.tooltipSlot")}
+              <div className="space-y-1.5">
+                {/* Live preview of the exact tooltip — a tooltip is hover-only,
+                    so showing it here makes its appearance visible without
+                    hovering; it's also pinned on the chart (see focus effect). */}
+                <div className="flex items-center gap-2 rounded-[2px] border border-border bg-muted/40 p-2">
+                  <DemoTooltip
+                    point={{ label: "THU", value: 159 }}
+                    index={3}
+                    value="159"
+                    label="THU"
+                    edge="center"
+                  />
+                  <span className="font-mono text-[10px] leading-snug text-muted-foreground">
+                    {t("hints.tooltipSlot")}
+                  </span>
+                </div>
               </div>
             )}
           </Accordion>

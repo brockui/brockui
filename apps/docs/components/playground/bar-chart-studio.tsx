@@ -672,6 +672,33 @@ function generateCode(
 
 /* ─── Main component ─────────────────────────────────────────────────── */
 
+/**
+ * Demo custom tooltip — shared by the live `slots.tooltip` AND the inline
+ * preview in the Slots panel, so the panel shows exactly what renders on the
+ * chart without requiring a hover.
+ */
+const DemoTooltip: React.FC<BarChartTooltipSlotProps> = ({
+  point,
+  index,
+  value,
+  label,
+}) => (
+  <div className="flex flex-col gap-1 rounded-[2px] border-2 border-brock-accent bg-background p-2 shadow-lg">
+    <span className="font-pixel text-[10px] tracking-wider text-brock-accent uppercase">
+      Bar #{index + 1}
+      {label ? ` · ${label}` : ""}
+    </span>
+    <span className="font-mono text-sm tabular-nums text-foreground">
+      {value}
+    </span>
+    {point.note && (
+      <span className="font-mono text-[10px] text-muted-foreground">
+        {point.note}
+      </span>
+    )}
+  </div>
+);
+
 export function BarChartStudio() {
   const t = useTranslations("studio");
   const locale: StudioLocale = useLocale() === "ru" ? "ru" : "en";
@@ -697,6 +724,15 @@ export function BarChartStudio() {
     refLabel: datasetsFor(locale).channels.suggestedGoalLabel,
   }));
   const chartRef = useRef<BarChartHandle>(null);
+
+  // Reveal the custom tooltip ON the chart when its slot is switched on — a
+  // tooltip is hover-only, so focusing a bar makes the result visible at once.
+  useEffect(() => {
+    if (s.slotTooltip) {
+      const id = requestAnimationFrame(() => chartRef.current?.focusBar(0));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [s.slotTooltip]);
 
   // Chart-preview theme. Follows the site theme until the user explicitly
   // overrides it via the toggle in the Chart panel header — then it sticks,
@@ -725,29 +761,6 @@ export function BarChartStudio() {
     }
     const out: BarChartSlots = {};
     if (s.slotTooltip) {
-      const DemoTooltip: React.FC<BarChartTooltipSlotProps> = ({
-        point,
-        index,
-        value,
-        label,
-      }) => {
-        return (
-          <div className="flex flex-col gap-1 rounded-[2px] border-2 border-brock-accent bg-background p-2 shadow-lg">
-            <span className="font-pixel text-[10px] tracking-wider text-brock-accent uppercase">
-              Bar #{index + 1}
-              {label ? ` · ${label}` : ""}
-            </span>
-            <span className="font-mono text-sm tabular-nums text-foreground">
-              {value}
-            </span>
-            {point.note && (
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {point.note}
-              </span>
-            )}
-          </div>
-        );
-      };
       out.tooltip = DemoTooltip;
     }
     if (s.slotEmpty) {
@@ -1298,8 +1311,17 @@ export function BarChartStudio() {
               </div>
             )}
             {s.slotTooltip && (
-              <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                {t("hints.tooltipSlot")}
+              <div className="flex items-center gap-2 rounded-[2px] border border-border bg-muted/40 p-2">
+                <DemoTooltip
+                  point={{ label: "DIRECT", value: 4120 }}
+                  index={0}
+                  value="4.1K"
+                  label="DIRECT"
+                  edge="top"
+                />
+                <span className="font-mono text-[10px] leading-snug text-muted-foreground">
+                  {t("hints.tooltipSlot")}
+                </span>
               </div>
             )}
           </Accordion>
