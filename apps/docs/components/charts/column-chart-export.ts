@@ -38,7 +38,6 @@ import type {
   ColumnChartBand,
   ColumnChartPattern,
   ColumnChartPatternStyle,
-  ColumnChartTopN,
 } from "./column-chart";
 
 /* ─── Public types ──────────────────────────────────────────────────── */
@@ -635,14 +634,16 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
     const goalText = referenceLine.label
       ? `${referenceLine.label} · ${ctx.formatValue(referenceLine.value)}`
       : ctx.formatValue(referenceLine.value);
-    // White background chip so the label reads on top of bars
+    // Opaque bordered pill at the START (left) edge — mirrors the DOM render:
+    // the right corner is the busiest (trend + tallest bars' labels), the left
+    // sits in clear space. Drawn last so it reads on top of bars.
     const txt = escapeXml(goalText);
-    const approxW = goalText.length * 5.5 + 8;
+    const approxW = goalText.length * 5.5 + 10;
     parts.push(
-      `<rect x="${r2(width - approxW - 2)}" y="${r2(goalY - 11)}" width="${r2(approxW)}" height="13" fill="${background}"/>`,
+      `<rect x="${r2(barsLeft)}" y="${r2(goalY - 12)}" width="${r2(approxW)}" height="14" rx="2" fill="${background}" stroke="${border}" stroke-width="1"/>`,
     );
     parts.push(
-      `<text x="${r2(width - 4)}" y="${r2(goalY - 2)}" text-anchor="end" font-family="${monoFont}" font-size="10" font-variant-numeric="tabular-nums" fill="${muted}">${txt}</text>`,
+      `<text x="${r2(barsLeft + 5)}" y="${r2(goalY - 2)}" font-family="${monoFont}" font-size="10" font-variant-numeric="tabular-nums" fill="${muted}">${txt}</text>`,
     );
   }
 

@@ -359,7 +359,7 @@ export default async function ColumnChartPage({
         <p className="mb-6 max-w-2xl text-xs text-muted-foreground">
           {t.examples.lead}
         </p>
-        <ColumnChartExamples />
+        <ColumnChartExamples copy={t.examples.cards} />
       </Section>
 
       <Section title={t.installation}>

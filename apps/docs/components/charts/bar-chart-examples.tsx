@@ -30,6 +30,10 @@ const STRINGS: Record<
     planLabel: string;
     otherLabel: string;
     numberLocale: string;
+    errorMessage: string;
+    loadingLabel: string;
+    errorLabel: string;
+    retryLabel: string;
   }
 > = {
   en: {
@@ -60,6 +64,10 @@ const STRINGS: Record<
     planLabel: "Plan",
     otherLabel: "OTHER",
     numberLocale: "en-US",
+    errorMessage: "Upstream timeout — try again.",
+    loadingLabel: "Loading…",
+    errorLabel: "Error",
+    retryLabel: "Retry",
   },
   ru: {
     channelLabels: [
@@ -89,6 +97,10 @@ const STRINGS: Record<
     planLabel: "План",
     otherLabel: "ПРОЧЕЕ",
     numberLocale: "ru-RU",
+    errorMessage: "Таймаут источника — попробуйте снова.",
+    loadingLabel: "Загрузка…",
+    errorLabel: "Ошибка",
+    retryLabel: "Повторить",
   },
 };
 
@@ -186,7 +198,10 @@ export function BarChartExamples({ copy }: { copy: BarChartExamplesCopy }) {
       <ExampleCard {...copy.states}>
         <BarChart
           data={[]}
-          error="Upstream timeout — try again."
+          error={d.errorMessage}
+          loadingLabel={d.loadingLabel}
+          errorLabel={d.errorLabel}
+          retryLabel={d.retryLabel}
           onRetry={() => {}}
           source="Brock Analytics, 2026"
         />

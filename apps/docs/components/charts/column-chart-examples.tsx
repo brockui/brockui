@@ -33,6 +33,12 @@ const STRINGS: Record<
     peakNote: string;
     sundayLabel: string;
     numberLocale: string;
+    errorMessage: string;
+    loadingLabel: string;
+    errorLabel: string;
+    retryLabel: string;
+    refreshSource: string;
+    caption: string;
   }
 > = {
   en: {
@@ -54,6 +60,12 @@ const STRINGS: Record<
     peakNote: "← peak",
     sundayLabel: "SUN",
     numberLocale: "en-US",
+    errorMessage: "Upstream timeout — try again.",
+    loadingLabel: "Loading…",
+    errorLabel: "Error",
+    retryLabel: "Retry",
+    refreshSource: "Polling every 30s",
+    caption: "Excludes maintenance window 03:00–04:00 UTC.",
   },
   ru: {
     weeklyLabels: ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"],
@@ -74,6 +86,12 @@ const STRINGS: Record<
     peakNote: "← пик",
     sundayLabel: "ВС",
     numberLocale: "ru-RU",
+    errorMessage: "Таймаут источника — попробуйте снова.",
+    loadingLabel: "Загрузка…",
+    errorLabel: "Ошибка",
+    retryLabel: "Повторить",
+    refreshSource: "Опрос каждые 30 с",
+    caption: "Без учёта окна обслуживания 03:00–04:00 UTC.",
   },
 };
 
@@ -101,13 +119,34 @@ function ExampleCard({
   );
 }
 
+export type ColumnExampleCardCopy = { title: string; subtitle: string };
+
+/** Card titles/subtitles — supplied bilingual from the page dictionary. */
+export type ColumnChartExamplesCopy = {
+  basic: ColumnExampleCardCopy;
+  loadingSkeleton: ColumnExampleCardCopy;
+  refreshOverlay: ColumnExampleCardCopy;
+  errorRetry: ColumnExampleCardCopy;
+  historicalProjected: ColumnExampleCardCopy;
+  referencePlotBand: ColumnExampleCardCopy;
+  perBarEmphasis: ColumnExampleCardCopy;
+  profitLoss: ColumnExampleCardCopy;
+  topNRanking: ColumnExampleCardCopy;
+  editorialOverlay: ColumnExampleCardCopy;
+};
+
 /**
- * Examples gallery — 9 curated configurations covering the prop surface.
+ * Examples gallery — 10 curated configurations covering the prop surface.
  * Lives in its own client component file so the docs page can stay an
  * RSC while these cards (which include event handlers like onRetry)
- * render on the client.
+ * render on the client. Card copy is bilingual via the page dictionary;
+ * demo data labels fork by locale (Cyrillic on /ru).
  */
-export function ColumnChartExamples() {
+export function ColumnChartExamples({
+  copy,
+}: {
+  copy: ColumnChartExamplesCopy;
+}) {
   const locale: ExamplesLocale = useLocale() === "ru" ? "ru" : "en";
   const d = STRINGS[locale];
 
@@ -129,7 +168,7 @@ export function ColumnChartExamples() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <ExampleCard title="Basic" subtitle="number[] + labels + trend + source">
+      <ExampleCard {...copy.basic}>
         <ColumnChart
           data={weeklyData}
           labels={d.weeklyLabels}
@@ -140,41 +179,40 @@ export function ColumnChartExamples() {
       </ExampleCard>
 
       <ExampleCard
-        title="Loading skeleton"
-        subtitle="loading=true + no data"
+        {...copy.loadingSkeleton}
       >
         <ColumnChart data={[]} loading height={200} />
       </ExampleCard>
 
       <ExampleCard
-        title="Refresh overlay"
-        subtitle="loading=true + stale data still visible"
+        {...copy.refreshOverlay}
       >
         <ColumnChart
           data={weeklyData}
           labels={d.weeklyLabels}
           height={200}
           loading
-          source="Polling every 30s"
+          source={d.refreshSource}
         />
       </ExampleCard>
 
       <ExampleCard
-        title="Error + retry"
-        subtitle="error + onRetry button"
+        {...copy.errorRetry}
       >
         <ColumnChart
           data={[]}
-          error="Upstream timeout — try again."
+          error={d.errorMessage}
           onRetry={() => {}}
+          loadingLabel={d.loadingLabel}
+          errorLabel={d.errorLabel}
+          retryLabel={d.retryLabel}
           height={200}
           source="Brock Analytics, 2026"
         />
       </ExampleCard>
 
       <ExampleCard
-        title="Historical vs projected"
-        subtitle="hatchFromIndex marks future months"
+        {...copy.historicalProjected}
       >
         <ColumnChart
           data={historicalProjectedData}
@@ -187,8 +225,7 @@ export function ColumnChartExamples() {
       </ExampleCard>
 
       <ExampleCard
-        title="Reference line + plot band"
-        subtitle="fixed KPI threshold + Q3 highlight zone — or pass a mean/median stat"
+        {...copy.referencePlotBand}
       >
         <ColumnChart
           data={weeklyData}
@@ -201,8 +238,7 @@ export function ColumnChartExamples() {
       </ExampleCard>
 
       <ExampleCard
-        title="Per-bar emphasis"
-        subtitle="highlight + note on the SUN bar"
+        {...copy.perBarEmphasis}
       >
         <ColumnChart
           data={emphasisData}
@@ -212,8 +248,7 @@ export function ColumnChartExamples() {
       </ExampleCard>
 
       <ExampleCard
-        title="Profit & loss"
-        subtitle="negatives are first-class — bars grow down from the zero baseline"
+        {...copy.profitLoss}
       >
         <ColumnChart
           data={pnlData}
@@ -225,8 +260,7 @@ export function ColumnChartExamples() {
       </ExampleCard>
 
       <ExampleCard
-        title="Top-N ranking"
-        subtitle="sort='desc' + topN — the 'Other' aggregate stays muted and pinned last"
+        {...copy.topNRanking}
       >
         <ColumnChart
           data={rankingData}
@@ -239,15 +273,14 @@ export function ColumnChartExamples() {
       </ExampleCard>
 
       <ExampleCard
-        title="Editorial overlay"
-        subtitle="caption + watermark + annotation"
+        {...copy.editorialOverlay}
       >
         <ColumnChart
           data={weeklyData}
           labels={d.weeklyLabels}
           height={200}
           source="Brock Analytics, 2026"
-          caption="Excludes maintenance window 03:00–04:00 UTC."
+          caption={d.caption}
           watermark="DRAFT"
           annotations={[
             { x: d.sundayLabel, y: 215, text: d.peakNote, arrow: true },

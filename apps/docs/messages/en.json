@@ -143,20 +143,32 @@
       "scrollOverflow": "Scroll overflow (scroll='auto')"
     },
     "options": {
-      "sort": { "none": "None", "asc": "Asc", "desc": "Desc" },
+      "sort": {
+        "none": "None",
+        "asc": "Asc",
+        "desc": "Desc"
+      },
       "state": {
         "ready": "Ready",
         "loading": "Loading",
         "refresh": "Refresh",
         "error": "Error"
       },
-      "notation": { "std": "Std", "compact": "Compact", "sci": "Sci" },
+      "notation": {
+        "std": "Std",
+        "compact": "Compact",
+        "sci": "Sci"
+      },
       "numberStyle": {
         "decimal": "Decimal",
         "currency": "Currency",
         "percent": "Percent"
       },
-      "radius": { "sharp": "Sharp", "subtle": "Subtle", "rounded": "Rounded" },
+      "radius": {
+        "sharp": "Sharp",
+        "subtle": "Subtle",
+        "rounded": "Rounded"
+      },
       "density": {
         "compact": "Compact",
         "normal": "Normal",
@@ -175,21 +187,32 @@
         "horizontal": "Horizontal",
         "dots": "Dots"
       },
-      "patternAll": { "none": "None", "allHatched": "All hatched" },
+      "patternAll": {
+        "none": "None",
+        "allHatched": "All hatched"
+      },
       "emphasis": {
         "none": "None",
         "peak": "Peak",
         "current": "Current",
         "index": "Index"
       },
-      "refMode": { "value": "Value", "mean": "Mean", "median": "Median" },
+      "refMode": {
+        "value": "Value",
+        "mean": "Mean",
+        "median": "Median"
+      },
       "anchor": {
         "top": "Top",
         "right": "Right",
         "bottom": "Bottom",
         "left": "Left"
       },
-      "dataLabels": { "auto": "Auto", "always": "Always", "never": "Never" }
+      "dataLabels": {
+        "auto": "Auto",
+        "always": "Always",
+        "never": "Never"
+      }
     },
     "buttons": {
       "first": "First",
@@ -199,6 +222,7 @@
     },
     "hints": {
       "emptySlot": "Switch <code>Mode</code> in States below to test the empty slot, or clear the data array in code.",
+      "tooltipSlot": "Slot demos replace the defaults. Toggle one, then hover a bar to see the custom tooltip render live.",
       "noClicksYet": "— no clicks yet —",
       "mouseOutside": "— mouse outside —",
       "noFocusYet": "— no focus yet —",

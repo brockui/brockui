@@ -2680,7 +2680,11 @@ function ReferenceLineEl({
       role="img"
       aria-label={`${line.label ?? "Reference"} line at ${formatValue(line.value)}`}
     >
-      <span className="absolute end-0 -top-2.5 bg-background px-1 font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground">
+      {/* Label pill at the START edge (not the end): the right corner is the
+          busiest — trend indicator + the tallest bars' value labels live there.
+          Left-aligned, it sits in clear space; an opaque bordered pill at z-20
+          stays readable even when it crosses a bar. */}
+      <span className="absolute start-0 -top-2.5 z-20 rounded-[2px] border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] tabular-nums whitespace-nowrap text-muted-foreground">
         {labelText}
       </span>
     </div>

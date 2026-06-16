@@ -1413,6 +1413,11 @@ export function ColumnChartStudio() {
                 })}
               </div>
             )}
+            {s.slotTooltip && (
+              <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
+                {t("hints.tooltipSlot")}
+              </div>
+            )}
           </Accordion>
 
           <Accordion label={t("sections.events")}>

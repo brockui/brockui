@@ -143,20 +143,32 @@
       "scrollOverflow": "Скролл при переполнении (scroll='auto')"
     },
     "options": {
-      "sort": { "none": "Нет", "asc": "Возр.", "desc": "Убыв." },
+      "sort": {
+        "none": "Нет",
+        "asc": "Возр.",
+        "desc": "Убыв."
+      },
       "state": {
         "ready": "Готово",
         "loading": "Загрузка",
         "refresh": "Обновление",
         "error": "Ошибка"
       },
-      "notation": { "std": "Станд.", "compact": "Компакт.", "sci": "Науч." },
+      "notation": {
+        "std": "Станд.",
+        "compact": "Компакт.",
+        "sci": "Науч."
+      },
       "numberStyle": {
         "decimal": "Число",
         "currency": "Валюта",
         "percent": "Процент"
       },
-      "radius": { "sharp": "Острые", "subtle": "Мягкие", "rounded": "Круглые" },
+      "radius": {
+        "sharp": "Острые",
+        "subtle": "Мягкие",
+        "rounded": "Круглые"
+      },
       "density": {
         "compact": "Плотно",
         "normal": "Обычно",
@@ -175,21 +187,32 @@
         "horizontal": "Горизонталь",
         "dots": "Точки"
       },
-      "patternAll": { "none": "Нет", "allHatched": "Все штрихованные" },
+      "patternAll": {
+        "none": "Нет",
+        "allHatched": "Все штрихованные"
+      },
       "emphasis": {
         "none": "Нет",
         "peak": "Пик",
         "current": "Текущий",
         "index": "Индекс"
       },
-      "refMode": { "value": "Значение", "mean": "Среднее", "median": "Медиана" },
+      "refMode": {
+        "value": "Значение",
+        "mean": "Среднее",
+        "median": "Медиана"
+      },
       "anchor": {
         "top": "Сверху",
         "right": "Справа",
         "bottom": "Снизу",
         "left": "Слева"
       },
-      "dataLabels": { "auto": "Авто", "always": "Всегда", "never": "Никогда" }
+      "dataLabels": {
+        "auto": "Авто",
+        "always": "Всегда",
+        "never": "Никогда"
+      }
     },
     "buttons": {
       "first": "В начало",
@@ -199,6 +222,7 @@
     },
     "hints": {
       "emptySlot": "Переключите <code>Mode</code> в секции «Состояния», чтобы увидеть пустой слот, или очистите массив данных в коде.",
+      "tooltipSlot": "Демо-слоты заменяют значения по умолчанию. Включите слот и наведите курсор на столбец — кастомный тултип отрисуется вживую.",
       "noClicksYet": "— кликов пока нет —",
       "mouseOutside": "— курсор вне графика —",
       "noFocusYet": "— фокуса ещё не было —",
