@@ -21,6 +21,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   ColumnChart,
   type ColumnChartDataPoint,
@@ -137,59 +138,100 @@ function dayLabels(n: number): string[] {
   return Array.from({ length: n }, (_, i) => String(i + 1).padStart(2, "0"));
 }
 
+/**
+ * Demo data is locale-aware: on /ru the weekday labels and reference-line
+ * names render in Russian — Cyrillic in the bars is a feature demo, not an
+ * accident. Numeric series and goals are shared; only display strings fork.
+ * The numeric day labels (01, 02, …) are locale-neutral by design.
+ */
+type StudioLocale = "en" | "ru";
+
+type Dataset = {
+  label: string;
+  data: number[];
+  labels: string[];
+  suggestedGoal: number;
+  suggestedGoalLabel: string;
+};
+
+const DAY_LABELS_14 = dayLabels(14);
+const DAY_LABELS_20 = dayLabels(20);
+const DAY_LABELS_30 = dayLabels(30);
+const DAY_LABELS_40 = dayLabels(40);
+const DAY_LABELS_90 = dayLabels(90);
+
 const DATASETS: Record<
   DatasetKey,
   {
-    label: string;
+    label: Record<StudioLocale, string>;
     data: number[];
-    labels: string[];
+    labels: Record<StudioLocale, string[]>;
     suggestedGoal: number;
-    suggestedGoalLabel: string;
+    suggestedGoalLabel: Record<StudioLocale, string>;
   }
 > = {
   weekly: {
-    label: "7d",
+    label: { en: "7d", ru: "7д" },
     data: [142, 168, 187, 159, 203, 178, 215],
-    labels: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+    labels: {
+      en: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+      ru: ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"],
+    },
     suggestedGoal: 190,
-    suggestedGoalLabel: "Weekly target",
+    suggestedGoalLabel: { en: "Weekly target", ru: "Цель недели" },
   },
   daily: {
-    label: "14d",
+    label: { en: "14d", ru: "14д" },
     data: [42, 68, 51, 89, 73, 105, 96, 82, 119, 87, 64, 93, 110, 78],
-    labels: dayLabels(14),
+    labels: { en: DAY_LABELS_14, ru: DAY_LABELS_14 },
     suggestedGoal: 100,
-    suggestedGoalLabel: "Daily target",
+    suggestedGoalLabel: { en: "Daily target", ru: "Цель дня" },
   },
   twoWeeks: {
-    label: "20d",
+    label: { en: "20d", ru: "20д" },
     data: generateSeries(20, 80, 30),
-    labels: dayLabels(20),
+    labels: { en: DAY_LABELS_20, ru: DAY_LABELS_20 },
     suggestedGoal: 100,
-    suggestedGoalLabel: "Target",
+    suggestedGoalLabel: { en: "Target", ru: "Цель" },
   },
   month: {
-    label: "30d",
+    label: { en: "30d", ru: "30д" },
     data: generateSeries(30, 90, 40),
-    labels: dayLabels(30),
+    labels: { en: DAY_LABELS_30, ru: DAY_LABELS_30 },
     suggestedGoal: 120,
-    suggestedGoalLabel: "Monthly target",
+    suggestedGoalLabel: { en: "Monthly target", ru: "Цель месяца" },
   },
   fortyDays: {
-    label: "40d",
+    label: { en: "40d", ru: "40д" },
     data: generateSeries(40, 95, 45),
-    labels: dayLabels(40),
+    labels: { en: DAY_LABELS_40, ru: DAY_LABELS_40 },
     suggestedGoal: 130,
-    suggestedGoalLabel: "Target",
+    suggestedGoalLabel: { en: "Target", ru: "Цель" },
   },
   quarter: {
-    label: "90d",
+    label: { en: "90d", ru: "90д" },
     data: generateSeries(90, 100, 60),
-    labels: dayLabels(90),
+    labels: { en: DAY_LABELS_90, ru: DAY_LABELS_90 },
     suggestedGoal: 150,
-    suggestedGoalLabel: "Quarter target",
+    suggestedGoalLabel: { en: "Quarter target", ru: "Цель квартала" },
   },
 };
+
+/** Resolve the per-locale view of every dataset (stable array identities). */
+function datasetsFor(locale: StudioLocale): Record<DatasetKey, Dataset> {
+  const out = {} as Record<DatasetKey, Dataset>;
+  for (const key of Object.keys(DATASETS) as DatasetKey[]) {
+    const d = DATASETS[key];
+    out[key] = {
+      label: d.label[locale],
+      data: d.data,
+      labels: d.labels[locale],
+      suggestedGoal: d.suggestedGoal,
+      suggestedGoalLabel: d.suggestedGoalLabel[locale],
+    };
+  }
+  return out;
+}
 
 /* ─── State shape ────────────────────────────────────────────────────── */
 
@@ -406,8 +448,11 @@ function emphasisIdxOf(s: StudioState, ds: { data: number[] }): number {
   return idx;
 }
 
-function generateCode(s: StudioState): string {
-  const ds = DATASETS[s.period];
+function generateCode(
+  s: StudioState,
+  datasets: Record<DatasetKey, Dataset>,
+): string {
+  const ds = datasets[s.period];
   const accent = s.accentValue;
   const radius = RADII[s.radiusIdx];
   const density = DENSITIES[s.densityIdx];
@@ -673,7 +718,33 @@ function generateCode(s: StudioState): string {
 /* ─── Main component ─────────────────────────────────────────────────── */
 
 export function ColumnChartStudio() {
-  const [s, setS] = useState<StudioState>(INITIAL_STATE);
+  const t = useTranslations("studio");
+  const locale: StudioLocale = useLocale() === "ru" ? "ru" : "en";
+  const datasets = datasetsFor(locale);
+  // The reference-line label and the annotation's x-match must agree with the
+  // active locale's data labels, so the initial state derives from them.
+  // Seeded demo TEXT (header, error, annotation, band, labels) is locale-aware
+  // too — on /ru the whole preview, including the editable seed values and the
+  // generated code, reads Russian. Only filenames/slugs stay latin.
+  const seed =
+    locale === "ru"
+      ? {
+          headerTitle: "Активные пользователи",
+          headerSubtitle: "Последние 7 дней",
+          errorMessage: "Не удалось загрузить метрики — таймаут API.",
+          loadingLabel: "Загрузка…",
+          errorLabel: "Ошибка",
+          retryLabel: "Повторить",
+          annotationText: "← пик",
+          bandLabel: "Спринт Q3",
+        }
+      : {};
+  const [s, setS] = useState<StudioState>(() => ({
+    ...INITIAL_STATE,
+    ...seed,
+    refLabel: datasetsFor(locale).weekly.suggestedGoalLabel,
+    annotationLabel: locale === "ru" ? "ПТ" : "FRI",
+  }));
   const chartRef = useRef<ColumnChartHandle>(null);
 
   // Chart-preview theme. Follows the site theme until the user explicitly
@@ -786,7 +857,7 @@ export function ColumnChartStudio() {
   }
 
   function setPeriod(period: DatasetKey) {
-    const ds = DATASETS[period];
+    const ds = datasets[period];
     setS((prev) => ({
       ...prev,
       period,
@@ -795,11 +866,11 @@ export function ColumnChartStudio() {
     }));
   }
 
-  const ds = DATASETS[s.period];
+  const ds = datasets[s.period];
   const accent = s.accentValue;
   const radius = RADII[s.radiusIdx];
   const density = DENSITIES[s.densityIdx];
-  const code = generateCode(s);
+  const code = generateCode(s, datasets);
 
   function pickColor(hex: string) {
     setS((prev) => {
@@ -852,7 +923,7 @@ export function ColumnChartStudio() {
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_260px] lg:gap-0">
       {/* ── Code panel (left) ─────────────────────────────────────── */}
       <div className="border border-border bg-card lg:border-r-0">
-        <PanelHeader label="Code">
+        <PanelHeader label={t("panels.code")}>
           <CopyButton text={code} />
         </PanelHeader>
         <pre className="overflow-x-auto p-4 font-mono text-[11px] leading-relaxed text-foreground">
@@ -862,7 +933,7 @@ export function ColumnChartStudio() {
 
       {/* ── Chart panel (center) ──────────────────────────────────── */}
       <div className="border border-border bg-card">
-        <PanelHeader label="Chart">
+        <PanelHeader label={t("panels.chart")}>
           <PreviewThemeToggle
             value={previewTheme}
             onChange={(t) => {
@@ -1064,7 +1135,7 @@ export function ColumnChartStudio() {
         </div>
         {s.showJSON && (
           <div className="border-t border-border">
-            <PanelHeader label="JSON · toJSON() output">
+            <PanelHeader label={t("panels.json")}>
               <CopyButton
                 text={JSON.stringify(
                   toJSON({
@@ -1156,13 +1227,13 @@ export function ColumnChartStudio() {
 
       {/* ── Settings panel (right) ────────────────────────────────── */}
       <aside className="border border-border bg-card lg:border-l-0">
-        <PanelHeader label="Settings" />
+        <PanelHeader label={t("panels.settings")} />
         <div className="divide-y divide-border">
-          <Accordion label="Data" defaultOpen>
-            <Field label="Preset">
+          <Accordion label={t("sections.data")} defaultOpen>
+            <Field label={t("fields.preset")}>
               <Segmented
                 options={(Object.keys(DATASETS) as DatasetKey[]).map(
-                  (k) => DATASETS[k].label,
+                  (k) => datasets[k].label,
                 )}
                 selectedIndex={(Object.keys(DATASETS) as DatasetKey[]).indexOf(
                   s.period,
@@ -1172,17 +1243,21 @@ export function ColumnChartStudio() {
                 }
               />
             </Field>
-            <Field label="Sort by value">
+            <Field label={t("fields.sortByValue")}>
               <Segmented
-                options={["None", "Asc", "Desc"]}
+                options={[
+                  t("options.sort.none"),
+                  t("options.sort.asc"),
+                  t("options.sort.desc"),
+                ]}
                 selectedIndex={s.sortIdx}
                 onSelect={(i) => update("sortIdx", i)}
               />
             </Field>
-            <Field label="Top-N + Other">
+            <Field label={t("fields.topNOther")}>
               <div className="space-y-1.5">
                 <Toggle
-                  label="Roll the long tail into 'Other'"
+                  label={t("toggles.rollLongTail")}
                   checked={s.topNEnabled}
                   onChange={(v) => update("topNEnabled", v)}
                 />
@@ -1196,10 +1271,15 @@ export function ColumnChartStudio() {
             </Field>
           </Accordion>
 
-          <Accordion label="States">
-            <Field label="Mode">
+          <Accordion label={t("sections.states")}>
+            <Field label={t("fields.mode")}>
               <Segmented
-                options={["Ready", "Loading", "Refresh", "Error"]}
+                options={[
+                  t("options.state.ready"),
+                  t("options.state.loading"),
+                  t("options.state.refresh"),
+                  t("options.state.error"),
+                ]}
                 selectedIndex={
                   {
                     ready: 0,
@@ -1225,41 +1305,41 @@ export function ColumnChartStudio() {
             </Field>
             {(s.stateMode === "loading" ||
               s.stateMode === "loading-overlay") && (
-              <Field label="Loading label">
+              <Field label={t("fields.loadingLabel")}>
                 <TextInput
                   value={s.loadingLabel}
                   onChange={(v) => update("loadingLabel", v)}
-                  placeholder="Loading…"
+                  placeholder={t("placeholders.loading")}
                 />
               </Field>
             )}
             {s.stateMode === "error" && (
               <>
-                <Field label="Error message">
+                <Field label={t("fields.errorMessage")}>
                   <TextInput
                     value={s.errorMessage}
                     onChange={(v) => update("errorMessage", v)}
-                    placeholder="Couldn't load metrics…"
+                    placeholder={t("placeholders.errorMessage")}
                   />
                 </Field>
-                <Field label="Error label">
+                <Field label={t("fields.errorLabel")}>
                   <TextInput
                     value={s.errorLabel}
                     onChange={(v) => update("errorLabel", v)}
-                    placeholder="Error"
+                    placeholder={t("placeholders.errorLabel")}
                   />
                 </Field>
                 <Toggle
-                  label="Show retry button"
+                  label={t("toggles.showRetry")}
                   checked={s.withRetry}
                   onChange={(v) => update("withRetry", v)}
                 />
                 {s.withRetry && (
-                  <Field label="Retry label">
+                  <Field label={t("fields.retryLabel")}>
                     <TextInput
                       value={s.retryLabel}
                       onChange={(v) => update("retryLabel", v)}
-                      placeholder="Retry"
+                      placeholder={t("placeholders.retryLabel")}
                     />
                   </Field>
                 )}
@@ -1267,60 +1347,60 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Export">
-            <Field label="Formats">
+          <Accordion label={t("sections.export")}>
+            <Field label={t("fields.formats")}>
               <div className="space-y-1.5">
                 <Toggle
-                  label="PNG button"
+                  label={t("toggles.pngButton")}
                   checked={s.exportPNG}
                   onChange={(v) => update("exportPNG", v)}
                 />
                 <Toggle
-                  label="SVG button"
+                  label={t("toggles.svgButton")}
                   checked={s.exportSVG}
                   onChange={(v) => update("exportSVG", v)}
                 />
                 <Toggle
-                  label="CSV button"
+                  label={t("toggles.csvButton")}
                   checked={s.exportCSV}
                   onChange={(v) => update("exportCSV", v)}
                 />
                 <Toggle
-                  label="Copy-image button"
+                  label={t("toggles.copyImageButton")}
                   checked={s.exportCopy}
                   onChange={(v) => update("exportCopy", v)}
                 />
               </div>
             </Field>
-            <Field label="File name">
+            <Field label={t("fields.fileName")}>
               <TextInput
                 value={s.exportFileName}
                 onChange={(v) => update("exportFileName", v)}
-                placeholder="active-users-7d"
+                placeholder={t("placeholders.fileNameColumn")}
               />
             </Field>
           </Accordion>
 
-          <Accordion label="Slots">
-            <Field label="Demo slot overrides">
+          <Accordion label={t("sections.slots")}>
+            <Field label={t("fields.demoSlots")}>
               <div className="space-y-1.5">
                 <Toggle
-                  label="Custom tooltip"
+                  label={t("toggles.customTooltip")}
                   checked={s.slotTooltip}
                   onChange={(v) => update("slotTooltip", v)}
                 />
                 <Toggle
-                  label="Custom empty state"
+                  label={t("toggles.customEmpty")}
                   checked={s.slotEmpty}
                   onChange={(v) => update("slotEmpty", v)}
                 />
                 <Toggle
-                  label="Reading-note caption"
+                  label={t("toggles.readingNoteCaption")}
                   checked={s.slotCaption}
                   onChange={(v) => update("slotCaption", v)}
                 />
                 <Toggle
-                  label="Diagonal watermark"
+                  label={t("toggles.diagonalWatermark")}
                   checked={s.slotWatermark}
                   onChange={(v) => update("slotWatermark", v)}
                 />
@@ -1328,58 +1408,59 @@ export function ColumnChartStudio() {
             </Field>
             {s.slotEmpty && (
               <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                Switch <code>Data Mode</code> below to test the empty slot, or
-                clear the data array in code.
+                {t.rich("hints.emptySlot", {
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
               </div>
             )}
           </Accordion>
 
-          <Accordion label="Events">
+          <Accordion label={t("sections.events")}>
             <Toggle
-              label="Track click / hover / focus"
+              label={t("toggles.trackEvents")}
               checked={s.eventsEnabled}
               onChange={(v) => update("eventsEnabled", v)}
             />
             {s.eventsEnabled && (
               <>
-                <Field label="Last click">
+                <Field label={t("fields.lastClick")}>
                   <div
                     className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
                   >
                     {s.lastClickIndex !== null
                       ? `#${s.lastClickIndex} · ${s.lastClickLabel ?? "—"} · ${s.lastClickValue}`
-                      : "— no clicks yet —"}
+                      : t("hints.noClicksYet")}
                   </div>
                 </Field>
-                <Field label="Hovering">
+                <Field label={t("fields.hovering")}>
                   <div
                     className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
                   >
                     {s.hoverIndex !== null
                       ? `#${s.hoverIndex} · ${s.hoverLabel ?? "—"}`
-                      : "— mouse outside —"}
+                      : t("hints.mouseOutside")}
                   </div>
                 </Field>
-                <Field label="Focused">
+                <Field label={t("fields.focused")}>
                   <div
                     className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
                   >
                     {s.focusIndex !== null
                       ? `#${s.focusIndex} · ${s.focusLabel ?? "—"}`
-                      : "— no focus yet —"}
+                      : t("hints.noFocusYet")}
                   </div>
                 </Field>
-                <Field label="Programmatic focus (ref.focusBar)">
+                <Field label={t("fields.programmaticFocus")}>
                   <div className="flex gap-1.5">
                     <button
                       type="button"
                       className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
                       onClick={() => chartRef.current?.focusBar(0)}
                     >
-                      ◀ First
+                      ◀ {t("buttons.first")}
                     </button>
                     <button
                       type="button"
@@ -1389,14 +1470,14 @@ export function ColumnChartStudio() {
                         chartRef.current?.focusBar(next);
                       }}
                     >
-                      Next ▶
+                      {t("buttons.next")} ▶
                     </button>
                     <button
                       type="button"
                       className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
                       onClick={() => chartRef.current?.focusBar(999)}
                     >
-                      Last ▶▶
+                      {t("buttons.last")} ▶▶
                     </button>
                   </div>
                 </Field>
@@ -1404,53 +1485,53 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Header">
-            <Field label="Title">
+          <Accordion label={t("sections.header")}>
+            <Field label={t("fields.title")}>
               <TextInput
                 value={s.headerTitle}
                 onChange={(v) => update("headerTitle", v)}
-                placeholder="Active users"
+                placeholder={t("placeholders.headerTitleColumn")}
               />
             </Field>
-            <Field label="Subtitle">
+            <Field label={t("fields.subtitle")}>
               <TextInput
                 value={s.headerSubtitle}
                 onChange={(v) => update("headerSubtitle", v)}
-                placeholder="Last 7 days"
+                placeholder={t("placeholders.headerSubtitleColumn")}
               />
             </Field>
           </Accordion>
 
-          <Accordion label="X-axis">
-            <Field label="Title">
+          <Accordion label={t("sections.xAxis")}>
+            <Field label={t("fields.title")}>
               <TextInput
                 value={s.xAxisTitle}
                 onChange={(v) => update("xAxisTitle", v)}
-                placeholder="Day of week"
+                placeholder={t("placeholders.xAxisTitleColumn")}
               />
             </Field>
             <Toggle
-              label="Hide tick labels"
+              label={t("toggles.hideTickLabels")}
               checked={s.xAxisHideTicks}
               onChange={(v) => update("xAxisHideTicks", v)}
             />
           </Accordion>
 
-          <Accordion label="Y-axis">
-            <Field label="Title">
+          <Accordion label={t("sections.yAxis")}>
+            <Field label={t("fields.title")}>
               <TextInput
                 value={s.yAxisTitle}
                 onChange={(v) => update("yAxisTitle", v)}
-                placeholder="Users"
+                placeholder={t("placeholders.yAxisTitleColumn")}
               />
             </Field>
             <Toggle
-              label="Custom max"
+              label={t("toggles.customMax")}
               checked={s.yAxisMaxEnabled}
               onChange={(v) => update("yAxisMaxEnabled", v)}
             />
             {s.yAxisMaxEnabled && (
-              <Field label="Max value">
+              <Field label={t("fields.maxValue")}>
                 <NumberInput
                   value={s.yAxisMax}
                   onChange={(v) => update("yAxisMax", v)}
@@ -1458,81 +1539,89 @@ export function ColumnChartStudio() {
               </Field>
             )}
             <Toggle
-              label="Hide tick labels"
+              label={t("toggles.hideTickLabels")}
               checked={s.yAxisHideTicks}
               onChange={(v) => update("yAxisHideTicks", v)}
             />
           </Accordion>
 
-          <Accordion label="Number format">
-            <Field label="Prefix">
+          <Accordion label={t("sections.numberFormat")}>
+            <Field label={t("fields.prefix")}>
               <TextInput
                 value={s.numberPrefix}
                 onChange={(v) => update("numberPrefix", v)}
-                placeholder="$"
+                placeholder={t("placeholders.prefix")}
               />
             </Field>
-            <Field label="Suffix">
+            <Field label={t("fields.suffix")}>
               <TextInput
                 value={s.numberSuffix}
                 onChange={(v) => update("numberSuffix", v)}
-                placeholder="k"
+                placeholder={t("placeholders.suffix")}
               />
             </Field>
-            <Field label="Decimals">
+            <Field label={t("fields.decimals")}>
               <NumberInput
                 value={s.numberDecimals}
                 onChange={(v) => update("numberDecimals", Math.max(0, v))}
               />
             </Field>
-            <Field label="Notation">
+            <Field label={t("fields.notation")}>
               <Segmented
-                options={NOTATIONS.map((n) => n.name)}
+                options={[
+                  t("options.notation.std"),
+                  t("options.notation.compact"),
+                  t("options.notation.sci"),
+                ]}
                 selectedIndex={s.numberNotationIdx}
                 onSelect={(i) => update("numberNotationIdx", i)}
               />
             </Field>
-            <Field label="Style">
+            <Field label={t("fields.style")}>
               <Segmented
-                options={NUMBER_STYLES.map((n) => n.name)}
+                options={[
+                  t("options.numberStyle.decimal"),
+                  t("options.numberStyle.currency"),
+                  t("options.numberStyle.percent"),
+                ]}
                 selectedIndex={s.numberStyleIdx}
                 onSelect={(i) => update("numberStyleIdx", i)}
               />
             </Field>
             {NUMBER_STYLES[s.numberStyleIdx].value === "currency" && (
-              <Field label="Currency (ISO 4217)">
+              <Field label={t("fields.currency")}>
                 <TextInput
                   value={s.numberCurrency}
                   onChange={(v) => update("numberCurrency", v.toUpperCase())}
-                  placeholder="USD"
+                  placeholder={t("placeholders.currency")}
                 />
               </Field>
             )}
           </Accordion>
 
-          <Accordion label="Data labels">
+          <Accordion label={t("sections.dataLabels")}>
             <Toggle
-              label="Show value above each bar"
+              label={t("toggles.showValueAboveBar")}
               checked={s.dataLabelsShow}
               onChange={(v) => update("dataLabelsShow", v)}
             />
           </Accordion>
 
-          <Accordion label="Color">
-            <Field label="Palette">
+          <Accordion label={t("sections.color")}>
+            <Field label={t("fields.palette")}>
               <ColorPalette
                 value={s.accentValue}
                 onSelect={pickColor}
               />
             </Field>
-            <Field label="Custom">
+            <Field label={t("fields.custom")}>
               <ColorCustomInput
                 value={s.accentValue}
                 onChange={pickColor}
               />
             </Field>
             {s.recentColors.length > 0 && (
-              <Field label="Recent">
+              <Field label={t("fields.recent")}>
                 <div className="flex gap-1.5">
                   {s.recentColors.map((c) => (
                     <Swatch
@@ -1550,30 +1639,38 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Bar style">
-            <Field label="Corner radius">
+          <Accordion label={t("sections.barStyle")}>
+            <Field label={t("fields.cornerRadius")}>
               <Segmented
-                options={RADII.map((r) => r.name)}
+                options={[
+                  t("options.radius.sharp"),
+                  t("options.radius.subtle"),
+                  t("options.radius.rounded"),
+                ]}
                 selectedIndex={s.radiusIdx}
                 onSelect={(i) => update("radiusIdx", i)}
               />
             </Field>
-            <Field label="Density">
+            <Field label={t("fields.density")}>
               <Segmented
-                options={DENSITIES.map((d) => d.name)}
+                options={[
+                  t("options.density.compact"),
+                  t("options.density.normal"),
+                  t("options.density.spacious"),
+                ]}
                 selectedIndex={s.densityIdx}
                 onSelect={(i) => update("densityIdx", i)}
               />
             </Field>
           </Accordion>
 
-          <Accordion label="Scalability">
+          <Accordion label={t("sections.scalability")}>
             <Toggle
-              label="Horizontal scroll when bars don't fit"
+              label={t("toggles.horizontalScroll")}
               checked={s.scrollEnabled}
               onChange={(v) => update("scrollEnabled", v)}
             />
-            <Field label="Min bar width (px)">
+            <Field label={t("fields.minBarWidth")}>
               <NumberInput
                 value={s.minBarWidth}
                 onChange={(v) =>
@@ -1583,10 +1680,15 @@ export function ColumnChartStudio() {
             </Field>
           </Accordion>
 
-          <Accordion label="Pattern">
-            <Field label="Mode">
+          <Accordion label={t("sections.pattern")}>
+            <Field label={t("fields.mode")}>
               <Segmented
-                options={["None", "First", "Last", "All"]}
+                options={[
+                  t("options.patternMode.none"),
+                  t("options.patternMode.first"),
+                  t("options.patternMode.last"),
+                  t("options.patternMode.all"),
+                ]}
                 selectedIndex={
                   { none: 0, first: 1, last: 2, all: 3 }[s.hatchMode]
                 }
@@ -1600,7 +1702,11 @@ export function ColumnChartStudio() {
             </Field>
             {(s.hatchMode === "first" || s.hatchMode === "last") && (
               <Field
-                label={s.hatchMode === "first" ? "Until index" : "From index"}
+                label={
+                  s.hatchMode === "first"
+                    ? t("fields.untilIndex")
+                    : t("fields.fromIndex")
+                }
               >
                 <NumberInput
                   value={s.hatchIndex}
@@ -1611,9 +1717,15 @@ export function ColumnChartStudio() {
               </Field>
             )}
             {s.hatchMode !== "none" && (
-              <Field label="Style">
+              <Field label={t("fields.style")}>
                 <Select
-                  options={PATTERN_STYLES.map((p) => p.name)}
+                  options={[
+                    t("options.patternStyle.diagonal"),
+                    t("options.patternStyle.reverse"),
+                    t("options.patternStyle.vertical"),
+                    t("options.patternStyle.horizontal"),
+                    t("options.patternStyle.dots"),
+                  ]}
                   selectedIndex={s.patternStyleIdx}
                   onSelect={(i) => update("patternStyleIdx", i)}
                 />
@@ -1621,10 +1733,15 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Emphasis">
-            <Field label="Mode">
+          <Accordion label={t("sections.emphasis")}>
+            <Field label={t("fields.mode")}>
               <Segmented
-                options={["None", "Peak", "Current", "Index"]}
+                options={[
+                  t("options.emphasis.none"),
+                  t("options.emphasis.peak"),
+                  t("options.emphasis.current"),
+                  t("options.emphasis.index"),
+                ]}
                 selectedIndex={
                   { none: 0, peak: 1, current: 2, index: 3 }[s.emphasisMode]
                 }
@@ -1637,7 +1754,7 @@ export function ColumnChartStudio() {
               />
             </Field>
             {s.emphasisMode === "index" && (
-              <Field label="Bar index">
+              <Field label={t("fields.barIndex")}>
                 <NumberInput
                   value={s.emphasisIndex}
                   onChange={(v) =>
@@ -1648,14 +1765,14 @@ export function ColumnChartStudio() {
             )}
             {s.emphasisMode !== "none" && (
               <>
-                <Field label="Note (above bar)">
+                <Field label={t("fields.note")}>
                   <TextInput
                     value={s.emphasisNote}
                     onChange={(v) => update("emphasisNote", v)}
-                    placeholder="← peak"
+                    placeholder={t("placeholders.emphasisNote")}
                   />
                 </Field>
-                <Field label="Custom color (optional)">
+                <Field label={t("fields.customColorOptional")}>
                   <ColorCustomInput
                     value={s.emphasisColor || s.accentValue}
                     onChange={(v) => update("emphasisColor", v)}
@@ -1666,37 +1783,41 @@ export function ColumnChartStudio() {
                     onClick={() => update("emphasisColor", "")}
                     className="cursor-pointer font-mono text-[10px] tracking-wider text-muted-foreground/70 uppercase hover:text-foreground"
                   >
-                    × clear color (use accent)
+                    {t("buttons.clearColor")}
                   </button>
                 )}
               </>
             )}
           </Accordion>
 
-          <Accordion label="Reference line">
+          <Accordion label={t("sections.referenceLine")}>
             <Toggle
-              label="Show reference line"
+              label={t("toggles.showReferenceLine")}
               checked={s.refShow}
               onChange={(v) => update("refShow", v)}
             />
             {s.refShow && (
               <>
-                <Field label="Mode">
+                <Field label={t("fields.mode")}>
                   <Segmented
-                    options={["Value", "Mean", "Median"]}
+                    options={[
+                      t("options.refMode.value"),
+                      t("options.refMode.mean"),
+                      t("options.refMode.median"),
+                    ]}
                     selectedIndex={s.refStatIdx}
                     onSelect={(i) => update("refStatIdx", i)}
                   />
                 </Field>
                 {s.refStatIdx === 0 && (
                   <>
-                    <Field label="Value">
+                    <Field label={t("fields.value")}>
                       <NumberInput
                         value={s.refValue}
                         onChange={(v) => update("refValue", v)}
                       />
                     </Field>
-                    <Field label="Label">
+                    <Field label={t("fields.label")}>
                       <TextInput
                         value={s.refLabel}
                         onChange={(v) => update("refLabel", v)}
@@ -1708,15 +1829,15 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Bands">
+          <Accordion label={t("sections.bands")}>
             <Toggle
-              label="Show plot band"
+              label={t("toggles.showPlotBand")}
               checked={s.bandsEnabled}
               onChange={(v) => update("bandsEnabled", v)}
             />
             {s.bandsEnabled && (
               <>
-                <Field label="From index">
+                <Field label={t("fields.fromIndex")}>
                   <NumberInput
                     value={s.bandFrom}
                     onChange={(v) =>
@@ -1724,7 +1845,7 @@ export function ColumnChartStudio() {
                     }
                   />
                 </Field>
-                <Field label="To index">
+                <Field label={t("fields.toIndex")}>
                   <NumberInput
                     value={s.bandTo}
                     onChange={(v) =>
@@ -1732,25 +1853,25 @@ export function ColumnChartStudio() {
                     }
                   />
                 </Field>
-                <Field label="Label">
+                <Field label={t("fields.label")}>
                   <TextInput
                     value={s.bandLabel}
                     onChange={(v) => update("bandLabel", v)}
-                    placeholder="Q3 push"
+                    placeholder={t("placeholders.bandLabel")}
                   />
                 </Field>
               </>
             )}
           </Accordion>
 
-          <Accordion label="Trend">
+          <Accordion label={t("sections.trend")}>
             <Toggle
-              label="Show trend indicator"
+              label={t("toggles.showTrend")}
               checked={s.trendShow}
               onChange={(v) => update("trendShow", v)}
             />
             {s.trendShow && (
-              <Field label="Value (0.184 = +18.4%)">
+              <Field label={t("fields.trendValue")}>
                 <NumberInput
                   value={s.trendValue}
                   step={0.01}
@@ -1760,51 +1881,56 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Editorial">
-            <Field label="Caption (italic note below source)">
+          <Accordion label={t("sections.editorial")}>
+            <Field label={t("fields.caption")}>
               <TextInput
                 value={s.captionText}
                 onChange={(v) => update("captionText", v)}
-                placeholder="Excludes weekends."
+                placeholder={t("placeholders.captionColumn")}
               />
             </Field>
-            <Field label="Watermark (diagonal text behind chart)">
+            <Field label={t("fields.watermark")}>
               <TextInput
                 value={s.watermarkText}
                 onChange={(v) => update("watermarkText", v)}
-                placeholder="DRAFT"
+                placeholder={t("placeholders.watermark")}
               />
             </Field>
             <Toggle
-              label="Show annotation"
+              label={t("toggles.showAnnotation")}
               checked={s.annotationsEnabled}
               onChange={(v) => update("annotationsEnabled", v)}
             />
             {s.annotationsEnabled && (
               <>
-                <Field label="Text">
+                <Field label={t("fields.text")}>
                   <TextInput
                     value={s.annotationText}
                     onChange={(v) => update("annotationText", v)}
-                    placeholder="← peak"
+                    placeholder={t("placeholders.annotationText")}
                   />
                 </Field>
-                <Field label="X (label match)">
+                <Field label={t("fields.annotationX")}>
                   <TextInput
                     value={s.annotationLabel}
                     onChange={(v) => update("annotationLabel", v)}
-                    placeholder="FRI"
+                    placeholder={t("placeholders.annotationX")}
                   />
                 </Field>
-                <Field label="Y (data-space value)">
+                <Field label={t("fields.annotationY")}>
                   <NumberInput
                     value={s.annotationY}
                     onChange={(v) => update("annotationY", v)}
                   />
                 </Field>
-                <Field label="Anchor">
+                <Field label={t("fields.anchor")}>
                   <Segmented
-                    options={["Top", "Right", "Bottom", "Left"]}
+                    options={[
+                      t("options.anchor.top"),
+                      t("options.anchor.right"),
+                      t("options.anchor.bottom"),
+                      t("options.anchor.left"),
+                    ]}
                     selectedIndex={
                       { top: 0, right: 1, bottom: 2, left: 3 }[
                         s.annotationAnchor
@@ -1819,7 +1945,7 @@ export function ColumnChartStudio() {
                   />
                 </Field>
                 <Toggle
-                  label="Dashed connector to bar"
+                  label={t("toggles.dashedConnector")}
                   checked={s.annotationArrow}
                   onChange={(v) => update("annotationArrow", v)}
                 />
@@ -1827,14 +1953,14 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Source">
+          <Accordion label={t("sections.source")}>
             <Toggle
-              label="Show source line"
+              label={t("toggles.showSourceLine")}
               checked={s.sourceShow}
               onChange={(v) => update("sourceShow", v)}
             />
             {s.sourceShow && (
-              <Field label="Text">
+              <Field label={t("fields.text")}>
                 <TextInput
                   value={s.sourceText}
                   onChange={(v) => update("sourceText", v)}
@@ -1843,14 +1969,14 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Animation">
+          <Accordion label={t("sections.animation")}>
             <Toggle
-              label="Enable mount animation"
+              label={t("toggles.enableAnimation")}
               checked={s.animationEnabled}
               onChange={(v) => update("animationEnabled", v)}
             />
             {s.animationEnabled && (
-              <Field label="Duration (ms)">
+              <Field label={t("fields.duration")}>
                 <NumberInput
                   value={s.animationDuration}
                   step={50}
@@ -1862,30 +1988,31 @@ export function ColumnChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Forward-compat">
-            <Field label="dataDescription (AI/LLM metadata)">
+          <Accordion label={t("sections.forwardCompat")}>
+            <Field label={t("fields.dataDescription")}>
               <TextInput
                 value={s.dataDescription}
                 onChange={(v) => update("dataDescription", v)}
-                placeholder="Daily active users, last 7 days"
+                placeholder={t("placeholders.dataDescriptionColumn")}
               />
             </Field>
-            <Field label="data-testid (QA selector)">
+            <Field label={t("fields.testId")}>
               <TextInput
                 value={s.testId}
                 onChange={(v) => update("testId", v)}
-                placeholder="active-users-chart"
+                placeholder={t("placeholders.testIdColumn")}
               />
             </Field>
             <Toggle
-              label="Show JSON (portable config)"
+              label={t("toggles.showJSON")}
               checked={s.showJSON}
               onChange={(v) => update("showJSON", v)}
             />
             {s.showJSON && (
               <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                JSON dumps below the chart panel — paste into a notebook,
-                WordPress, or pass to <code>renderToHTMLString()</code>.
+                {t.rich("hints.showJSON", {
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
               </div>
             )}
           </Accordion>
@@ -1926,31 +2053,32 @@ function PreviewThemeToggle({
   value: "light" | "dark";
   onChange: (t: "light" | "dark") => void;
 }) {
+  const t = useTranslations("studio");
   return (
     <div
       className="flex items-center gap-1"
       role="group"
-      aria-label="Chart preview theme"
+      aria-label={t("aria.previewTheme")}
     >
-      {(["light", "dark"] as const).map((t) => (
+      {(["light", "dark"] as const).map((mode) => (
         <button
-          key={t}
+          key={mode}
           type="button"
-          onClick={() => onChange(t)}
-          aria-pressed={value === t}
+          onClick={() => onChange(mode)}
+          aria-pressed={value === mode}
           aria-label={
-            t === "light" ? "Preview in light theme" : "Preview in dark theme"
+            mode === "light" ? t("aria.previewLight") : t("aria.previewDark")
           }
           title={
-            t === "light" ? "Preview in light theme" : "Preview in dark theme"
+            mode === "light" ? t("aria.previewLight") : t("aria.previewDark")
           }
           className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-[2px] border transition-colors ${
-            value === t
+            value === mode
               ? "border-brock-accent/70 bg-brock-accent/10 text-foreground"
               : "border-border bg-muted/40 text-muted-foreground hover:border-brock-accent/60 hover:text-foreground"
           }`}
         >
-          {t === "light" ? (
+          {mode === "light" ? (
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -2025,6 +2153,7 @@ function Swatch({
   onClick: () => void;
   title: string;
 }) {
+  const t = useTranslations("studio");
   return (
     <button
       onClick={onClick}
@@ -2041,7 +2170,7 @@ function Swatch({
             : {}),
         } as React.CSSProperties
       }
-      aria-label={`Color ${title}`}
+      aria-label={t("aria.color", { name: title })}
       aria-pressed={selected}
       title={title}
     />
@@ -2078,6 +2207,7 @@ function ColorCustomInput({
   value: string;
   onChange: (hex: string) => void;
 }) {
+  const t = useTranslations("studio");
   const [text, setText] = useState(value);
 
   // Keep the text field in sync when accent changes from outside (palette click).
@@ -2097,8 +2227,8 @@ function ColorCustomInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-7 w-7 shrink-0 cursor-pointer rounded-[2px] border border-border bg-transparent p-0.5"
-        aria-label="Pick custom color"
-        title="Color picker"
+        aria-label={t("aria.pickCustomColor")}
+        title={t("aria.colorPicker")}
       />
       <input
         type="text"
@@ -2108,7 +2238,7 @@ function ColorCustomInput({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
         }}
-        placeholder="#F54900"
+        placeholder={t("placeholders.hex")}
         spellCheck={false}
         className="flex-1 rounded-[2px] border border-border bg-background px-2 py-1.5 font-mono text-xs uppercase text-foreground placeholder:text-muted-foreground/40 focus:border-brock-accent focus:outline-none"
       />

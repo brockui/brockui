@@ -1,40 +1,81 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { ColumnChart } from "@/components/charts/column-chart";
 
+/**
+ * Demo data is locale-aware: on /ru the weekday/month labels, reference-line
+ * names and number formatting render in Russian — Cyrillic in the bars is a
+ * feature demo, not an accident. Numeric series are shared; only display
+ * strings (and the numberFormat locale pin) fork. Card titles/subtitles stay
+ * in the page language via the docs content, generated code never changes.
+ */
+type ExamplesLocale = "en" | "ru";
+
 const weeklyData = [142, 168, 187, 159, 203, 178, 215];
-const weeklyLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 const historicalProjectedData = [142, 168, 187, 159, 203, 215, 232];
-const historicalProjectedLabels = [
-  "JAN",
-  "FEB",
-  "MAR",
-  "APR",
-  "MAY",
-  "JUN",
-  "JUL",
-];
 
-const rankingData = [
-  { label: "DIRECT", value: 4120 },
-  { label: "SEARCH", value: 3870 },
-  { label: "SOCIAL", value: 1290 },
-  { label: "EMAIL", value: 940 },
-  { label: "REFERRAL", value: 610 },
-  { label: "AFFILIATE", value: 380 },
-  { label: "DISPLAY", value: 210 },
-] as const;
+const rankingValues = [4120, 3870, 1290, 940, 610, 380, 210];
 
-const emphasisData = [
-  { label: "MON", value: 142 },
-  { label: "TUE", value: 168 },
-  { label: "WED", value: 187 },
-  { label: "THU", value: 159 },
-  { label: "FRI", value: 203 },
-  { label: "SAT", value: 178 },
-  { label: "SUN", value: 215, highlight: true, note: "← peak" },
-] as const;
+const pnlValues = [42, 18, -12, -28, 9, 31];
+
+const STRINGS: Record<
+  ExamplesLocale,
+  {
+    weeklyLabels: string[];
+    monthLabels: string[];
+    pnlMonthLabels: string[];
+    rankingLabels: string[];
+    weeklyTarget: string;
+    bandLabel: string;
+    otherLabel: string;
+    peakNote: string;
+    sundayLabel: string;
+    numberLocale: string;
+  }
+> = {
+  en: {
+    weeklyLabels: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+    monthLabels: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL"],
+    pnlMonthLabels: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN"],
+    rankingLabels: [
+      "DIRECT",
+      "SEARCH",
+      "SOCIAL",
+      "EMAIL",
+      "REFERRAL",
+      "AFFILIATE",
+      "DISPLAY",
+    ],
+    weeklyTarget: "Weekly target",
+    bandLabel: "Q3 push",
+    otherLabel: "OTHER",
+    peakNote: "← peak",
+    sundayLabel: "SUN",
+    numberLocale: "en-US",
+  },
+  ru: {
+    weeklyLabels: ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"],
+    monthLabels: ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ"],
+    pnlMonthLabels: ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН"],
+    rankingLabels: [
+      "ПРЯМОЙ",
+      "ПОИСК",
+      "СОЦСЕТИ",
+      "EMAIL",
+      "РЕФЕРАЛЫ",
+      "ПАРТНЁРЫ",
+      "БАННЕРЫ",
+    ],
+    weeklyTarget: "Цель недели",
+    bandLabel: "Спринт Q3",
+    otherLabel: "ПРОЧЕЕ",
+    peakNote: "← пик",
+    sundayLabel: "ВС",
+    numberLocale: "ru-RU",
+  },
+};
 
 function ExampleCard({
   title,
@@ -67,12 +108,31 @@ function ExampleCard({
  * render on the client.
  */
 export function ColumnChartExamples() {
+  const locale: ExamplesLocale = useLocale() === "ru" ? "ru" : "en";
+  const d = STRINGS[locale];
+
+  const rankingData = d.rankingLabels.map((label, i) => ({
+    label,
+    value: rankingValues[i],
+  }));
+
+  const emphasisData = d.weeklyLabels.map((label, i) =>
+    i === d.weeklyLabels.length - 1
+      ? { label, value: weeklyData[i], highlight: true, note: d.peakNote }
+      : { label, value: weeklyData[i] },
+  );
+
+  const pnlData = d.pnlMonthLabels.map((label, i) => ({
+    label,
+    value: pnlValues[i],
+  }));
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <ExampleCard title="Basic" subtitle="number[] + labels + trend + source">
         <ColumnChart
           data={weeklyData}
-          labels={weeklyLabels}
+          labels={d.weeklyLabels}
           height={200}
           trend={0.184}
           source="Brock Analytics, 2026"
@@ -92,7 +152,7 @@ export function ColumnChartExamples() {
       >
         <ColumnChart
           data={weeklyData}
-          labels={weeklyLabels}
+          labels={d.weeklyLabels}
           height={200}
           loading
           source="Polling every 30s"
@@ -118,7 +178,7 @@ export function ColumnChartExamples() {
       >
         <ColumnChart
           data={historicalProjectedData}
-          labels={historicalProjectedLabels}
+          labels={d.monthLabels}
           height={200}
           hatchFromIndex={5}
           patternStyle="diagonal"
@@ -132,10 +192,10 @@ export function ColumnChartExamples() {
       >
         <ColumnChart
           data={weeklyData}
-          labels={weeklyLabels}
+          labels={d.weeklyLabels}
           height={200}
-          referenceLine={{ value: 190, label: "Weekly target" }}
-          bands={[{ from: 4, to: 6, label: "Q3 push" }]}
+          referenceLine={{ value: 190, label: d.weeklyTarget }}
+          bands={[{ from: 4, to: 6, label: d.bandLabel }]}
           source="Brock Analytics, 2026"
         />
       </ExampleCard>
@@ -156,17 +216,10 @@ export function ColumnChartExamples() {
         subtitle="negatives are first-class — bars grow down from the zero baseline"
       >
         <ColumnChart
-          data={[
-            { label: "JAN", value: 42 },
-            { label: "FEB", value: 18 },
-            { label: "MAR", value: -12 },
-            { label: "APR", value: -28 },
-            { label: "MAY", value: 9 },
-            { label: "JUN", value: 31 },
-          ]}
+          data={pnlData}
           height={200}
           referenceLine={{ value: { stat: "mean" } }}
-          numberFormat={{ prefix: "$", suffix: "k", locale: "en-US" }}
+          numberFormat={{ prefix: "$", suffix: "k", locale: d.numberLocale }}
           source="Brock Analytics — monthly P&L"
         />
       </ExampleCard>
@@ -179,8 +232,8 @@ export function ColumnChartExamples() {
           data={rankingData}
           height={200}
           sort="desc"
-          topN={{ n: 4, label: "OTHER" }}
-          numberFormat={{ notation: "compact", locale: "en-US" }}
+          topN={{ n: 4, label: d.otherLabel }}
+          numberFormat={{ notation: "compact", locale: d.numberLocale }}
           source="Brock Analytics — traffic by channel"
         />
       </ExampleCard>
@@ -191,12 +244,14 @@ export function ColumnChartExamples() {
       >
         <ColumnChart
           data={weeklyData}
-          labels={weeklyLabels}
+          labels={d.weeklyLabels}
           height={200}
           source="Brock Analytics, 2026"
           caption="Excludes maintenance window 03:00–04:00 UTC."
           watermark="DRAFT"
-          annotations={[{ x: "SUN", y: 215, text: "← peak", arrow: true }]}
+          annotations={[
+            { x: d.sundayLabel, y: 215, text: d.peakNote, arrow: true },
+          ]}
         />
       </ExampleCard>
     </div>

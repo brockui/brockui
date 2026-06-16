@@ -28,6 +28,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   BarChart,
   type BarChartHandle,
@@ -117,71 +118,151 @@ type DatasetKey = "channels" | "regions" | "products" | "longLabels";
  * Four ranking datasets in object form — the bar chart is the ranking shape,
  * so every preset is categorical (not temporal like Column's day buckets).
  * "Long" exists to demo the labelWidth + truncation policy.
+ *
+ * Demo data is locale-aware: on /ru the category labels render in Russian —
+ * Cyrillic in the label column is a feature demo, not an accident. Numeric
+ * values and goals are shared; only display strings fork. Component names in
+ * the Products preset stay English in both locales (names are never
+ * translated).
  */
+type StudioLocale = "en" | "ru";
+
+type DatasetPoint = { label: string; value: number };
+
+type Dataset = {
+  label: string;
+  data: DatasetPoint[];
+  suggestedGoal: number;
+  suggestedGoalLabel: string;
+};
+
+function zip(labels: string[], values: number[]): DatasetPoint[] {
+  return labels.map((label, i) => ({ label, value: values[i] }));
+}
+
+const CHANNEL_VALUES = [4120, 3870, 1290, 940, 620, 480];
+const REGION_VALUES = [1840, 1620, 980, 760, 540, 410, 380, 290];
+const LONG_VALUES = [1320, 1180, 940, 720, 510];
+
+const PRODUCTS_DATA = zip(
+  [
+    "METRIC CARD",
+    "DATA TABLE",
+    "COLUMN CHART",
+    "BAR CHART",
+    "STAT DISPLAY",
+    "BUTTON",
+    "CHART WRAPPER",
+  ],
+  [2480, 1960, 1540, 1210, 880, 640, 420],
+);
+
 const DATASETS: Record<
   DatasetKey,
   {
-    label: string;
-    data: { label: string; value: number }[];
+    label: Record<StudioLocale, string>;
+    data: Record<StudioLocale, DatasetPoint[]>;
     suggestedGoal: number;
-    suggestedGoalLabel: string;
+    suggestedGoalLabel: Record<StudioLocale, string>;
   }
 > = {
   channels: {
-    label: "Channels",
-    data: [
-      { label: "DIRECT", value: 4120 },
-      { label: "SEARCH", value: 3870 },
-      { label: "SOCIAL", value: 1290 },
-      { label: "EMAIL", value: 940 },
-      { label: "REFERRAL", value: 620 },
-      { label: "PARTNER", value: 480 },
-    ],
+    label: { en: "Channels", ru: "Каналы" },
+    data: {
+      en: zip(
+        ["DIRECT", "SEARCH", "SOCIAL", "EMAIL", "REFERRAL", "PARTNER"],
+        CHANNEL_VALUES,
+      ),
+      ru: zip(
+        ["ПРЯМОЙ", "ПОИСК", "СОЦСЕТИ", "EMAIL", "РЕФЕРАЛЫ", "ПАРТНЁРЫ"],
+        CHANNEL_VALUES,
+      ),
+    },
     suggestedGoal: 2000,
-    suggestedGoalLabel: "Channel target",
+    suggestedGoalLabel: { en: "Channel target", ru: "Цель по каналам" },
   },
   regions: {
-    label: "Regions",
-    data: [
-      { label: "ALMATY", value: 1840 },
-      { label: "ASTANA", value: 1620 },
-      { label: "SHYMKENT", value: 980 },
-      { label: "KARAGANDA", value: 760 },
-      { label: "AKTOBE", value: 540 },
-      { label: "TARAZ", value: 410 },
-      { label: "PAVLODAR", value: 380 },
-      { label: "ATYRAU", value: 290 },
-    ],
+    label: { en: "Regions", ru: "Регионы" },
+    data: {
+      en: zip(
+        [
+          "ALMATY",
+          "ASTANA",
+          "SHYMKENT",
+          "KARAGANDA",
+          "AKTOBE",
+          "TARAZ",
+          "PAVLODAR",
+          "ATYRAU",
+        ],
+        REGION_VALUES,
+      ),
+      ru: zip(
+        [
+          "АЛМАТЫ",
+          "АСТАНА",
+          "ШЫМКЕНТ",
+          "КАРАГАНДА",
+          "АКТОБЕ",
+          "ТАРАЗ",
+          "ПАВЛОДАР",
+          "АТЫРАУ",
+        ],
+        REGION_VALUES,
+      ),
+    },
     suggestedGoal: 850,
-    suggestedGoalLabel: "Regional plan",
+    suggestedGoalLabel: { en: "Regional plan", ru: "План по регионам" },
   },
   products: {
-    label: "Products",
-    data: [
-      { label: "METRIC CARD", value: 2480 },
-      { label: "DATA TABLE", value: 1960 },
-      { label: "COLUMN CHART", value: 1540 },
-      { label: "BAR CHART", value: 1210 },
-      { label: "STAT DISPLAY", value: 880 },
-      { label: "BUTTON", value: 640 },
-      { label: "CHART WRAPPER", value: 420 },
-    ],
+    label: { en: "Products", ru: "Продукты" },
+    data: { en: PRODUCTS_DATA, ru: PRODUCTS_DATA },
     suggestedGoal: 1500,
-    suggestedGoalLabel: "Quota",
+    suggestedGoalLabel: { en: "Quota", ru: "Квота" },
   },
   longLabels: {
-    label: "Long",
-    data: [
-      { label: "Customer Success Operations", value: 1320 },
-      { label: "Enterprise Infrastructure", value: 1180 },
-      { label: "Developer Experience Tooling", value: 940 },
-      { label: "Marketing & Communications", value: 720 },
-      { label: "Research & Special Projects", value: 510 },
-    ],
+    label: { en: "Long", ru: "Длинные" },
+    data: {
+      en: zip(
+        [
+          "Customer Success Operations",
+          "Enterprise Infrastructure",
+          "Developer Experience Tooling",
+          "Marketing & Communications",
+          "Research & Special Projects",
+        ],
+        LONG_VALUES,
+      ),
+      ru: zip(
+        [
+          "Клиентский успех и поддержка",
+          "Корпоративная инфраструктура",
+          "Инструменты для разработчиков",
+          "Маркетинг и коммуникации",
+          "Исследования и спецпроекты",
+        ],
+        LONG_VALUES,
+      ),
+    },
     suggestedGoal: 1000,
-    suggestedGoalLabel: "Headcount budget",
+    suggestedGoalLabel: { en: "Headcount budget", ru: "Бюджет штата" },
   },
 };
+
+/** Resolve the per-locale view of every dataset (stable array identities). */
+function datasetsFor(locale: StudioLocale): Record<DatasetKey, Dataset> {
+  const out = {} as Record<DatasetKey, Dataset>;
+  for (const key of Object.keys(DATASETS) as DatasetKey[]) {
+    const d = DATASETS[key];
+    out[key] = {
+      label: d.label[locale],
+      data: d.data[locale],
+      suggestedGoal: d.suggestedGoal,
+      suggestedGoalLabel: d.suggestedGoalLabel[locale],
+    };
+  }
+  return out;
+}
 
 /* ─── State shape ────────────────────────────────────────────────────── */
 
@@ -355,8 +436,11 @@ function numberFormatLocale(s: StudioState): string | undefined {
   return notation !== "standard" || style !== "decimal" ? "en-US" : undefined;
 }
 
-function generateCode(s: StudioState): string {
-  const ds = DATASETS[s.dataset];
+function generateCode(
+  s: StudioState,
+  datasets: Record<DatasetKey, Dataset>,
+): string {
+  const ds = datasets[s.dataset];
   const accent = s.accentValue;
   const radius = RADII[s.radiusIdx];
 
@@ -589,7 +673,29 @@ function generateCode(s: StudioState): string {
 /* ─── Main component ─────────────────────────────────────────────────── */
 
 export function BarChartStudio() {
-  const [s, setS] = useState<StudioState>(INITIAL_STATE);
+  const t = useTranslations("studio");
+  const locale: StudioLocale = useLocale() === "ru" ? "ru" : "en";
+  const datasets = datasetsFor(locale);
+  // The reference-line label must agree with the active locale's dataset, so
+  // the initial state derives from it.
+  // Seeded demo TEXT is locale-aware too — the /ru preview and generated code
+  // read Russian end to end. Only filenames/slugs stay latin.
+  const seed =
+    locale === "ru"
+      ? {
+          headerTitle: "Трафик по каналам",
+          headerSubtitle: "Последние 30 дней",
+          errorMessage: "Не удалось загрузить метрики — таймаут API.",
+          loadingLabel: "Загрузка…",
+          errorLabel: "Ошибка",
+          retryLabel: "Повторить",
+        }
+      : {};
+  const [s, setS] = useState<StudioState>(() => ({
+    ...INITIAL_STATE,
+    ...seed,
+    refLabel: datasetsFor(locale).channels.suggestedGoalLabel,
+  }));
   const chartRef = useRef<BarChartHandle>(null);
 
   // Chart-preview theme. Follows the site theme until the user explicitly
@@ -698,7 +804,7 @@ export function BarChartStudio() {
   }
 
   function setDataset(dataset: DatasetKey) {
-    const ds = DATASETS[dataset];
+    const ds = datasets[dataset];
     setS((prev) => ({
       ...prev,
       dataset,
@@ -707,10 +813,10 @@ export function BarChartStudio() {
     }));
   }
 
-  const ds = DATASETS[s.dataset];
+  const ds = datasets[s.dataset];
   const accent = s.accentValue;
   const radius = RADII[s.radiusIdx];
-  const code = generateCode(s);
+  const code = generateCode(s, datasets);
 
   function pickColor(hex: string) {
     setS((prev) => {
@@ -785,7 +891,7 @@ export function BarChartStudio() {
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_260px] lg:gap-0">
       {/* ── Code panel (left) ─────────────────────────────────────── */}
       <div className="border border-border bg-card lg:border-r-0">
-        <PanelHeader label="Code">
+        <PanelHeader label={t("panels.code")}>
           <CopyButton text={code} />
         </PanelHeader>
         <pre className="overflow-x-auto p-4 font-mono text-[11px] leading-relaxed text-foreground">
@@ -795,7 +901,7 @@ export function BarChartStudio() {
 
       {/* ── Chart panel (center) ──────────────────────────────────── */}
       <div className="border border-border bg-card">
-        <PanelHeader label="Chart">
+        <PanelHeader label={t("panels.chart")}>
           <PreviewThemeToggle
             value={previewTheme}
             onChange={(t) => {
@@ -944,7 +1050,7 @@ export function BarChartStudio() {
         </div>
         {s.showJSON && (
           <div className="border-t border-border">
-            <PanelHeader label="JSON · toJSON() output">
+            <PanelHeader label={t("panels.json")}>
               <CopyButton text={jsonText} />
             </PanelHeader>
             <pre className="max-h-72 overflow-auto p-4 font-mono text-[11px] leading-relaxed text-foreground">
@@ -956,13 +1062,13 @@ export function BarChartStudio() {
 
       {/* ── Settings panel (right) ────────────────────────────────── */}
       <aside className="border border-border bg-card lg:border-l-0">
-        <PanelHeader label="Settings" />
+        <PanelHeader label={t("panels.settings")} />
         <div className="divide-y divide-border">
-          <Accordion label="Data" defaultOpen>
-            <Field label="Dataset">
+          <Accordion label={t("sections.data")} defaultOpen>
+            <Field label={t("fields.dataset")}>
               <Segmented
                 options={(Object.keys(DATASETS) as DatasetKey[]).map(
-                  (k) => DATASETS[k].label,
+                  (k) => datasets[k].label,
                 )}
                 selectedIndex={(Object.keys(DATASETS) as DatasetKey[]).indexOf(
                   s.dataset,
@@ -972,17 +1078,21 @@ export function BarChartStudio() {
                 }
               />
             </Field>
-            <Field label="Sort by value">
+            <Field label={t("fields.sortByValue")}>
               <Segmented
-                options={["None", "Asc", "Desc"]}
+                options={[
+                  t("options.sort.none"),
+                  t("options.sort.asc"),
+                  t("options.sort.desc"),
+                ]}
                 selectedIndex={s.sortIdx}
                 onSelect={(i) => update("sortIdx", i)}
               />
             </Field>
-            <Field label="Top-N + Other">
+            <Field label={t("fields.topNOther")}>
               <div className="space-y-1.5">
                 <Toggle
-                  label="Roll the long tail into 'Other'"
+                  label={t("toggles.rollLongTail")}
                   checked={s.topNEnabled}
                   onChange={(v) => update("topNEnabled", v)}
                 />
@@ -996,8 +1106,8 @@ export function BarChartStudio() {
             </Field>
           </Accordion>
 
-          <Accordion label="Layout">
-            <Field label="Bar thickness (px)">
+          <Accordion label={t("sections.layout")}>
+            <Field label={t("fields.barThickness")}>
               <NumberInput
                 value={s.barThickness}
                 onChange={(v) =>
@@ -1005,13 +1115,13 @@ export function BarChartStudio() {
                 }
               />
             </Field>
-            <Field label="Gap (px)">
+            <Field label={t("fields.gap")}>
               <NumberInput
                 value={s.gapValue}
                 onChange={(v) => update("gapValue", Math.max(0, Math.floor(v)))}
               />
             </Field>
-            <Field label="Label column width (px)">
+            <Field label={t("fields.labelWidth")}>
               <NumberInput
                 value={s.labelWidthValue}
                 onChange={(v) =>
@@ -1020,13 +1130,13 @@ export function BarChartStudio() {
               />
             </Field>
             <Toggle
-              label="Cap height (maxHeight)"
+              label={t("toggles.capHeight")}
               checked={s.maxHeightEnabled}
               onChange={(v) => update("maxHeightEnabled", v)}
             />
             {s.maxHeightEnabled && (
               <>
-                <Field label="Max height (px)">
+                <Field label={t("fields.maxHeight")}>
                   <NumberInput
                     value={s.maxHeightValue}
                     onChange={(v) =>
@@ -1035,25 +1145,30 @@ export function BarChartStudio() {
                   />
                 </Field>
                 <Toggle
-                  label="Scroll overflow (scroll='auto')"
+                  label={t("toggles.scrollOverflow")}
                   checked={s.scrollAuto}
                   onChange={(v) => update("scrollAuto", v)}
                 />
                 {!s.scrollAuto && (
                   <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                    maxHeight is a documented no-op without{" "}
-                    <code>scroll=&quot;auto&quot;</code> — the honest default
-                    shows every category.
+                    {t.rich("hints.maxHeightNoop", {
+                      code: (chunks) => <code>{chunks}</code>,
+                    })}
                   </div>
                 )}
               </>
             )}
           </Accordion>
 
-          <Accordion label="States">
-            <Field label="Mode">
+          <Accordion label={t("sections.states")}>
+            <Field label={t("fields.mode")}>
               <Segmented
-                options={["Ready", "Loading", "Refresh", "Error"]}
+                options={[
+                  t("options.state.ready"),
+                  t("options.state.loading"),
+                  t("options.state.refresh"),
+                  t("options.state.error"),
+                ]}
                 selectedIndex={
                   {
                     ready: 0,
@@ -1074,41 +1189,41 @@ export function BarChartStudio() {
             </Field>
             {(s.stateMode === "loading" ||
               s.stateMode === "loading-overlay") && (
-              <Field label="Loading label">
+              <Field label={t("fields.loadingLabel")}>
                 <TextInput
                   value={s.loadingLabel}
                   onChange={(v) => update("loadingLabel", v)}
-                  placeholder="Loading…"
+                  placeholder={t("placeholders.loading")}
                 />
               </Field>
             )}
             {s.stateMode === "error" && (
               <>
-                <Field label="Error message">
+                <Field label={t("fields.errorMessage")}>
                   <TextInput
                     value={s.errorMessage}
                     onChange={(v) => update("errorMessage", v)}
-                    placeholder="Couldn't load metrics…"
+                    placeholder={t("placeholders.errorMessage")}
                   />
                 </Field>
-                <Field label="Error label">
+                <Field label={t("fields.errorLabel")}>
                   <TextInput
                     value={s.errorLabel}
                     onChange={(v) => update("errorLabel", v)}
-                    placeholder="Error"
+                    placeholder={t("placeholders.errorLabel")}
                   />
                 </Field>
                 <Toggle
-                  label="Show retry button"
+                  label={t("toggles.showRetry")}
                   checked={s.withRetry}
                   onChange={(v) => update("withRetry", v)}
                 />
                 {s.withRetry && (
-                  <Field label="Retry label">
+                  <Field label={t("fields.retryLabel")}>
                     <TextInput
                       value={s.retryLabel}
                       onChange={(v) => update("retryLabel", v)}
-                      placeholder="Retry"
+                      placeholder={t("placeholders.retryLabel")}
                     />
                   </Field>
                 )}
@@ -1116,60 +1231,60 @@ export function BarChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Export">
-            <Field label="Formats">
+          <Accordion label={t("sections.export")}>
+            <Field label={t("fields.formats")}>
               <div className="space-y-1.5">
                 <Toggle
-                  label="PNG button"
+                  label={t("toggles.pngButton")}
                   checked={s.exportPNG}
                   onChange={(v) => update("exportPNG", v)}
                 />
                 <Toggle
-                  label="SVG button"
+                  label={t("toggles.svgButton")}
                   checked={s.exportSVG}
                   onChange={(v) => update("exportSVG", v)}
                 />
                 <Toggle
-                  label="CSV button"
+                  label={t("toggles.csvButton")}
                   checked={s.exportCSV}
                   onChange={(v) => update("exportCSV", v)}
                 />
                 <Toggle
-                  label="Copy-image button"
+                  label={t("toggles.copyImageButton")}
                   checked={s.exportCopy}
                   onChange={(v) => update("exportCopy", v)}
                 />
               </div>
             </Field>
-            <Field label="File name">
+            <Field label={t("fields.fileName")}>
               <TextInput
                 value={s.exportFileName}
                 onChange={(v) => update("exportFileName", v)}
-                placeholder="traffic-by-channel"
+                placeholder={t("placeholders.fileNameBar")}
               />
             </Field>
           </Accordion>
 
-          <Accordion label="Slots">
-            <Field label="Demo slot overrides">
+          <Accordion label={t("sections.slots")}>
+            <Field label={t("fields.demoSlots")}>
               <div className="space-y-1.5">
                 <Toggle
-                  label="Custom tooltip"
+                  label={t("toggles.customTooltip")}
                   checked={s.slotTooltip}
                   onChange={(v) => update("slotTooltip", v)}
                 />
                 <Toggle
-                  label="Custom empty state"
+                  label={t("toggles.customEmpty")}
                   checked={s.slotEmpty}
                   onChange={(v) => update("slotEmpty", v)}
                 />
                 <Toggle
-                  label="Reading-note caption"
+                  label={t("toggles.readingNoteCaption")}
                   checked={s.slotCaption}
                   onChange={(v) => update("slotCaption", v)}
                 />
                 <Toggle
-                  label="Diagonal watermark"
+                  label={t("toggles.diagonalWatermark")}
                   checked={s.slotWatermark}
                   onChange={(v) => update("slotWatermark", v)}
                 />
@@ -1177,58 +1292,59 @@ export function BarChartStudio() {
             </Field>
             {s.slotEmpty && (
               <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                Switch <code>Data Mode</code> below to test the empty slot, or
-                clear the data array in code.
+                {t.rich("hints.emptySlot", {
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
               </div>
             )}
           </Accordion>
 
-          <Accordion label="Events">
+          <Accordion label={t("sections.events")}>
             <Toggle
-              label="Track click / hover / focus"
+              label={t("toggles.trackEvents")}
               checked={s.eventsEnabled}
               onChange={(v) => update("eventsEnabled", v)}
             />
             {s.eventsEnabled && (
               <>
-                <Field label="Last click">
+                <Field label={t("fields.lastClick")}>
                   <div
                     className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
                   >
                     {s.lastClickIndex !== null
                       ? `#${s.lastClickIndex} · ${s.lastClickLabel ?? "—"} · ${s.lastClickValue}`
-                      : "— no clicks yet —"}
+                      : t("hints.noClicksYet")}
                   </div>
                 </Field>
-                <Field label="Hovering">
+                <Field label={t("fields.hovering")}>
                   <div
                     className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
                   >
                     {s.hoverIndex !== null
                       ? `#${s.hoverIndex} · ${s.hoverLabel ?? "—"}`
-                      : "— mouse outside —"}
+                      : t("hints.mouseOutside")}
                   </div>
                 </Field>
-                <Field label="Focused">
+                <Field label={t("fields.focused")}>
                   <div
                     className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
                   >
                     {s.focusIndex !== null
                       ? `#${s.focusIndex} · ${s.focusLabel ?? "—"}`
-                      : "— no focus yet —"}
+                      : t("hints.noFocusYet")}
                   </div>
                 </Field>
-                <Field label="Programmatic focus (ref.focusBar)">
+                <Field label={t("fields.programmaticFocus")}>
                   <div className="flex gap-1.5">
                     <button
                       type="button"
                       className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
                       onClick={() => chartRef.current?.focusBar(0)}
                     >
-                      ◀ First
+                      ◀ {t("buttons.first")}
                     </button>
                     <button
                       type="button"
@@ -1238,14 +1354,14 @@ export function BarChartStudio() {
                         chartRef.current?.focusBar(next);
                       }}
                     >
-                      Next ▶
+                      {t("buttons.next")} ▶
                     </button>
                     <button
                       type="button"
                       className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
                       onClick={() => chartRef.current?.focusBar(999)}
                     >
-                      Last ▶▶
+                      {t("buttons.last")} ▶▶
                     </button>
                   </div>
                 </Field>
@@ -1253,38 +1369,38 @@ export function BarChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Header">
-            <Field label="Title">
+          <Accordion label={t("sections.header")}>
+            <Field label={t("fields.title")}>
               <TextInput
                 value={s.headerTitle}
                 onChange={(v) => update("headerTitle", v)}
-                placeholder="Traffic by channel"
+                placeholder={t("placeholders.headerTitleBar")}
               />
             </Field>
-            <Field label="Subtitle">
+            <Field label={t("fields.subtitle")}>
               <TextInput
                 value={s.headerSubtitle}
                 onChange={(v) => update("headerSubtitle", v)}
-                placeholder="Last 30 days"
+                placeholder={t("placeholders.headerSubtitleBar")}
               />
             </Field>
           </Accordion>
 
-          <Accordion label="X-axis (value)">
-            <Field label="Title">
+          <Accordion label={t("sections.xAxisValue")}>
+            <Field label={t("fields.title")}>
               <TextInput
                 value={s.xAxisTitle}
                 onChange={(v) => update("xAxisTitle", v)}
-                placeholder="Sessions"
+                placeholder={t("placeholders.xAxisTitleBar")}
               />
             </Field>
             <Toggle
-              label="Custom max (extend-only)"
+              label={t("toggles.customMaxExtendOnly")}
               checked={s.xAxisMaxEnabled}
               onChange={(v) => update("xAxisMaxEnabled", v)}
             />
             {s.xAxisMaxEnabled && (
-              <Field label="Max value">
+              <Field label={t("fields.maxValue")}>
                 <NumberInput
                   value={s.xAxisMax}
                   onChange={(v) => update("xAxisMax", v)}
@@ -1292,113 +1408,128 @@ export function BarChartStudio() {
               </Field>
             )}
             <Toggle
-              label="Hide tick labels"
+              label={t("toggles.hideTickLabels")}
               checked={s.xAxisHideTicks}
               onChange={(v) => update("xAxisHideTicks", v)}
             />
           </Accordion>
 
-          <Accordion label="Y-axis (category)">
-            <Field label="Title">
+          <Accordion label={t("sections.yAxisCategory")}>
+            <Field label={t("fields.title")}>
               <TextInput
                 value={s.yAxisTitle}
                 onChange={(v) => update("yAxisTitle", v)}
-                placeholder="Channel"
+                placeholder={t("placeholders.yAxisTitleBar")}
               />
             </Field>
             <Toggle
-              label="Hide category labels"
+              label={t("toggles.hideCategoryLabels")}
               checked={s.yAxisHideLabels}
               onChange={(v) => update("yAxisHideLabels", v)}
             />
           </Accordion>
 
-          <Accordion label="Number format">
-            <Field label="Prefix">
+          <Accordion label={t("sections.numberFormat")}>
+            <Field label={t("fields.prefix")}>
               <TextInput
                 value={s.numberPrefix}
                 onChange={(v) => update("numberPrefix", v)}
-                placeholder="$"
+                placeholder={t("placeholders.prefix")}
               />
             </Field>
-            <Field label="Suffix">
+            <Field label={t("fields.suffix")}>
               <TextInput
                 value={s.numberSuffix}
                 onChange={(v) => update("numberSuffix", v)}
-                placeholder="k"
+                placeholder={t("placeholders.suffix")}
               />
             </Field>
-            <Field label="Decimals">
+            <Field label={t("fields.decimals")}>
               <NumberInput
                 value={s.numberDecimals}
                 onChange={(v) => update("numberDecimals", Math.max(0, v))}
               />
             </Field>
-            <Field label="Notation">
+            <Field label={t("fields.notation")}>
               <Segmented
-                options={NOTATIONS.map((n) => n.name)}
+                options={[
+                  t("options.notation.std"),
+                  t("options.notation.compact"),
+                  t("options.notation.sci"),
+                ]}
                 selectedIndex={s.numberNotationIdx}
                 onSelect={(i) => update("numberNotationIdx", i)}
               />
             </Field>
-            <Field label="Style">
+            <Field label={t("fields.style")}>
               <Segmented
-                options={NUMBER_STYLES.map((n) => n.name)}
+                options={[
+                  t("options.numberStyle.decimal"),
+                  t("options.numberStyle.currency"),
+                  t("options.numberStyle.percent"),
+                ]}
                 selectedIndex={s.numberStyleIdx}
                 onSelect={(i) => update("numberStyleIdx", i)}
               />
             </Field>
             {NUMBER_STYLES[s.numberStyleIdx].value === "currency" && (
-              <Field label="Currency (ISO 4217)">
+              <Field label={t("fields.currency")}>
                 <TextInput
                   value={s.numberCurrency}
                   onChange={(v) => update("numberCurrency", v.toUpperCase())}
-                  placeholder="USD"
+                  placeholder={t("placeholders.currency")}
                 />
               </Field>
             )}
           </Accordion>
 
-          <Accordion label="Data labels">
-            <Field label="Show value at bar end">
+          <Accordion label={t("sections.dataLabels")}>
+            <Field label={t("fields.showValueAtBarEnd")}>
               <Segmented
-                options={["Auto", "Always", "Never"]}
+                options={[
+                  t("options.dataLabels.auto"),
+                  t("options.dataLabels.always"),
+                  t("options.dataLabels.never"),
+                ]}
                 selectedIndex={s.dataLabelsIdx}
                 onSelect={(i) => update("dataLabelsIdx", i)}
               />
             </Field>
             {s.dataLabelsIdx === 0 && (
               <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                Auto (the default): direct labels when ≤ 8 bars, and the value
-                axis hides — Tufte&apos;s redundant ink rule as a default.
+                {t("hints.dataLabelsAuto")}
               </div>
             )}
           </Accordion>
 
-          <Accordion label="Reference line">
+          <Accordion label={t("sections.referenceLine")}>
             <Toggle
-              label="Show reference line"
+              label={t("toggles.showReferenceLine")}
               checked={s.refShow}
               onChange={(v) => update("refShow", v)}
             />
             {s.refShow && (
               <>
-                <Field label="Mode">
+                <Field label={t("fields.mode")}>
                   <Segmented
-                    options={["Value", "Mean", "Median"]}
+                    options={[
+                      t("options.refMode.value"),
+                      t("options.refMode.mean"),
+                      t("options.refMode.median"),
+                    ]}
                     selectedIndex={s.refStatIdx}
                     onSelect={(i) => update("refStatIdx", i)}
                   />
                 </Field>
                 {s.refStatIdx === 0 && (
                   <>
-                    <Field label="Value">
+                    <Field label={t("fields.value")}>
                       <NumberInput
                         value={s.refValue}
                         onChange={(v) => update("refValue", v)}
                       />
                     </Field>
-                    <Field label="Label">
+                    <Field label={t("fields.label")}>
                       <TextInput
                         value={s.refLabel}
                         onChange={(v) => update("refLabel", v)}
@@ -1410,39 +1541,39 @@ export function BarChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Editorial">
-            <Field label="Caption (italic note below source)">
+          <Accordion label={t("sections.editorial")}>
+            <Field label={t("fields.caption")}>
               <TextInput
                 value={s.captionText}
                 onChange={(v) => update("captionText", v)}
-                placeholder="Self-reported figures."
+                placeholder={t("placeholders.captionBar")}
               />
             </Field>
-            <Field label="Watermark (diagonal text behind chart)">
+            <Field label={t("fields.watermark")}>
               <TextInput
                 value={s.watermarkText}
                 onChange={(v) => update("watermarkText", v)}
-                placeholder="DRAFT"
+                placeholder={t("placeholders.watermark")}
               />
             </Field>
-            <Field label="Source line">
+            <Field label={t("fields.sourceLine")}>
               <TextInput
                 value={s.sourceText}
                 onChange={(v) => update("sourceText", v)}
-                placeholder="Brock Analytics, 2026"
+                placeholder={t("placeholders.source")}
               />
             </Field>
           </Accordion>
 
-          <Accordion label="Color">
-            <Field label="Palette">
+          <Accordion label={t("sections.color")}>
+            <Field label={t("fields.palette")}>
               <ColorPalette value={s.accentValue} onSelect={pickColor} />
             </Field>
-            <Field label="Custom">
+            <Field label={t("fields.custom")}>
               <ColorCustomInput value={s.accentValue} onChange={pickColor} />
             </Field>
             {s.recentColors.length > 0 && (
-              <Field label="Recent">
+              <Field label={t("fields.recent")}>
                 <div className="flex gap-1.5">
                   {s.recentColors.map((c) => (
                     <Swatch
@@ -1458,25 +1589,38 @@ export function BarChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Bar style">
-            <Field label="Corner radius">
+          <Accordion label={t("sections.barStyleHorizontal")}>
+            <Field label={t("fields.cornerRadius")}>
               <Segmented
-                options={RADII.map((r) => r.name)}
+                options={[
+                  t("options.radius.sharp"),
+                  t("options.radius.subtle"),
+                  t("options.radius.rounded"),
+                ]}
                 selectedIndex={s.radiusIdx}
                 onSelect={(i) => update("radiusIdx", i)}
               />
             </Field>
-            <Field label="Pattern">
+            <Field label={t("fields.pattern")}>
               <Segmented
-                options={["None", "All hatched"]}
+                options={[
+                  t("options.patternAll.none"),
+                  t("options.patternAll.allHatched"),
+                ]}
                 selectedIndex={s.patternAll ? 1 : 0}
                 onSelect={(i) => update("patternAll", i === 1)}
               />
             </Field>
             {s.patternAll && (
-              <Field label="Pattern style">
+              <Field label={t("fields.patternStyle")}>
                 <Segmented
-                  options={PATTERN_STYLES.map((p) => p.name)}
+                  options={[
+                    t("options.patternStyle.diagonal"),
+                    t("options.patternStyle.reverse"),
+                    t("options.patternStyle.vertical"),
+                    t("options.patternStyle.horizontal"),
+                    t("options.patternStyle.dots"),
+                  ]}
                   selectedIndex={s.patternStyleIdx}
                   onSelect={(i) => update("patternStyleIdx", i)}
                 />
@@ -1484,14 +1628,14 @@ export function BarChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Animation">
+          <Accordion label={t("sections.animation")}>
             <Toggle
-              label="Enable mount animation"
+              label={t("toggles.enableAnimation")}
               checked={s.animationEnabled}
               onChange={(v) => update("animationEnabled", v)}
             />
             {s.animationEnabled && (
-              <Field label="Duration (ms)">
+              <Field label={t("fields.duration")}>
                 <NumberInput
                   value={s.animationDuration}
                   step={50}
@@ -1501,30 +1645,31 @@ export function BarChartStudio() {
             )}
           </Accordion>
 
-          <Accordion label="Forward-compat">
-            <Field label="dataDescription (AI/LLM metadata)">
+          <Accordion label={t("sections.forwardCompat")}>
+            <Field label={t("fields.dataDescription")}>
               <TextInput
                 value={s.dataDescription}
                 onChange={(v) => update("dataDescription", v)}
-                placeholder="Traffic by channel, last 30 days, ranked"
+                placeholder={t("placeholders.dataDescriptionBar")}
               />
             </Field>
-            <Field label="data-testid (QA selector)">
+            <Field label={t("fields.testId")}>
               <TextInput
                 value={s.testId}
                 onChange={(v) => update("testId", v)}
-                placeholder="traffic-channels-chart"
+                placeholder={t("placeholders.testIdBar")}
               />
             </Field>
             <Toggle
-              label="Show JSON (portable config)"
+              label={t("toggles.showJSON")}
               checked={s.showJSON}
               onChange={(v) => update("showJSON", v)}
             />
             {s.showJSON && (
               <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                JSON dumps below the chart panel — paste into a notebook,
-                WordPress, or pass to <code>renderToHTMLString()</code>.
+                {t.rich("hints.showJSON", {
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
               </div>
             )}
           </Accordion>
@@ -1569,31 +1714,32 @@ function PreviewThemeToggle({
   value: "light" | "dark";
   onChange: (t: "light" | "dark") => void;
 }) {
+  const t = useTranslations("studio");
   return (
     <div
       className="flex items-center gap-1"
       role="group"
-      aria-label="Chart preview theme"
+      aria-label={t("aria.previewTheme")}
     >
-      {(["light", "dark"] as const).map((t) => (
+      {(["light", "dark"] as const).map((mode) => (
         <button
-          key={t}
+          key={mode}
           type="button"
-          onClick={() => onChange(t)}
-          aria-pressed={value === t}
+          onClick={() => onChange(mode)}
+          aria-pressed={value === mode}
           aria-label={
-            t === "light" ? "Preview in light theme" : "Preview in dark theme"
+            mode === "light" ? t("aria.previewLight") : t("aria.previewDark")
           }
           title={
-            t === "light" ? "Preview in light theme" : "Preview in dark theme"
+            mode === "light" ? t("aria.previewLight") : t("aria.previewDark")
           }
           className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-[2px] border transition-colors ${
-            value === t
+            value === mode
               ? "border-brock-accent/70 bg-brock-accent/10 text-foreground"
               : "border-border bg-muted/40 text-muted-foreground hover:border-brock-accent/60 hover:text-foreground"
           }`}
         >
-          {t === "light" ? (
+          {mode === "light" ? (
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -1668,6 +1814,7 @@ function Swatch({
   onClick: () => void;
   title: string;
 }) {
+  const t = useTranslations("studio");
   return (
     <button
       onClick={onClick}
@@ -1684,7 +1831,7 @@ function Swatch({
             : {}),
         } as React.CSSProperties
       }
-      aria-label={`Color ${title}`}
+      aria-label={t("aria.color", { name: title })}
       aria-pressed={selected}
       title={title}
     />
@@ -1721,6 +1868,7 @@ function ColorCustomInput({
   value: string;
   onChange: (hex: string) => void;
 }) {
+  const t = useTranslations("studio");
   const [text, setText] = useState(value);
 
   // Keep the text field in sync when accent changes from outside (palette click).
@@ -1743,8 +1891,8 @@ function ColorCustomInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-7 w-7 shrink-0 cursor-pointer rounded-[2px] border border-border bg-transparent p-0.5"
-        aria-label="Pick custom color"
-        title="Color picker"
+        aria-label={t("aria.pickCustomColor")}
+        title={t("aria.colorPicker")}
       />
       <input
         type="text"
@@ -1754,7 +1902,7 @@ function ColorCustomInput({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
         }}
-        placeholder="#F54900"
+        placeholder={t("placeholders.hex")}
         spellCheck={false}
         className="flex-1 rounded-[2px] border border-border bg-background px-2 py-1.5 font-mono text-xs uppercase text-foreground placeholder:text-muted-foreground/40 focus:border-brock-accent focus:outline-none"
       />
