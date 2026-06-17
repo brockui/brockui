@@ -123,20 +123,20 @@ export type ColumnExampleCardCopy = { title: string; subtitle: string };
 
 /** Card titles/subtitles — supplied bilingual from the page dictionary. */
 export type ColumnChartExamplesCopy = {
-  basic: ColumnExampleCardCopy;
   loadingSkeleton: ColumnExampleCardCopy;
   refreshOverlay: ColumnExampleCardCopy;
   errorRetry: ColumnExampleCardCopy;
   historicalProjected: ColumnExampleCardCopy;
   referencePlotBand: ColumnExampleCardCopy;
-  perBarEmphasis: ColumnExampleCardCopy;
   profitLoss: ColumnExampleCardCopy;
   topNRanking: ColumnExampleCardCopy;
   editorialOverlay: ColumnExampleCardCopy;
 };
 
 /**
- * Examples gallery — 10 curated configurations covering the prop surface.
+ * Examples gallery — curated configurations that show distinct capabilities
+ * (states, projected, reference, P&L, top-N, editorial) the Studio doesn't
+ * surface at a glance; "Basic"/"emphasis" were dropped as Studio near-dupes.
  * Lives in its own client component file so the docs page can stay an
  * RSC while these cards (which include event handlers like onRetry)
  * render on the client. Card copy is bilingual via the page dictionary;
@@ -155,12 +155,6 @@ export function ColumnChartExamples({
     value: rankingValues[i],
   }));
 
-  const emphasisData = d.weeklyLabels.map((label, i) =>
-    i === d.weeklyLabels.length - 1
-      ? { label, value: weeklyData[i], highlight: true, note: d.peakNote }
-      : { label, value: weeklyData[i] },
-  );
-
   const pnlData = d.pnlMonthLabels.map((label, i) => ({
     label,
     value: pnlValues[i],
@@ -168,16 +162,6 @@ export function ColumnChartExamples({
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <ExampleCard {...copy.basic}>
-        <ColumnChart
-          data={weeklyData}
-          labels={d.weeklyLabels}
-          height={200}
-          trend={0.184}
-          source="Brock Analytics, 2026"
-        />
-      </ExampleCard>
-
       <ExampleCard
         {...copy.loadingSkeleton}
       >
@@ -233,16 +217,6 @@ export function ColumnChartExamples({
           height={200}
           referenceLine={{ value: 190, label: d.weeklyTarget }}
           bands={[{ from: 4, to: 6, label: d.bandLabel }]}
-          source="Brock Analytics, 2026"
-        />
-      </ExampleCard>
-
-      <ExampleCard
-        {...copy.perBarEmphasis}
-      >
-        <ColumnChart
-          data={emphasisData}
-          height={200}
           source="Brock Analytics, 2026"
         />
       </ExampleCard>
