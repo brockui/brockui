@@ -1,6 +1,7 @@
 import type { Locale } from "@/i18n/routing";
 import type { Rich } from "@/lib/rich-text";
 import type { BarChartExamplesCopy } from "@/components/charts/bar-chart-examples";
+import type { SlotsSectionCopy } from "@/components/charts/bar-chart-slots-section";
 
 /**
  * Bar Chart page content, both locales. TypeScript enforces structural parity
@@ -13,6 +14,7 @@ export type BarChartPageContent = {
   intro: string;
   studio: { title: string; lead: string };
   examples: { title: string; lead: string; cards: BarChartExamplesCopy };
+  slots: { title: string } & SlotsSectionCopy;
   installation: string;
   usage: string;
   props: { title: string; descriptions: Record<string, string> };
@@ -66,6 +68,28 @@ const en: BarChartPageContent = {
       states: {
         title: "Error + retry",
         subtitle: "same state machine and visual language as Column Chart",
+      },
+    },
+  },
+  slots: {
+    title: "Slots · Headless customization",
+    lead: "Slots replace any default sub-component with your own React component — the data is passed in, you control the rendering. Authored in code, not configured at runtime. Each example is copy-paste ready.",
+    items: {
+      tooltip: {
+        title: "Custom tooltip",
+        desc: "Replace the hover tooltip — add a delta, an avatar, your own formatting.",
+      },
+      empty: {
+        title: "Custom empty state",
+        desc: "Your own no-data placeholder.",
+      },
+      caption: {
+        title: "Reading-note caption",
+        desc: "An editorial note rendered below the source line.",
+      },
+      watermark: {
+        title: "Diagonal watermark",
+        desc: "A DRAFT / CONFIDENTIAL overlay across the chart.",
       },
     },
   },
@@ -272,6 +296,28 @@ const ru: BarChartPageContent = {
       states: {
         title: "Ошибка + повтор",
         subtitle: "та же машина состояний и визуальный язык, что у Column Chart",
+      },
+    },
+  },
+  slots: {
+    title: "Слоты · Headless-кастомизация",
+    lead: "Слоты заменяют любой дефолтный саб-компонент вашим React-компонентом — данные приходят сами, вы управляете отрисовкой. Пишутся кодом, не настраиваются в рантайме. Каждый пример готов к копированию.",
+    items: {
+      tooltip: {
+        title: "Свой тултип",
+        desc: "Замените тултип на свой — дельта, аватар, собственное форматирование.",
+      },
+      empty: {
+        title: "Своё пустое состояние",
+        desc: "Ваш плейсхолдер для случая «нет данных».",
+      },
+      caption: {
+        title: "Подпись-примечание",
+        desc: "Редакционная заметка под строкой источника.",
+      },
+      watermark: {
+        title: "Диагональная вотермарка",
+        desc: "Маркер DRAFT / CONFIDENTIAL поверх графика.",
       },
     },
   },

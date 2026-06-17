@@ -4,6 +4,7 @@ import { routing, type Locale } from "@/i18n/routing";
 import { localeAlternates } from "@/lib/seo";
 import { RichText } from "@/lib/rich-text";
 import { BarChartExamples } from "@/components/charts/bar-chart-examples";
+import { BarChartSlotsSection } from "@/components/charts/bar-chart-slots-section";
 import { BarChartStudio } from "@/components/playground/bar-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
 import { barChartContent } from "./content";
@@ -191,6 +192,10 @@ export default async function BarChartPage({
           {t.examples.lead}
         </p>
         <BarChartExamples copy={t.examples.cards} />
+      </Section>
+
+      <Section title={t.slots.title} wide>
+        <BarChartSlotsSection copy={t.slots} />
       </Section>
 
       <Section title={t.installation}>

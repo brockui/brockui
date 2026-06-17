@@ -12,16 +12,17 @@
  * Settings accordions, adapted to the Bar API (canon §13 — what changed vs
  * Column: NO trend / bands / annotations / hatch-index / minBarWidth / height;
  * NEW: barThickness / labelWidth / maxHeight — the horizontal pre-decisions):
- *  1. Data (ranking presets + sort + topN)    10. Number format
- *  2. Layout (thickness / gap / labelWidth /  11. Data labels (auto default)
- *     maxHeight + scroll)                     12. Reference line
- *  3. States                                  13. Editorial (caption/watermark)
- *  4. Export                                  14. Color (accent)
- *  5. Slots                                   15. Bar style (radius + pattern)
- *  6. Events                                  16. Animation
- *  7. Header                                  17. Forward-compat (JSON)
- *  8. X-axis (VALUE axis)
- *  9. Y-axis (CATEGORY axis)
+ * (Slots are a code feature — documented per page in the Slots docs section,
+ * not a Studio toggle.)
+ *  1. Data (ranking presets + sort + topN)    9.  Number format
+ *  2. Layout (thickness / gap / labelWidth /  10. Data labels (auto default)
+ *     maxHeight + scroll)                     11. Reference line
+ *  3. States                                  12. Editorial (caption/watermark)
+ *  4. Export                                  13. Color (accent)
+ *  5. Events                                  14. Bar style (radius + pattern)
+ *  6. Header                                  15. Animation
+ *  7. X-axis (VALUE axis)                     16. Forward-compat (JSON)
+ *  8. Y-axis (CATEGORY axis)
  */
 
 "use client";
@@ -32,8 +33,6 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   BarChart,
   type BarChartHandle,
-  type BarChartSlots,
-  type BarChartTooltipSlotProps,
 } from "@/components/charts/bar-chart";
 import { toJSON } from "@/components/charts/bar-chart-export";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -301,11 +300,6 @@ type StudioState = {
   hoverLabel: string | null;
   focusIndex: number | null;
   focusLabel: string | null;
-  // slots (Studio demo)
-  slotTooltip: boolean;
-  slotEmpty: boolean;
-  slotCaption: boolean;
-  slotWatermark: boolean;
   // header
   headerTitle: string;
   headerSubtitle: string;
@@ -381,10 +375,6 @@ const INITIAL_STATE: StudioState = {
   hoverLabel: null,
   focusIndex: null,
   focusLabel: null,
-  slotTooltip: false,
-  slotEmpty: false,
-  slotCaption: false,
-  slotWatermark: false,
   headerTitle: "Traffic by channel",
   headerSubtitle: "Last 30 days",
   xAxisTitle: "",
@@ -603,33 +593,6 @@ function generateCode(
   if (s.testId) {
     lines.push(`      data-testid=${quote(s.testId)}`);
   }
-  // Slots — emit an illustrative slot dictionary when any are active.
-  const anySlot =
-    s.slotTooltip || s.slotEmpty || s.slotCaption || s.slotWatermark;
-  if (anySlot) {
-    lines.push(`      slots={{`);
-    if (s.slotTooltip) {
-      lines.push(`        tooltip: ({ point, index, value }) => (`);
-      lines.push(`          <div className="rounded border p-2">`);
-      lines.push(`            <span>#{index + 1}: {value}</span>`);
-      lines.push(`          </div>`);
-      lines.push(`        ),`);
-    }
-    if (s.slotEmpty) {
-      lines.push(`        empty: ({ height }) => (`);
-      lines.push(`          <div style={{ height }}>Custom empty</div>`);
-      lines.push(`        ),`);
-    }
-    if (s.slotCaption) {
-      lines.push(`        caption: () => (`);
-      lines.push(`          <p className="text-xs italic">Reading note…</p>`);
-      lines.push(`        ),`);
-    }
-    if (s.slotWatermark) {
-      lines.push(`        watermark: () => <Logo opacity={0.06} />,`);
-    }
-    lines.push(`      }}`);
-  }
   // Events — emit a short illustrative handler for each enabled callback.
   if (s.eventsEnabled) {
     lines.push(`      onBarClick={(point, index) => {`);
@@ -672,33 +635,6 @@ function generateCode(
 
 /* ─── Main component ─────────────────────────────────────────────────── */
 
-/**
- * Demo custom tooltip — shared by the live `slots.tooltip` AND the inline
- * preview in the Slots panel, so the panel shows exactly what renders on the
- * chart without requiring a hover.
- */
-const DemoTooltip: React.FC<BarChartTooltipSlotProps> = ({
-  point,
-  index,
-  value,
-  label,
-}) => (
-  <div className="flex flex-col gap-1 rounded-[2px] border-2 border-brock-accent bg-background p-2 shadow-lg">
-    <span className="font-pixel text-[10px] tracking-wider text-brock-accent uppercase">
-      Bar #{index + 1}
-      {label ? ` · ${label}` : ""}
-    </span>
-    <span className="font-mono text-sm tabular-nums text-foreground">
-      {value}
-    </span>
-    {point.note && (
-      <span className="font-mono text-[10px] text-muted-foreground">
-        {point.note}
-      </span>
-    )}
-  </div>
-);
-
 export function BarChartStudio() {
   const t = useTranslations("studio");
   const locale: StudioLocale = useLocale() === "ru" ? "ru" : "en";
@@ -725,15 +661,6 @@ export function BarChartStudio() {
   }));
   const chartRef = useRef<BarChartHandle>(null);
 
-  // Reveal the custom tooltip ON the chart when its slot is switched on — a
-  // tooltip is hover-only, so focusing a bar makes the result visible at once.
-  useEffect(() => {
-    if (s.slotTooltip) {
-      const id = requestAnimationFrame(() => chartRef.current?.focusBar(0));
-      return () => cancelAnimationFrame(id);
-    }
-  }, [s.slotTooltip]);
-
   // Chart-preview theme. Follows the site theme until the user explicitly
   // overrides it via the toggle in the Chart panel header — then it sticks,
   // so flipping the global switch doesn't yank the preview around.
@@ -751,66 +678,6 @@ export function BarChartStudio() {
     observer.observe(root, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
-
-  // Inline demo slot components — show what slot overrides look like
-  // without requiring users to wire their own. Each is a tiny illustrative
-  // implementation that drops Brock UI defaults.
-  const slots = (() => {
-    if (!s.slotTooltip && !s.slotEmpty && !s.slotCaption && !s.slotWatermark) {
-      return undefined;
-    }
-    const out: BarChartSlots = {};
-    if (s.slotTooltip) {
-      out.tooltip = DemoTooltip;
-    }
-    if (s.slotEmpty) {
-      out.empty = function DemoEmpty({ height, source }) {
-        return (
-          <div>
-            <div
-              className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-brock-accent/40 bg-brock-accent/5"
-              style={{ height }}
-            >
-              <span className="font-pixel text-xl tracking-wider text-brock-accent">
-                ✺ ✺ ✺
-              </span>
-              <span className="font-sans text-sm text-foreground">
-                Custom empty slot — your data is on holiday.
-              </span>
-            </div>
-            {source && (
-              <div className="mt-4 font-mono text-[10px] tracking-wider text-muted-foreground/60 uppercase">
-                Source: {source}
-              </div>
-            )}
-          </div>
-        );
-      };
-    }
-    if (s.slotCaption) {
-      out.caption = function DemoCaption() {
-        return (
-          <div className="mt-2 border-l-2 border-brock-accent bg-muted/30 px-3 py-2 font-sans text-xs text-muted-foreground italic">
-            Reading note: bars marked with{" "}
-            <span className="font-pixel text-foreground">▒</span> are projected.
-            Updated every 5 minutes.
-          </div>
-        );
-      };
-    }
-    if (s.slotWatermark) {
-      out.watermark = function DemoWatermark() {
-        return (
-          <div className="flex h-full items-center justify-center">
-            <span className="rotate-[-20deg] font-pixel text-5xl tracking-wider text-brock-accent/10 select-none">
-              BROCK · UI
-            </span>
-          </div>
-        );
-      };
-    }
-    return out;
-  })();
 
   function update<K extends keyof StudioState>(key: K, value: StudioState[K]) {
     setS((prev) => ({ ...prev, [key]: value }));
@@ -930,7 +797,6 @@ export function BarChartStudio() {
         <div className={`${previewTheme} bg-background p-6`}>
           <BarChart
             ref={chartRef}
-            slots={slots}
             caption={s.captionText || undefined}
             watermark={s.watermarkText || undefined}
             dataDescription={s.dataDescription || undefined}
@@ -1276,54 +1142,6 @@ export function BarChartStudio() {
                 placeholder={t("placeholders.fileNameBar")}
               />
             </Field>
-          </Accordion>
-
-          <Accordion label={t("sections.slots")}>
-            <Field label={t("fields.demoSlots")}>
-              <div className="space-y-1.5">
-                <Toggle
-                  label={t("toggles.customTooltip")}
-                  checked={s.slotTooltip}
-                  onChange={(v) => update("slotTooltip", v)}
-                />
-                <Toggle
-                  label={t("toggles.customEmpty")}
-                  checked={s.slotEmpty}
-                  onChange={(v) => update("slotEmpty", v)}
-                />
-                <Toggle
-                  label={t("toggles.readingNoteCaption")}
-                  checked={s.slotCaption}
-                  onChange={(v) => update("slotCaption", v)}
-                />
-                <Toggle
-                  label={t("toggles.diagonalWatermark")}
-                  checked={s.slotWatermark}
-                  onChange={(v) => update("slotWatermark", v)}
-                />
-              </div>
-            </Field>
-            {s.slotEmpty && (
-              <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                {t.rich("hints.emptySlot", {
-                  code: (chunks) => <code>{chunks}</code>,
-                })}
-              </div>
-            )}
-            {s.slotTooltip && (
-              <div className="flex items-center gap-2 rounded-[2px] border border-border bg-muted/40 p-2">
-                <DemoTooltip
-                  point={{ label: "DIRECT", value: 4120 }}
-                  index={0}
-                  value="4.1K"
-                  label="DIRECT"
-                  edge="top"
-                />
-                <span className="font-mono text-[10px] leading-snug text-muted-foreground">
-                  {t("hints.tooltipSlot")}
-                </span>
-              </div>
-            )}
           </Accordion>
 
           <Accordion label={t("sections.events")}>

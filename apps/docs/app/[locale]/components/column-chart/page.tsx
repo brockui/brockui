@@ -3,6 +3,7 @@ import { routing, type Locale } from "@/i18n/routing";
 import { RichText } from "@/lib/rich-text";
 import { columnChartContent } from "./content";
 import { ColumnChartExamples } from "@/components/charts/column-chart-examples";
+import { ColumnChartSlotsSection } from "@/components/charts/column-chart-slots-section";
 import { ColumnChartStudio } from "@/components/playground/column-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
 
@@ -360,6 +361,10 @@ export default async function ColumnChartPage({
           {t.examples.lead}
         </p>
         <ColumnChartExamples copy={t.examples.cards} />
+      </Section>
+
+      <Section title={t.slots.title} wide>
+        <ColumnChartSlotsSection copy={t.slots} />
       </Section>
 
       <Section title={t.installation}>

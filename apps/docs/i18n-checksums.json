@@ -1,7 +1,7 @@
 {
   "app/[locale]/installation/content.ts": "e33587648c322e7f",
   "app/[locale]/components/sparkline/content.ts": "7d62e89cda9a25e2",
-  "app/[locale]/components/column-chart/content.ts": "a01bd136c49fe306",
-  "app/[locale]/components/bar-chart/content.ts": "18933e97d9871a3e",
+  "app/[locale]/components/column-chart/content.ts": "8c157b6b97c141ef",
+  "app/[locale]/components/bar-chart/content.ts": "cf16958d059901bc",
   "messages/en.json": "f495ed39f035e761"
 }

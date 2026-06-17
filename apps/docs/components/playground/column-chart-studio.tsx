@@ -26,8 +26,6 @@ import {
   ColumnChart,
   type ColumnChartDataPoint,
   type ColumnChartHandle,
-  type ColumnChartSlots,
-  type ColumnChartTooltipSlotProps,
 } from "@/components/charts/column-chart";
 import { toJSON } from "@/components/charts/column-chart-export";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -263,11 +261,6 @@ type StudioState = {
   hoverLabel: string | null;
   focusIndex: number | null;
   focusLabel: string | null;
-  // slots (Studio demo)
-  slotTooltip: boolean;
-  slotEmpty: boolean;
-  slotCaption: boolean;
-  slotWatermark: boolean;
   // editorial
   captionText: string;
   watermarkText: string;
@@ -364,10 +357,6 @@ const INITIAL_STATE: StudioState = {
   hoverLabel: null,
   focusIndex: null,
   focusLabel: null,
-  slotTooltip: false,
-  slotEmpty: false,
-  slotCaption: false,
-  slotWatermark: false,
   captionText: "",
   watermarkText: "",
   annotationsEnabled: false,
@@ -646,33 +635,6 @@ function generateCode(
     if (s.annotationArrow) parts.push(`arrow: true`);
     lines.push(`      annotations={[{ ${parts.join(", ")} }]}`);
   }
-  // Slots — emit an illustrative slot dictionary when any are active.
-  const anySlot =
-    s.slotTooltip || s.slotEmpty || s.slotCaption || s.slotWatermark;
-  if (anySlot) {
-    lines.push(`      slots={{`);
-    if (s.slotTooltip) {
-      lines.push(`        tooltip: ({ point, index, value }) => (`);
-      lines.push(`          <div className="rounded border p-2">`);
-      lines.push(`            <span>#{index + 1}: {value}</span>`);
-      lines.push(`          </div>`);
-      lines.push(`        ),`);
-    }
-    if (s.slotEmpty) {
-      lines.push(`        empty: ({ height }) => (`);
-      lines.push(`          <div style={{ height }}>Custom empty</div>`);
-      lines.push(`        ),`);
-    }
-    if (s.slotCaption) {
-      lines.push(`        caption: () => (`);
-      lines.push(`          <p className="text-xs italic">Reading note…</p>`);
-      lines.push(`        ),`);
-    }
-    if (s.slotWatermark) {
-      lines.push(`        watermark: () => <Logo opacity={0.06} />,`);
-    }
-    lines.push(`      }}`);
-  }
   // Events — emit a short illustrative handler for each enabled callback.
   if (s.eventsEnabled) {
     lines.push(`      onBarClick={(point, index) => {`);
@@ -717,34 +679,6 @@ function generateCode(
 
 /* ─── Main component ─────────────────────────────────────────────────── */
 
-/**
- * The demo custom tooltip — shared by the live `slots.tooltip` AND the inline
- * preview in the Slots panel, so the panel shows EXACTLY what renders on the
- * chart (a tooltip is hover-only; the preview makes its appearance visible
- * without hovering).
- */
-const DemoTooltip: React.FC<ColumnChartTooltipSlotProps> = ({
-  point,
-  index,
-  value,
-  label,
-}) => (
-  <div className="flex flex-col gap-1 rounded-[2px] border-2 border-brock-accent bg-background p-2 shadow-lg">
-    <span className="font-pixel text-[10px] tracking-wider text-brock-accent uppercase">
-      Bar #{index + 1}
-      {label ? ` · ${label}` : ""}
-    </span>
-    <span className="font-mono text-sm tabular-nums text-foreground">
-      {value}
-    </span>
-    {point.note && (
-      <span className="font-mono text-[10px] text-muted-foreground">
-        {point.note}
-      </span>
-    )}
-  </div>
-);
-
 export function ColumnChartStudio() {
   const t = useTranslations("studio");
   const locale: StudioLocale = useLocale() === "ru" ? "ru" : "en";
@@ -775,16 +709,6 @@ export function ColumnChartStudio() {
   }));
   const chartRef = useRef<ColumnChartHandle>(null);
 
-  // When the custom-tooltip slot is switched on, reveal it ON the chart too
-  // (a tooltip is hover-only — focusing a bar makes it visible immediately, so
-  // toggling the slot has a visible result without the user guessing to hover).
-  useEffect(() => {
-    if (s.slotTooltip) {
-      const id = requestAnimationFrame(() => chartRef.current?.focusBar(3));
-      return () => cancelAnimationFrame(id);
-    }
-  }, [s.slotTooltip]);
-
   // Chart-preview theme. Follows the site theme until the user explicitly
   // overrides it via the toggle in the Chart panel header — then it sticks,
   // so flipping the global switch doesn't yank the preview around.
@@ -802,71 +726,6 @@ export function ColumnChartStudio() {
     observer.observe(root, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
-
-  // Inline demo slot components — show what slot overrides look like
-  // without requiring users to wire their own. Each is a tiny illustrative
-  // implementation that drops Brock UI defaults.
-  const slots = (() => {
-    if (
-      !s.slotTooltip &&
-      !s.slotEmpty &&
-      !s.slotCaption &&
-      !s.slotWatermark
-    ) {
-      return undefined;
-    }
-    const out: ColumnChartSlots = {};
-    if (s.slotTooltip) {
-      out.tooltip = DemoTooltip;
-    }
-    if (s.slotEmpty) {
-      out.empty = function DemoEmpty({ height, source }) {
-        return (
-          <div>
-            <div
-              className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-brock-accent/40 bg-brock-accent/5"
-              style={{ height }}
-            >
-              <span className="font-pixel text-xl tracking-wider text-brock-accent">
-                ✺ ✺ ✺
-              </span>
-              <span className="font-sans text-sm text-foreground">
-                Custom empty slot — your data is on holiday.
-              </span>
-            </div>
-            {source && (
-              <div className="mt-4 font-mono text-[10px] tracking-wider text-muted-foreground/60 uppercase">
-                Source: {source}
-              </div>
-            )}
-          </div>
-        );
-      };
-    }
-    if (s.slotCaption) {
-      out.caption = function DemoCaption() {
-        return (
-          <div className="mt-2 border-l-2 border-brock-accent bg-muted/30 px-3 py-2 font-sans text-xs text-muted-foreground italic">
-            Reading note: bars marked with{" "}
-            <span className="font-pixel text-foreground">▒</span> are projected.
-            Updated every 5 minutes.
-          </div>
-        );
-      };
-    }
-    if (s.slotWatermark) {
-      out.watermark = function DemoWatermark() {
-        return (
-          <div className="flex h-full items-center justify-center">
-            <span className="rotate-[-20deg] font-pixel text-5xl tracking-wider text-brock-accent/10 select-none">
-              BROCK · UI
-            </span>
-          </div>
-        );
-      };
-    }
-    return out;
-  })();
 
   function update<K extends keyof StudioState>(key: K, value: StudioState[K]) {
     setS((prev) => ({ ...prev, [key]: value }));
@@ -965,7 +824,6 @@ export function ColumnChartStudio() {
         <div className={`${previewTheme} bg-background p-6`}>
           <ColumnChart
             ref={chartRef}
-            slots={slots}
             caption={s.captionText || undefined}
             watermark={s.watermarkText || undefined}
             dataDescription={s.dataDescription || undefined}
@@ -1395,59 +1253,6 @@ export function ColumnChartStudio() {
                 placeholder={t("placeholders.fileNameColumn")}
               />
             </Field>
-          </Accordion>
-
-          <Accordion label={t("sections.slots")}>
-            <Field label={t("fields.demoSlots")}>
-              <div className="space-y-1.5">
-                <Toggle
-                  label={t("toggles.customTooltip")}
-                  checked={s.slotTooltip}
-                  onChange={(v) => update("slotTooltip", v)}
-                />
-                <Toggle
-                  label={t("toggles.customEmpty")}
-                  checked={s.slotEmpty}
-                  onChange={(v) => update("slotEmpty", v)}
-                />
-                <Toggle
-                  label={t("toggles.readingNoteCaption")}
-                  checked={s.slotCaption}
-                  onChange={(v) => update("slotCaption", v)}
-                />
-                <Toggle
-                  label={t("toggles.diagonalWatermark")}
-                  checked={s.slotWatermark}
-                  onChange={(v) => update("slotWatermark", v)}
-                />
-              </div>
-            </Field>
-            {s.slotEmpty && (
-              <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-                {t.rich("hints.emptySlot", {
-                  code: (chunks) => <code>{chunks}</code>,
-                })}
-              </div>
-            )}
-            {s.slotTooltip && (
-              <div className="space-y-1.5">
-                {/* Live preview of the exact tooltip — a tooltip is hover-only,
-                    so showing it here makes its appearance visible without
-                    hovering; it's also pinned on the chart (see focus effect). */}
-                <div className="flex items-center gap-2 rounded-[2px] border border-border bg-muted/40 p-2">
-                  <DemoTooltip
-                    point={{ label: "THU", value: 159 }}
-                    index={3}
-                    value="159"
-                    label="THU"
-                    edge="center"
-                  />
-                  <span className="font-mono text-[10px] leading-snug text-muted-foreground">
-                    {t("hints.tooltipSlot")}
-                  </span>
-                </div>
-              </div>
-            )}
           </Accordion>
 
           <Accordion label={t("sections.events")}>
