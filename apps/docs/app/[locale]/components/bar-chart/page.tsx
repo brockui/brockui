@@ -3,7 +3,6 @@ import { hasLocale } from "next-intl";
 import { routing, type Locale } from "@/i18n/routing";
 import { localeAlternates } from "@/lib/seo";
 import { RichText } from "@/lib/rich-text";
-import { BarChartSlotsSection } from "@/components/charts/bar-chart-slots-section";
 import { BarChartStudio } from "@/components/playground/bar-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
 import { barChartContent } from "./content";
@@ -25,6 +24,23 @@ export function Example() {
       data={data}
       sort="desc"
       source="Brock Analytics, 2026"
+    />
+  );
+}
+
+// Opinionated defaults — but every sub-component is yours to replace via the
+// \`slots\` prop. The data is passed in; you control the rendering.
+export function WithCustomTooltip() {
+  return (
+    <BarChart
+      data={data}
+      slots={{
+        tooltip: ({ label, value }) => (
+          <div className="border-2 border-brock-accent p-2">
+            <span className="font-mono tabular-nums">{value}</span> · {label}
+          </div>
+        ),
+      }}
     />
   );
 }`;
@@ -184,10 +200,6 @@ export default async function BarChartPage({
           {t.studio.lead}
         </p>
         <BarChartStudio />
-      </Section>
-
-      <Section title={t.slots.title} wide>
-        <BarChartSlotsSection copy={t.slots} />
       </Section>
 
       <Section title={t.installation}>

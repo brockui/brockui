@@ -12,8 +12,8 @@
  * Settings accordions, adapted to the Bar API (canon §13 — what changed vs
  * Column: NO trend / bands / annotations / hatch-index / minBarWidth / height;
  * NEW: barThickness / labelWidth / maxHeight — the horizontal pre-decisions):
- * (Slots are a code feature — documented per page in the Slots docs section,
- * not a Studio toggle.)
+ * (Slots are a code feature — shown as a Usage snippet on the page, not a
+ * Studio toggle.)
  *  1. Data (ranking presets + sort + topN)    9.  Number format
  *  2. Layout (thickness / gap / labelWidth /  10. Data labels (auto default)
  *     maxHeight + scroll)                     11. Reference line

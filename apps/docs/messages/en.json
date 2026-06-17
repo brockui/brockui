@@ -31,7 +31,6 @@
       "layout": "Layout",
       "states": "States",
       "export": "Export",
-      "slots": "Slots",
       "events": "Events",
       "header": "Header",
       "xAxis": "X-axis",
@@ -66,7 +65,6 @@
       "retryLabel": "Retry label",
       "formats": "Formats",
       "fileName": "File name",
-      "demoSlots": "Demo slot overrides",
       "lastClick": "Last click",
       "hovering": "Hovering",
       "focused": "Focused",
@@ -223,8 +221,6 @@
       "addBar": "+ Add bar"
     },
     "hints": {
-      "emptySlot": "Switch <code>Mode</code> in States below to test the empty slot, or clear the data array in code.",
-      "tooltipSlot": "Slot demos replace the defaults. Toggle one, then hover a bar to see the custom tooltip render live.",
       "noClicksYet": "— no clicks yet —",
       "mouseOutside": "— mouse outside —",
       "noFocusYet": "— no focus yet —",
