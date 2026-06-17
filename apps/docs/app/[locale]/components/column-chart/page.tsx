@@ -2,7 +2,6 @@ import { hasLocale } from "next-intl";
 import { routing, type Locale } from "@/i18n/routing";
 import { RichText } from "@/lib/rich-text";
 import { columnChartContent } from "./content";
-import { ColumnChartExamples } from "@/components/charts/column-chart-examples";
 import { ColumnChartSlotsSection } from "@/components/charts/column-chart-slots-section";
 import { ColumnChartStudio } from "@/components/playground/column-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -354,13 +353,6 @@ export default async function ColumnChartPage({
           {t.studio.lead}
         </p>
         <ColumnChartStudio />
-      </Section>
-
-      <Section title={t.examples.title} wide>
-        <p className="mb-6 max-w-2xl text-xs text-muted-foreground">
-          {t.examples.lead}
-        </p>
-        <ColumnChartExamples copy={t.examples.cards} />
       </Section>
 
       <Section title={t.slots.title} wide>

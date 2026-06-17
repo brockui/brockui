@@ -1,6 +1,5 @@
 import type { Locale } from "@/i18n/routing";
 import type { Rich } from "@/lib/rich-text";
-import type { BarChartExamplesCopy } from "@/components/charts/bar-chart-examples";
 import type { SlotsSectionCopy } from "@/components/charts/bar-chart-slots-section";
 
 /**
@@ -13,7 +12,6 @@ export type BarChartPageContent = {
   title: string;
   intro: string;
   studio: { title: string; lead: string };
-  examples: { title: string; lead: string; cards: BarChartExamplesCopy };
   slots: { title: string } & SlotsSectionCopy;
   installation: string;
   usage: string;
@@ -40,36 +38,6 @@ const en: BarChartPageContent = {
   studio: {
     title: "Studio · Code, chart, settings",
     lead: "Three-panel workbench. Tweak any setting on the right — chart in the middle updates live and the code on the left regenerates ready to paste into your app.",
-  },
-  examples: {
-    title: "Examples · Drop-in patterns",
-    lead: "Curated configurations covering the prop surface. Each one is a live chart — view source to see the exact prop set, copy into your app, adjust.",
-    cards: {
-      ranking: {
-        title: "Ranking",
-        subtitle: "sort='desc' — the bread-and-butter bar chart",
-      },
-      topN: {
-        title: "Top-N + Other",
-        subtitle: "long tail rolled into a muted, pinned aggregate",
-      },
-      negatives: {
-        title: "Contribution ±",
-        subtitle: "negatives grow left — first-class, with a mean reference",
-      },
-      reference: {
-        title: "Reference line",
-        subtitle: "fixed plan threshold as a vertical dashed line",
-      },
-      longLabels: {
-        title: "Long labels",
-        subtitle: "labelWidth widens the column — the reason bars are horizontal",
-      },
-      states: {
-        title: "Error + retry",
-        subtitle: "same state machine and visual language as Column Chart",
-      },
-    },
   },
   slots: {
     title: "Slots · Headless customization",
@@ -268,36 +236,6 @@ const ru: BarChartPageContent = {
   studio: {
     title: "Studio · Код, график, настройки",
     lead: "Трёхпанельный верстак. Меняйте любую настройку справа — график в центре обновляется вживую, а код слева перегенерируется, готовый к вставке в ваш проект.",
-  },
-  examples: {
-    title: "Примеры · Готовые паттерны",
-    lead: "Отобранные конфигурации, покрывающие поверхность пропов. Каждая — живой график: откройте исходник, скопируйте набор пропов в проект и подстройте.",
-    cards: {
-      ranking: {
-        title: "Рейтинг",
-        subtitle: "sort='desc' — хлеб bar chart",
-      },
-      topN: {
-        title: "Топ-N + Other",
-        subtitle: "длинный хвост свёрнут в приглушённый закреплённый агрегат",
-      },
-      negatives: {
-        title: "Вклад ±",
-        subtitle: "отрицательные растут влево — полноправно, с линией среднего",
-      },
-      reference: {
-        title: "Референсная линия",
-        subtitle: "фиксированный план вертикальным пунктиром",
-      },
-      longLabels: {
-        title: "Длинные подписи",
-        subtitle: "labelWidth расширяет колонку — причина горизонтальности",
-      },
-      states: {
-        title: "Ошибка + повтор",
-        subtitle: "та же машина состояний и визуальный язык, что у Column Chart",
-      },
-    },
   },
   slots: {
     title: "Слоты · Headless-кастомизация",

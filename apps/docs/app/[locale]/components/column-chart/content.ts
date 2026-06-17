@@ -1,6 +1,5 @@
 import type { Locale } from "@/i18n/routing";
 import type { Rich } from "@/lib/rich-text";
-import type { ColumnChartExamplesCopy } from "@/components/charts/column-chart-examples";
 import type { SlotsSectionCopy } from "@/components/charts/column-chart-slots-section";
 
 /**
@@ -16,7 +15,6 @@ export type ColumnChartPageContent = {
   title: string;
   intro: string;
   studio: { title: string; lead: string };
-  examples: { title: string; lead: string; cards: ColumnChartExamplesCopy };
   slots: { title: string } & SlotsSectionCopy;
   installation: string;
   usage: string;
@@ -50,20 +48,6 @@ const en: ColumnChartPageContent = {
   studio: {
     title: "Studio · Code, chart, settings",
     lead: "Three-panel workbench. Tweak any setting on the right — chart in the middle updates live and the code on the left regenerates ready to paste into your app.",
-  },
-  examples: {
-    title: "Examples · Drop-in patterns",
-    lead: "Curated configurations covering the prop surface. Each one is a live chart — view source to see the exact prop set, copy into your app, adjust.",
-    cards: {
-      loadingSkeleton: { title: 'Loading skeleton', subtitle: 'loading=true + no data' },
-      refreshOverlay: { title: 'Refresh overlay', subtitle: 'loading=true + stale data still visible' },
-      errorRetry: { title: 'Error + retry', subtitle: 'error + onRetry button' },
-      historicalProjected: { title: 'Historical vs projected', subtitle: 'hatchFromIndex marks future months' },
-      referencePlotBand: { title: 'Reference line + plot band', subtitle: 'fixed KPI threshold + Q3 highlight zone — or pass a mean/median stat' },
-      profitLoss: { title: 'Profit & loss', subtitle: 'negatives are first-class — bars grow down from the zero baseline' },
-      topNRanking: { title: 'Top-N ranking', subtitle: "sort='desc' + topN — the 'Other' aggregate stays muted and pinned last" },
-      editorialOverlay: { title: 'Editorial overlay', subtitle: 'caption + watermark + annotation' },
-    },
   },
   slots: {
     title: "Slots · Headless customization",
@@ -297,20 +281,6 @@ const ru: ColumnChartPageContent = {
   studio: {
     title: "Studio · Код, график, настройки",
     lead: "Трёхпанельный верстак. Меняйте любую настройку справа — график в центре обновляется вживую, а код слева перегенерируется, готовый к вставке в ваш проект.",
-  },
-  examples: {
-    title: "Примеры · Готовые паттерны",
-    lead: "Отобранные конфигурации, покрывающие поверхность пропов. Каждая — живой график: откройте исходник, скопируйте набор пропов в проект и подстройте.",
-    cards: {
-      loadingSkeleton: { title: 'Скелетон загрузки', subtitle: 'loading=true + нет данных' },
-      refreshOverlay: { title: 'Оверлей обновления', subtitle: 'loading=true + старые данные ещё видны' },
-      errorRetry: { title: 'Ошибка + повтор', subtitle: 'error + кнопка onRetry' },
-      historicalProjected: { title: 'Факт и прогноз', subtitle: 'hatchFromIndex помечает будущие месяцы' },
-      referencePlotBand: { title: 'Референсная линия + плот-бенд', subtitle: 'фикс-порог KPI + зона Q3 — или статистика mean/median' },
-      profitLoss: { title: 'Прибыль и убыток', subtitle: 'отрицательные полноправны — столбцы растут вниз от нулевой базы' },
-      topNRanking: { title: 'Топ-N рейтинг', subtitle: "sort='desc' + topN — агрегат «Прочее» приглушён и закреплён последним" },
-      editorialOverlay: { title: 'Редакционный оверлей', subtitle: 'caption + watermark + аннотация' },
-    },
   },
   slots: {
     title: "Слоты · Headless-кастомизация",

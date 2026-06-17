@@ -3,7 +3,6 @@ import { hasLocale } from "next-intl";
 import { routing, type Locale } from "@/i18n/routing";
 import { localeAlternates } from "@/lib/seo";
 import { RichText } from "@/lib/rich-text";
-import { BarChartExamples } from "@/components/charts/bar-chart-examples";
 import { BarChartSlotsSection } from "@/components/charts/bar-chart-slots-section";
 import { BarChartStudio } from "@/components/playground/bar-chart-studio";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -185,13 +184,6 @@ export default async function BarChartPage({
           {t.studio.lead}
         </p>
         <BarChartStudio />
-      </Section>
-
-      <Section title={t.examples.title} wide>
-        <p className="mb-6 max-w-2xl text-xs text-muted-foreground">
-          {t.examples.lead}
-        </p>
-        <BarChartExamples copy={t.examples.cards} />
       </Section>
 
       <Section title={t.slots.title} wide>
