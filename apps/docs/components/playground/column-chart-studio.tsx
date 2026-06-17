@@ -406,7 +406,7 @@ const INITIAL_STATE: StudioState = {
   emphasisIndex: 0,
   emphasisColor: "",
   emphasisNote: "← peak",
-  refShow: true,
+  refShow: false,
   refStatIdx: 0,
   refValue: 190,
   refLabel: "Weekly target",
@@ -751,8 +751,6 @@ export function ColumnChartStudio() {
       ...prev,
       period,
       rows: ds.data.map((value, i) => ({ label: ds.labels[i] ?? "", value })),
-      refValue: ds.suggestedGoal,
-      refLabel: ds.suggestedGoalLabel,
     }));
   }
 

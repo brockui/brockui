@@ -2935,7 +2935,7 @@ function Tooltip({
       aria-hidden
     >
       {label && (
-        <span className="bg-foreground px-1.5 py-0.5 font-pixel text-[10px] tracking-wider whitespace-nowrap text-background uppercase">
+        <span className="bg-foreground px-1.5 py-0.5 font-sans text-[11px] font-medium whitespace-nowrap text-background">
           {label}
         </span>
       )}

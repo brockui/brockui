@@ -393,7 +393,7 @@ const INITIAL_STATE: StudioState = {
   numberStyleIdx: 0,
   numberCurrency: "USD",
   dataLabelsIdx: 0,
-  refShow: true,
+  refShow: false,
   refStatIdx: 0,
   refValue: 2000,
   refLabel: "Channel target",
@@ -696,8 +696,6 @@ export function BarChartStudio() {
       ...prev,
       dataset,
       rows: ds.data.map((d) => ({ ...d })),
-      refValue: ds.suggestedGoal,
-      refLabel: ds.suggestedGoalLabel,
     }));
   }
 
