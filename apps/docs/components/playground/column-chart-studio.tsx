@@ -20,7 +20,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronFirst, ChevronLast, ChevronRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   ColumnChart,
@@ -1380,27 +1380,30 @@ export function ColumnChartStudio() {
                   <div className="flex gap-1.5">
                     <button
                       type="button"
-                      className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider whitespace-nowrap text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
                       onClick={() => chartRef.current?.focusBar(0)}
                     >
-                      ◀ {t("buttons.first")}
+                      <ChevronFirst className="h-3 w-3 shrink-0" />
+                      {t("buttons.first")}
                     </button>
                     <button
                       type="button"
-                      className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider whitespace-nowrap text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
                       onClick={() => {
                         const next = (s.focusIndex ?? -1) + 1;
                         chartRef.current?.focusBar(next);
                       }}
                     >
-                      {t("buttons.next")} ▶
+                      {t("buttons.next")}
+                      <ChevronRight className="h-3 w-3 shrink-0" />
                     </button>
                     <button
                       type="button"
-                      className="flex-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-[2px] border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] tracking-wider whitespace-nowrap text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
                       onClick={() => chartRef.current?.focusBar(999)}
                     >
-                      {t("buttons.last")} ▶▶
+                      {t("buttons.last")}
+                      <ChevronLast className="h-3 w-3 shrink-0" />
                     </button>
                   </div>
                 </Field>

@@ -2749,6 +2749,12 @@ function Bar({
   const baselinePct = range > 0 ? (max / range) * 100 : 100;
   const barTopPct = isNegative ? baselinePct : baselinePct - barHeight;
   const barEndPct = barTopPct + barHeight;
+  // When a bar's outer end hugs the chart edge there's no room ABOVE/BELOW for
+  // the value label + note without clipping the header/trend (tall positive)
+  // or the x-axis (deep negative) — flip them INSIDE the bar in background
+  // color. Tall positive: top within 14% of the chart top. Deep negative:
+  // end past 86%.
+  const labelInside = isNegative ? barEndPct > 86 : barTopPct < 14;
 
   const publicDatum = toPublicPoint(point);
   const accessibleName = point.label
@@ -2784,16 +2790,21 @@ function Bar({
           never collides with the X-axis row below. */}
       {point.note && !allZero && point.value !== 0 && (
         <span
-          className="pointer-events-none absolute right-0 left-0 z-[2] text-center font-mono text-[10px] tracking-wider whitespace-nowrap text-foreground"
+          className={`pointer-events-none absolute right-0 left-0 z-[2] text-center font-mono text-[10px] tracking-wider whitespace-nowrap ${
+            labelInside ? "text-background" : "text-foreground"
+          }`}
           style={
             isNegative
               ? {
-                  top:
-                    barEndPct > 86
-                      ? `calc(${barEndPct}% - ${showLabel ? 28 : 14}px)`
-                      : `calc(${barEndPct}% + ${showLabel ? 16 : 3}px)`,
+                  top: labelInside
+                    ? `calc(${barEndPct}% - ${showLabel ? 28 : 14}px)`
+                    : `calc(${barEndPct}% + ${showLabel ? 16 : 3}px)`,
                 }
-              : { top: `calc(${barTopPct}% - ${showLabel ? 30 : 16}px)` }
+              : {
+                  top: labelInside
+                    ? `calc(${barTopPct}% + ${showLabel ? 16 : 3}px)`
+                    : `calc(${barTopPct}% - ${showLabel ? 30 : 16}px)`,
+                }
           }
           aria-hidden
         >
@@ -2803,19 +2814,20 @@ function Bar({
       {showLabel && !allZero && point.value !== 0 && (
         <span
           className={`pointer-events-none absolute right-0 left-0 z-[2] text-center font-mono text-[10px] tabular-nums whitespace-nowrap ${
-            isNegative && barEndPct > 86
-              ? "text-background"
-              : "text-muted-foreground"
+            labelInside ? "text-background" : "text-muted-foreground"
           }`}
           style={
             isNegative
               ? {
-                  top:
-                    barEndPct > 86
-                      ? `calc(${barEndPct}% - 14px)`
-                      : `calc(${barEndPct}% + 2px)`,
+                  top: labelInside
+                    ? `calc(${barEndPct}% - 14px)`
+                    : `calc(${barEndPct}% + 2px)`,
                 }
-              : { top: `calc(${barTopPct}% - 14px)` }
+              : {
+                  top: labelInside
+                    ? `calc(${barTopPct}% + 2px)`
+                    : `calc(${barTopPct}% - 14px)`,
+                }
           }
           aria-hidden
         >
