@@ -268,6 +268,8 @@ function datasetsFor(locale: StudioLocale): Record<DatasetKey, Dataset> {
 type StudioState = {
   // data
   dataset: DatasetKey;
+  /** Editable bar data — seeded from the dataset, then user-editable. */
+  rows: DatasetPoint[];
   sortIdx: number; // 0 = none, 1 = asc, 2 = desc
   topNEnabled: boolean;
   topNValue: number;
@@ -347,6 +349,7 @@ type StudioState = {
 
 const INITIAL_STATE: StudioState = {
   dataset: "channels",
+  rows: DATASETS.channels.data.en,
   sortIdx: 0,
   topNEnabled: false,
   topNValue: 5,
@@ -430,7 +433,7 @@ function generateCode(
   s: StudioState,
   datasets: Record<DatasetKey, Dataset>,
 ): string {
-  const ds = datasets[s.dataset];
+  const ds: Dataset = { ...datasets[s.dataset], data: s.rows };
   const accent = s.accentValue;
   const radius = RADII[s.radiusIdx];
 
@@ -654,11 +657,15 @@ export function BarChartStudio() {
           retryLabel: "Повторить",
         }
       : {};
-  const [s, setS] = useState<StudioState>(() => ({
-    ...INITIAL_STATE,
-    ...seed,
-    refLabel: datasetsFor(locale).channels.suggestedGoalLabel,
-  }));
+  const [s, setS] = useState<StudioState>(() => {
+    const c = datasetsFor(locale).channels;
+    return {
+      ...INITIAL_STATE,
+      ...seed,
+      rows: c.data.map((d) => ({ ...d })),
+      refLabel: c.suggestedGoalLabel,
+    };
+  });
   const chartRef = useRef<BarChartHandle>(null);
 
   // Chart-preview theme. Follows the site theme until the user explicitly
@@ -688,12 +695,39 @@ export function BarChartStudio() {
     setS((prev) => ({
       ...prev,
       dataset,
+      rows: ds.data.map((d) => ({ ...d })),
       refValue: ds.suggestedGoal,
       refLabel: ds.suggestedGoalLabel,
     }));
   }
 
-  const ds = datasets[s.dataset];
+  function updateRow(
+    i: number,
+    patch: Partial<{ label: string; value: number }>,
+  ) {
+    setS((prev) => ({
+      ...prev,
+      rows: prev.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)),
+    }));
+  }
+  function addRow() {
+    setS((prev) =>
+      prev.rows.length >= 16
+        ? prev
+        : { ...prev, rows: [...prev.rows, { label: "", value: 0 }] },
+    );
+  }
+  function removeRow(i: number) {
+    setS((prev) =>
+      prev.rows.length <= 1
+        ? prev
+        : { ...prev, rows: prev.rows.filter((_, j) => j !== i) },
+    );
+  }
+
+  // Effective dataset: bar data comes from the editable rows; dataset meta
+  // (display name, suggested goal) still comes from the selected dataset.
+  const ds: Dataset = { ...datasets[s.dataset], data: s.rows };
   const accent = s.accentValue;
   const radius = RADII[s.radiusIdx];
   const code = generateCode(s, datasets);
@@ -956,6 +990,46 @@ export function BarChartStudio() {
                   setDataset((Object.keys(DATASETS) as DatasetKey[])[i])
                 }
               />
+            </Field>
+            <Field label={t("fields.bars")}>
+              <div className="space-y-1.5">
+                {s.rows.map((row, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <div className="flex-1">
+                      <TextInput
+                        value={row.label}
+                        onChange={(v) => updateRow(i, { label: v })}
+                        placeholder={t("placeholders.barLabel")}
+                      />
+                    </div>
+                    <div className="w-20 shrink-0">
+                      <NumberInput
+                        value={row.value}
+                        onChange={(v) => updateRow(i, { value: v })}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeRow(i)}
+                      disabled={s.rows.length <= 1}
+                      aria-label={t("aria.removeBar")}
+                      title={t("aria.removeBar")}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[2px] border border-border text-muted-foreground transition-colors hover:border-brock-accent/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      −
+                    </button>
+                  </div>
+                ))}
+                {s.rows.length < 16 && (
+                  <button
+                    type="button"
+                    onClick={addRow}
+                    className="w-full rounded-[2px] border border-dashed border-border py-1.5 font-mono text-[10px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
+                  >
+                    {t("buttons.addBar")}
+                  </button>
+                )}
+              </div>
             </Field>
             <Field label={t("fields.sortByValue")}>
               <Segmented

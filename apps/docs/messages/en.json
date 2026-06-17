@@ -111,7 +111,8 @@
       "maxHeight": "Max height (px)",
       "showValueAtBarEnd": "Show value at bar end",
       "pattern": "Pattern",
-      "patternStyle": "Pattern style"
+      "patternStyle": "Pattern style",
+      "bars": "Bars"
     },
     "toggles": {
       "rollLongTail": "Roll the long tail into 'Other'",
@@ -218,7 +219,8 @@
       "first": "First",
       "next": "Next",
       "last": "Last",
-      "clearColor": "× clear color (use accent)"
+      "clearColor": "× clear color (use accent)",
+      "addBar": "+ Add bar"
     },
     "hints": {
       "emptySlot": "Switch <code>Mode</code> in States below to test the empty slot, or clear the data array in code.",
@@ -260,7 +262,8 @@
       "testIdColumn": "active-users-chart",
       "testIdBar": "traffic-channels-chart",
       "source": "Brock Analytics, 2026",
-      "hex": "#F54900"
+      "hex": "#F54900",
+      "barLabel": "Label"
     },
     "aria": {
       "previewTheme": "Chart preview theme",
@@ -268,7 +271,8 @@
       "previewDark": "Preview in dark theme",
       "pickCustomColor": "Pick custom color",
       "colorPicker": "Color picker",
-      "color": "Color {name}"
+      "color": "Color {name}",
+      "removeBar": "Remove bar"
     }
   }
 }

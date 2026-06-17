@@ -111,7 +111,8 @@
       "maxHeight": "Макс. высота (px)",
       "showValueAtBarEnd": "Значение у конца полосы",
       "pattern": "Штриховка",
-      "patternStyle": "Стиль штриховки"
+      "patternStyle": "Стиль штриховки",
+      "bars": "Столбцы"
     },
     "toggles": {
       "rollLongTail": "Свернуть длинный хвост в «Прочее»",
@@ -218,7 +219,8 @@
       "first": "В начало",
       "next": "Дальше",
       "last": "В конец",
-      "clearColor": "× сбросить цвет (вернуть акцент)"
+      "clearColor": "× сбросить цвет (вернуть акцент)",
+      "addBar": "+ Добавить столбец"
     },
     "hints": {
       "emptySlot": "Переключите <code>Mode</code> в секции «Состояния», чтобы увидеть пустой слот, или очистите массив данных в коде.",
@@ -260,7 +262,8 @@
       "testIdColumn": "active-users-chart",
       "testIdBar": "traffic-channels-chart",
       "source": "Brock Analytics, 2026",
-      "hex": "#F54900"
+      "hex": "#F54900",
+      "barLabel": "Метка"
     },
     "aria": {
       "previewTheme": "Тема предпросмотра графика",
@@ -268,7 +271,8 @@
       "previewDark": "Предпросмотр в тёмной теме",
       "pickCustomColor": "Выбрать свой цвет",
       "colorPicker": "Выбор цвета",
-      "color": "Цвет {name}"
+      "color": "Цвет {name}",
+      "removeBar": "Удалить столбец"
     }
   }
 }
