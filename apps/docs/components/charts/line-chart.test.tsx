@@ -396,6 +396,19 @@ describe("LineChart — keyboard navigation", () => {
     await user.keyboard("{ArrowDown}");
     // Down moves the focused-series pointer to the next series (B).
     expect(onPointFocus.mock.calls.at(-1)?.[0].series.name).toBe("B");
+
+    // The switched-to (non-emphasized) series stays keyboard-navigable:
+    // ArrowRight must walk along B, not no-op. Regression guard for the
+    // "only the emphasized series had onKeyDown" bug.
+    await user.keyboard("{ArrowRight}");
+    const afterRight = onPointFocus.mock.calls.at(-1)?.[0];
+    expect(afterRight.series.name).toBe("B");
+    expect(afterRight.index).toBe(1);
+    // And Up returns to the emphasized series at the same x.
+    await user.keyboard("{ArrowUp}");
+    const afterUp = onPointFocus.mock.calls.at(-1)?.[0];
+    expect(afterUp.series.name).toBe("A");
+    expect(afterUp.index).toBe(1);
   });
 
   it("Enter / Space invokes onPointClick on the focused point", async () => {

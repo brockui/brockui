@@ -46,8 +46,9 @@
  *
  * Accessibility:
  *  - Container: role="figure" with aria-labelledby
- *  - Points: role="graphics-symbol", roving tabindex along the emphasized
- *    series; Arrow/Home/End move along x, Up/Down switch series
+ *  - Points: aria-roledescription="data point", a single roving tabindex;
+ *    Arrow/Home/End move along x within a series, Up/Down switch series
+ *    (every series is keyboard-navigable, not just the emphasized one)
  *  - Enter / Space on a focused point invokes onPointClick
  *  - Hidden <table class="sr-only"> summary: one column per series, x rows
  *  - Loading: role="status" aria-live="polite" + aria-busy
@@ -2478,9 +2479,14 @@ function Plot({
             const top = yToPercent(p.y, yMin, yMax, yScale);
             const isLast = lastDefinedDom(s.points) === p;
             const isEmphasis = s.emphasis;
-            const isFocusable = isEmphasis;
-            const isTabStop =
-              isFocusable && focus.s === si && focus.p === pi;
+            // Mouse interactivity stays on the emphasized series so the
+            // crosshair owns hover/click across the muted series. Keyboard nav
+            // reaches EVERY series — Up/Down switch series, so every point must
+            // accept focus + key events. (pointer-events:none blocks the mouse
+            // but NOT programmatic focus or keydown — the muted points stay
+            // keyboard-navigable while the crosshair keeps the pointer.)
+            const isMouseInteractive = isEmphasis;
+            const isTabStop = focus.s === si && focus.p === pi;
             const showDot =
               showMarkers || (lastValueDot && isLast);
             return (
@@ -2501,22 +2507,16 @@ function Plot({
                     lastValueDot && isLast
                       ? "1.5px solid var(--background)"
                       : undefined,
-                  pointerEvents: isFocusable ? "auto" : "none",
+                  pointerEvents: isMouseInteractive ? "auto" : "none",
                 }}
                 tabIndex={isTabStop ? 0 : -1}
                 aria-label={`${s.name}, ${p.xLabel}: ${formatValue(p.y)}`}
                 aria-roledescription="data point"
-                onKeyDown={
-                  isFocusable ? (e) => handleKey(e, si, pi) : undefined
-                }
-                onFocus={
-                  isFocusable
-                    ? () => {
-                        setFocus({ s: si, p: pi });
-                        onPointFocus?.(makeSelection(series, si, pi));
-                      }
-                    : undefined
-                }
+                onKeyDown={(e) => handleKey(e, si, pi)}
+                onFocus={() => {
+                  setFocus({ s: si, p: pi });
+                  onPointFocus?.(makeSelection(series, si, pi));
+                }}
                 onClick={
                   onPointClick
                     ? (e) => {
