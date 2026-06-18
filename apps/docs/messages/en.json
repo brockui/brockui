@@ -51,7 +51,11 @@
       "editorial": "Editorial",
       "source": "Source",
       "animation": "Animation",
-      "forwardCompat": "Forward-compat"
+      "forwardCompat": "Forward-compat",
+      "lines": "Lines",
+      "scale": "Scale",
+      "labelsLegend": "Labels & legend",
+      "eventsBands": "Events & bands"
     },
     "fields": {
       "preset": "Preset",
@@ -110,7 +114,19 @@
       "showValueAtBarEnd": "Show value at bar end",
       "pattern": "Pattern",
       "patternStyle": "Pattern style",
-      "bars": "Bars"
+      "bars": "Bars",
+      "curve": "Curve",
+      "lineWidth": "Line width (px)",
+      "markers": "Markers",
+      "yScale": "Y scale",
+      "minValue": "Min value",
+      "legend": "Legend",
+      "emphasisSeries": "Emphasized series",
+      "eventX": "Event at",
+      "eventLabel": "Event label",
+      "bandFrom": "Band from",
+      "bandTo": "Band to",
+      "values": "Values"
     },
     "toggles": {
       "rollLongTail": "Roll the long tail into 'Other'",
@@ -139,7 +155,17 @@
       "enableAnimation": "Enable mount animation",
       "showJSON": "Show JSON (portable config)",
       "capHeight": "Cap height (maxHeight)",
-      "scrollOverflow": "Scroll overflow (scroll='auto')"
+      "scrollOverflow": "Scroll overflow (scroll='auto')",
+      "dashedSeries": "Dashed (forecast)",
+      "gridlines": "Horizontal gridlines",
+      "lastValueDot": "Last-value dot",
+      "yBaselineZero": "Anchor Y to zero",
+      "customMin": "Custom min",
+      "directLabels": "Direct line-end labels",
+      "directLabelValues": "Append last value to labels",
+      "showEvent": "Show event marker",
+      "showBand": "Show shaded band",
+      "emphasizeSeries": "Emphasize"
     },
     "options": {
       "sort": {
@@ -211,6 +237,24 @@
         "auto": "Auto",
         "always": "Always",
         "never": "Never"
+      },
+      "curve": {
+        "linear": "Linear",
+        "monotone": "Monotone"
+      },
+      "markers": {
+        "auto": "Auto",
+        "always": "Always",
+        "none": "None"
+      },
+      "yScale": {
+        "linear": "Linear",
+        "log": "Log"
+      },
+      "legend": {
+        "none": "None",
+        "direct": "Direct",
+        "top": "Top"
       }
     },
     "buttons": {
@@ -218,7 +262,8 @@
       "next": "Next",
       "last": "Last",
       "clearColor": "× clear color (use accent)",
-      "addBar": "+ Add bar"
+      "addBar": "+ Add bar",
+      "addSeries": "+ Add series"
     },
     "hints": {
       "noClicksYet": "— no clicks yet —",
@@ -226,7 +271,9 @@
       "noFocusYet": "— no focus yet —",
       "maxHeightNoop": "maxHeight is a documented no-op without <code>scroll=\"auto\"</code> — the honest default shows every category.",
       "dataLabelsAuto": "Auto (the default): direct labels when ≤ 8 bars, and the value axis hides — Tufte's redundant ink rule as a default.",
-      "showJSON": "JSON dumps below the chart panel — paste into a notebook, WordPress, or pass to <code>renderToHTMLString()</code>."
+      "showJSON": "JSON dumps below the chart panel — paste into a notebook, WordPress, or pass to <code>renderToHTMLString()</code>.",
+      "sharedXLabels": "X labels are shared across every series.",
+      "emphasisLine": "The emphasized series takes the accent; the rest mute to grey."
     },
     "placeholders": {
       "loading": "Loading…",
@@ -259,7 +306,17 @@
       "testIdBar": "traffic-channels-chart",
       "source": "Brock Analytics, 2026",
       "hex": "#F54900",
-      "barLabel": "Label"
+      "barLabel": "Label",
+      "seriesName": "Series name",
+      "headerTitleLine": "Revenue vs costs",
+      "headerSubtitleLine": "Last 6 months",
+      "xAxisTitleLine": "Month",
+      "yAxisTitleLine": "Value",
+      "fileNameLine": "revenue-vs-costs",
+      "captionLine": "Indexed to 100 at the start.",
+      "eventLabel": "Launch",
+      "dataDescriptionLine": "Revenue vs costs, last 6 months",
+      "testIdLine": "revenue-line-chart"
     },
     "aria": {
       "previewTheme": "Chart preview theme",
@@ -268,7 +325,9 @@
       "pickCustomColor": "Pick custom color",
       "colorPicker": "Color picker",
       "color": "Color {name}",
-      "removeBar": "Remove bar"
+      "removeBar": "Remove bar",
+      "removeSeries": "Remove series",
+      "emphasizeSeries": "Emphasize series"
     }
   }
 }

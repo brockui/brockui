@@ -51,7 +51,11 @@
       "editorial": "Редакционные элементы",
       "source": "Источник",
       "animation": "Анимация",
-      "forwardCompat": "Метаданные"
+      "forwardCompat": "Метаданные",
+      "lines": "Линии",
+      "scale": "Шкала",
+      "labelsLegend": "Подписи и легенда",
+      "eventsBands": "События и зоны"
     },
     "fields": {
       "preset": "Пресет",
@@ -110,7 +114,19 @@
       "showValueAtBarEnd": "Значение у конца полосы",
       "pattern": "Штриховка",
       "patternStyle": "Стиль штриховки",
-      "bars": "Столбцы"
+      "bars": "Столбцы",
+      "curve": "Кривая",
+      "lineWidth": "Толщина линии (px)",
+      "markers": "Маркеры",
+      "yScale": "Шкала Y",
+      "minValue": "Минимум",
+      "legend": "Легенда",
+      "emphasisSeries": "Акцентный ряд",
+      "eventX": "Событие в",
+      "eventLabel": "Подпись события",
+      "bandFrom": "Зона от",
+      "bandTo": "Зона до",
+      "values": "Значения"
     },
     "toggles": {
       "rollLongTail": "Свернуть длинный хвост в «Прочее»",
@@ -139,7 +155,17 @@
       "enableAnimation": "Включить анимацию появления",
       "showJSON": "Показать JSON (переносимый конфиг)",
       "capHeight": "Ограничить высоту (maxHeight)",
-      "scrollOverflow": "Скролл при переполнении (scroll='auto')"
+      "scrollOverflow": "Скролл при переполнении (scroll='auto')",
+      "dashedSeries": "Пунктир (прогноз)",
+      "gridlines": "Горизонтальная сетка",
+      "lastValueDot": "Точка последнего значения",
+      "yBaselineZero": "Привязать Y к нулю",
+      "customMin": "Свой минимум",
+      "directLabels": "Прямые подписи у концов",
+      "directLabelValues": "Добавить последнее значение к подписям",
+      "showEvent": "Показать маркер события",
+      "showBand": "Показать затенённую зону",
+      "emphasizeSeries": "Акцент"
     },
     "options": {
       "sort": {
@@ -211,6 +237,24 @@
         "auto": "Авто",
         "always": "Всегда",
         "never": "Никогда"
+      },
+      "curve": {
+        "linear": "Линейная",
+        "monotone": "Монотонная"
+      },
+      "markers": {
+        "auto": "Авто",
+        "always": "Всегда",
+        "none": "Нет"
+      },
+      "yScale": {
+        "linear": "Линейная",
+        "log": "Лог"
+      },
+      "legend": {
+        "none": "Нет",
+        "direct": "Прямые",
+        "top": "Сверху"
       }
     },
     "buttons": {
@@ -218,7 +262,8 @@
       "next": "Дальше",
       "last": "Конец",
       "clearColor": "× сбросить цвет (вернуть акцент)",
-      "addBar": "+ Добавить столбец"
+      "addBar": "+ Добавить столбец",
+      "addSeries": "+ Добавить ряд"
     },
     "hints": {
       "noClicksYet": "— кликов пока нет —",
@@ -226,7 +271,9 @@
       "noFocusYet": "— фокуса ещё не было —",
       "maxHeightNoop": "Без <code>scroll=\"auto\"</code> maxHeight не действует — это задокументировано. Честный дефолт показывает все категории.",
       "dataLabelsAuto": "Auto (дефолт): при ≤ 8 полосах — прямые подписи, ось значений скрывается. Правило Тафти об избыточном data-ink по умолчанию.",
-      "showJSON": "JSON выводится под панелью графика — вставьте его в ноутбук, WordPress или передайте в <code>renderToHTMLString()</code>."
+      "showJSON": "JSON выводится под панелью графика — вставьте его в ноутбук, WordPress или передайте в <code>renderToHTMLString()</code>.",
+      "sharedXLabels": "Подписи X общие для всех рядов.",
+      "emphasisLine": "Акцентный ряд берёт цвет акцента; остальные приглушены до серого."
     },
     "placeholders": {
       "loading": "Загрузка…",
@@ -259,7 +306,17 @@
       "testIdBar": "traffic-channels-chart",
       "source": "Brock Analytics, 2026",
       "hex": "#F54900",
-      "barLabel": "Метка"
+      "barLabel": "Метка",
+      "seriesName": "Название ряда",
+      "headerTitleLine": "Выручка и расходы",
+      "headerSubtitleLine": "Последние 6 месяцев",
+      "xAxisTitleLine": "Месяц",
+      "yAxisTitleLine": "Значение",
+      "fileNameLine": "revenue-vs-costs",
+      "captionLine": "Индекс 100 на старте.",
+      "eventLabel": "Запуск",
+      "dataDescriptionLine": "Выручка и расходы, последние 6 месяцев",
+      "testIdLine": "revenue-line-chart"
     },
     "aria": {
       "previewTheme": "Тема предпросмотра графика",
@@ -268,7 +325,9 @@
       "pickCustomColor": "Выбрать свой цвет",
       "colorPicker": "Выбор цвета",
       "color": "Цвет {name}",
-      "removeBar": "Удалить столбец"
+      "removeBar": "Удалить столбец",
+      "removeSeries": "Удалить ряд",
+      "emphasizeSeries": "Сделать ряд акцентным"
     }
   }
 }

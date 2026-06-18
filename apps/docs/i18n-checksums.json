@@ -3,5 +3,6 @@
   "app/[locale]/components/sparkline/content.ts": "7d62e89cda9a25e2",
   "app/[locale]/components/column-chart/content.ts": "a27b02fa874061e2",
   "app/[locale]/components/bar-chart/content.ts": "728e237c47bfee0c",
-  "messages/en.json": "8329b44521f7004f"
+  "app/[locale]/components/line-chart/content.ts": "dd8521993d8e4e7c",
+  "messages/en.json": "3863e263baa9a7c1"
 }

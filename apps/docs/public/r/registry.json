@@ -58,6 +58,34 @@
       "categories": [
         "charts"
       ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "line-chart",
+      "type": "registry:component",
+      "title": "Line Chart",
+      "description": "Multi-series lines for continuous time-series — change over time, indexed comparisons, forecasts. The FT / John Burn-Murdoch canon: direct line-end labels instead of a legend, one emphasized series in the accent while the rest mute to grey (never a rainbow), faint horizontal gridlines (the deliberate deviation from the no-gridline bar rule), honest gaps where data is missing (y: null breaks the line, never interpolated), a Y domain that reads change not magnitude-from-zero, and editorial layers (event markers, recession-shading bands, dashed forecast lines). Monospace numerics (Hack), built-in source attribution, reference line (fixed or mean/median), crosshair multi-series tooltip, native PNG/SVG/CSV export, JSON portability. Zero dependencies beyond React. Built to WCAG 2.2 AA: roving tabindex, ARIA graphics roles, screen-reader data table, forced-colors support.",
+      "author": "Almas Kasymzhanov <almaskasymzhanov@gmail.com>",
+      "files": [
+        {
+          "path": "components/charts/line-chart.tsx",
+          "type": "registry:component",
+          "target": "components/brockui/line-chart.tsx"
+        },
+        {
+          "path": "components/charts/line-chart-export.ts",
+          "type": "registry:component",
+          "target": "components/brockui/line-chart-export.ts"
+        },
+        {
+          "path": "components/charts/chart-transforms.ts",
+          "type": "registry:component",
+          "target": "components/brockui/chart-transforms.ts"
+        }
+      ],
+      "categories": [
+        "charts"
+      ]
     }
   ]
 }

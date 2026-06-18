@@ -50,11 +50,11 @@ export const components: ComponentItem[] = [
     id: "line-chart",
     name: "Line Chart",
     category: "Charts",
-    status: "SOON",
+    status: "NEW",
     href: "/components/line-chart",
     description: {
-      en: "Continuous trends and time-series flow.",
-      ru: "Непрерывные тренды и временные ряды.",
+      en: "Multi-series trends with direct labels and honest gaps.",
+      ru: "Многорядные тренды с прямыми подписями и честными разрывами.",
     },
   },
   {
