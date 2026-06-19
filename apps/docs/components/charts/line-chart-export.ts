@@ -1460,6 +1460,28 @@ function normalizeJSONData(input: LineChartJSON): JSONNormalizedSeries[] {
  * linear scales the domain is rounded to a nice step; for log it spans whole
  * powers of ten with 1·2·5 sub-ticks.
  */
+/**
+ * Snap a positive value to the nearest 1·2·5×10ⁿ step. `floor` → the largest
+ * such step ≤ value (the log-axis lower bound); `ceil` → the smallest ≥ value
+ * (the upper bound). Keeps the log domain tight instead of jumping a full decade.
+ */
+function niceLogBound(value: number, dir: "floor" | "ceil"): number {
+  if (!(value > 0)) return dir === "floor" ? 1 : 10;
+  const p = Math.floor(Math.log10(value));
+  const candidates: number[] = [];
+  for (let pp = p - 1; pp <= p + 1; pp += 1) {
+    for (const m of [1, 2, 5]) candidates.push(m * 10 ** pp);
+  }
+  candidates.sort((a, b) => a - b);
+  if (dir === "floor") {
+    let r = candidates[0];
+    for (const c of candidates) if (c <= value + 1e-9) r = c;
+    return r;
+  }
+  for (const c of candidates) if (c >= value - 1e-9) return c;
+  return candidates[candidates.length - 1];
+}
+
 export function computeYDomain(
   values: number[],
   yAxis: { min?: number; max?: number; ticks?: number } | undefined,
@@ -1476,16 +1498,21 @@ export function computeYDomain(
     const positives = values.filter((v) => v > 0);
     const lo = positives.length > 0 ? Math.min(...positives) : 1;
     const hi = positives.length > 0 ? Math.max(...positives) : 10;
-    const minPow = Math.floor(Math.log10(yAxis?.min ?? lo));
-    const maxPow = Math.ceil(Math.log10(yAxis?.max ?? hi));
+    // Snap to the nearest 1·2·5 step (NOT the next full decade) so a 100–178
+    // series spans 100–200, not 100–1000 — otherwise the data hugs the floor
+    // with most of the axis empty.
+    const min = yAxis?.min ?? niceLogBound(lo, "floor");
+    const max = yAxis?.max ?? niceLogBound(hi, "ceil");
+    const minP = Math.floor(Math.log10(min) - 1e-9);
+    const maxP = Math.ceil(Math.log10(max) + 1e-9);
     const ticks: number[] = [];
-    for (let p = minPow; p <= maxPow; p += 1) {
+    for (let p = minP; p <= maxP; p += 1) {
       for (const m of [1, 2, 5]) {
         const t = m * 10 ** p;
-        if (t >= 10 ** minPow && t <= 10 ** maxPow) ticks.push(t);
+        if (t >= min - 1e-9 && t <= max + 1e-9) ticks.push(t);
       }
     }
-    return { min: 10 ** minPow, max: 10 ** maxPow, ticks };
+    return { min, max, ticks };
   }
 
   if (baselineZero) {

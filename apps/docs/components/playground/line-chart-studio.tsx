@@ -652,12 +652,21 @@ export function LineChartStudio() {
 
   function setPreset(preset: PresetKey) {
     const p = PRESETS[preset];
+    // Re-map the demo event / band onto the NEW dataset's labels — otherwise
+    // they keep stale category names (e.g. month "MAR" on a quarters preset),
+    // resolve to phantom off-range positions, and the event label floats
+    // disconnected from any marker.
+    const n = p.labels.length;
+    const mid = Math.floor(n / 2);
     setS((prev) => ({
       ...prev,
       preset,
       labels: [...p.labels],
       series: seriesFromPreset(p, locale),
       emphasisIdx: p.series.findIndex((ser) => ser.emphasis),
+      eventX: p.labels[mid] ?? p.labels[0],
+      bandFrom: p.labels[Math.max(0, mid - 1)] ?? p.labels[0],
+      bandTo: p.labels[Math.min(n - 1, mid + 1)] ?? p.labels[n - 1],
     }));
   }
 

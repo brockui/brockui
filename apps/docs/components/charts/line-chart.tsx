@@ -2310,8 +2310,28 @@ function Plot({
 
   const tooltipData = activeX !== null ? tooltipAtX(series, activeX, formatValue) : null;
 
+  // Reserve a right gutter for the direct line-end labels so they sit INSIDE
+  // the figure (and the SVG/PNG export) instead of overflowing into whatever
+  // is to the right. Sized to the longest label; the plot + x-axis shrink to
+  // the remaining width so the line ends leave room for the label beside them.
+  const directLabelGutter = (() => {
+    if (!directLabels) return 0;
+    let maxChars = 0;
+    for (const s of series) {
+      const last = lastDefinedDom(s.points);
+      if (!last || last.y === null) continue;
+      const text = directLabelValues ? `${s.name} ${formatValue(last.y)}` : s.name;
+      maxChars = Math.max(maxChars, text.length);
+    }
+    // Hack mono at 10px ≈ 6.2px/char, + the ml-1 (4px) offset + a little slack.
+    return maxChars > 0 ? Math.ceil(maxChars * 6.2) + 12 : 0;
+  })();
+
   return (
-    <div className="flex flex-1 flex-col">
+    <div
+      className="flex flex-1 flex-col"
+      style={directLabelGutter ? { paddingRight: directLabelGutter } : undefined}
+    >
       <div
         ref={containerRef}
         className={`brock-plot relative ${animationEnabled ? "brock-plot-animated" : ""}`}
