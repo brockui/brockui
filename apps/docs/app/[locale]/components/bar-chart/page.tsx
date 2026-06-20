@@ -148,7 +148,7 @@ function Section({
 }) {
   return (
     <section className={`mb-12 ${wide ? "" : "max-w-4xl"}`}>
-      <h2 className="mb-4 font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+      <h2 className="mb-4 text-sm font-semibold text-foreground">
         {title}
       </h2>
       {children}
@@ -186,7 +186,7 @@ export default async function BarChartPage({
   return (
     <div className="mx-auto max-w-6xl p-10">
       <div className="mb-12 max-w-4xl">
-        <div className="mb-2 font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+        <div className="mb-2 text-xs font-medium text-muted-foreground">
           {t.kicker}
         </div>
         <h1 className="mb-3 text-3xl font-normal tracking-tight text-foreground">
@@ -212,7 +212,7 @@ export default async function BarChartPage({
 
       <Section title={t.props.title}>
         <div className="border border-border">
-          <table className="w-full font-mono text-xs">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border bg-card/40">
                 {[
@@ -223,7 +223,7 @@ export default async function BarChartPage({
                 ].map((h) => (
                   <th
                     key={h}
-                    className="p-3 text-left text-[10px] font-normal tracking-wider text-muted-foreground uppercase"
+                    className="p-3 text-left text-[11px] font-medium text-muted-foreground"
                   >
                     {h}
                   </th>
@@ -238,9 +238,9 @@ export default async function BarChartPage({
                     i < props.length - 1 ? "border-b border-border" : ""
                   }
                 >
-                  <td className="p-3 text-foreground">{p.name}</td>
-                  <td className="p-3 text-muted-foreground">{p.type}</td>
-                  <td className="p-3 text-muted-foreground">{p.default}</td>
+                  <td className="p-3 font-mono text-foreground">{p.name}</td>
+                  <td className="p-3 font-mono text-muted-foreground">{p.type}</td>
+                  <td className="p-3 font-mono text-muted-foreground">{p.default}</td>
                   <td className="p-3 font-sans text-sm text-foreground">
                     {t.props.descriptions[p.name]}
                   </td>
@@ -264,10 +264,10 @@ export default async function BarChartPage({
           )}
 
           <div className="max-w-2xl">
-            <div className="mb-2 font-mono text-[11px] tracking-wider text-foreground uppercase">
+            <div className="mb-2 text-[13px] font-medium text-foreground">
               {t.a11y.keyboardTitle}
             </div>
-            <table className="w-full font-mono text-xs">
+            <table className="w-full text-xs">
               <tbody>
                 {t.a11y.keyboard.map((row, i) => (
                   <tr
@@ -278,7 +278,7 @@ export default async function BarChartPage({
                         : ""
                     }
                   >
-                    <td className="py-2 pr-6 text-foreground">{row.key}</td>
+                    <td className="py-2 pr-6 font-mono text-foreground">{row.key}</td>
                     <td className="py-2 font-sans text-sm">{row.action}</td>
                   </tr>
                 ))}

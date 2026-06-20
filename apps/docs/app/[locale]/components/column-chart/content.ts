@@ -56,7 +56,7 @@ const en: ColumnChartPageContent = {
       sort: "Reorder bars by value (stable). 'none' preserves input order — the honest default for time buckets; asc/desc turns the chart into a ranking",
       topN: "Keep the N largest bars, roll the tail into one 'Other' aggregate (summed). Defaults: pinned last regardless of sort, muted --brock-other fill. Callbacks receive isOther + the collapsed items[]. Number shorthand = all defaults",
       labels:
-        "X-axis labels (rendered in pixel font under bars + in hover tooltip). Only used when data is number[]",
+        "X-axis labels (rendered in Hack mono under bars + in hover tooltip). Only used when data is number[]",
       height: "Chart height in pixels (Y-axis + bars area)",
       gap: "Gap between bars in pixels. Auto-shrinks for dense datasets (60+ bars)",
       accent:
@@ -203,7 +203,7 @@ const en: ColumnChartPageContent = {
       ],
       ["No gridlines. Single 1px baseline at zero (Tufte data-ink)."],
       [
-        "Hover-tooltip with value in Hack mono + period in Departure Mono pixel-font badge.",
+        "Hover-tooltip: period label in Geist sans + value in Hack mono, in a single elevated card.",
       ],
       [
         "Staggered entry animation (30ms cascade, scale-Y from baseline). Disabled on ",
@@ -267,7 +267,7 @@ const ru: ColumnChartPageContent = {
       sort: "Сортировка столбцов по значению (стабильная). 'none' сохраняет исходный порядок — честный дефолт для временных интервалов; asc/desc превращает график в рейтинг",
       topN: "Оставить N крупнейших столбцов, свернув хвост в один агрегат «Other» (сумма). По умолчанию: закреплён последним независимо от sort, приглушённая заливка --brock-other. Коллбэки получают isOther + свёрнутые items[]. Число = все дефолты",
       labels:
-        "Подписи оси X (пиксельный шрифт под столбцами + в тултипе). Используются только при data: number[]",
+        "Подписи оси X (Hack mono под столбцами + в тултипе). Используются только при data: number[]",
       height: "Высота графика в пикселях (ось Y + область столбцов)",
       gap: "Зазор между столбцами в пикселях. Сужается автоматически на плотных данных (60+ столбцов)",
       accent:
@@ -416,7 +416,7 @@ const ru: ColumnChartPageContent = {
       ],
       ["Без сетки. Одна линия 1px на нулевой базе (data-ink, Тафти)."],
       [
-        "Тултип при наведении: значение в Hack mono + период в пиксельной плашке Departure Mono.",
+        "Тултип при наведении: подпись периода в Geist sans + значение в Hack mono, в единой приподнятой карточке.",
       ],
       [
         "Каскадная анимация появления (30 мс на столбец, scale-Y от базы). Отключается при ",
