@@ -109,7 +109,7 @@ export function Accordion({
     <div>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2.5 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted/40"
+        className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2.5 text-left text-xs font-medium text-foreground transition-colors outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brock-accent/40"
         aria-expanded={open}
       >
         <span>{label}</span>
@@ -140,7 +140,7 @@ export function Swatch({
   return (
     <button
       onClick={onClick}
-      className={`h-6 w-6 cursor-pointer rounded-md transition-all ${
+      className={`h-6 w-6 cursor-pointer rounded-md outline-none transition-all focus-visible:ring-2 focus-visible:ring-brock-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card ${
         selected
           ? "ring-2 ring-offset-2 ring-offset-card"
           : "opacity-70 hover:opacity-100"
@@ -310,7 +310,7 @@ export function Segmented({
             key={opt}
             onClick={() => onSelect(i)}
             title={opt}
-            className={`min-w-0 flex-1 cursor-pointer truncate rounded-[5px] px-1.5 py-1 text-center font-sans text-[11px] transition-colors ${
+            className={`min-w-0 flex-1 cursor-pointer truncate rounded-[5px] px-1.5 py-1 text-center font-sans text-[11px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brock-accent/40 ${
               selected
                 ? "bg-background text-brock-accent shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -370,8 +370,14 @@ export function Toggle({
 }) {
   return (
     <label className="flex cursor-pointer items-center gap-2 font-sans text-xs text-muted-foreground hover:text-foreground">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="peer sr-only"
+      />
       <span
-        className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+        className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-md border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brock-accent/40 peer-focus-visible:ring-offset-1 peer-focus-visible:ring-offset-card ${
           checked
             ? "border-brock-accent bg-brock-accent"
             : "border-muted-foreground/50 bg-transparent"
@@ -391,12 +397,6 @@ export function Toggle({
           </svg>
         )}
       </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="sr-only"
-      />
       <span>{label}</span>
     </label>
   );
