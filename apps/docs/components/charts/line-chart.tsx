@@ -1809,15 +1809,77 @@ function EmptyState({
   return (
     <div className={className}>
       <div
-        className="flex items-center justify-center border-b border-l border-border font-pixel text-xs tracking-wider text-muted-foreground/60"
+        className="flex flex-col items-center justify-center gap-2 border-b border-l border-border"
         style={{ height }}
         role="img"
         aria-label="No data available for this period"
       >
-        ▒▒▒ no data for this period
+        <EmptyChartIcon className="h-7 w-7 text-muted-foreground/40" />
+        <span className="font-sans text-sm text-muted-foreground">
+          No data for this period
+        </span>
       </div>
       {source && <ChartSource source={source} />}
     </div>
+  );
+}
+
+/* ─── State icons (neutral line icons; swap for Iconly when supplied) ──── */
+
+function EmptyChartIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+      <rect x="7" y="13" width="3" height="4" rx="0.5" />
+      <rect x="12.5" y="9" width="3" height="8" rx="0.5" />
+      <rect x="18" y="11" width="3" height="6" rx="0.5" />
+    </svg>
+  );
+}
+
+function WarningIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+      <path d="M12 9v4M12 17h.01" />
+    </svg>
+  );
+}
+
+function Spinner({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      className={`brock-spinner ${className ?? ""}`}
+      aria-hidden
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
   );
 }
 
@@ -1862,12 +1924,7 @@ function LoadingState({
             vectorEffect="non-scaling-stroke"
           />
         </svg>
-        <span
-          className="absolute top-1 right-1 bg-background px-1.5 py-0.5 font-pixel text-[10px] tracking-wider text-muted-foreground uppercase"
-          aria-hidden
-        >
-          ▒ {label}
-        </span>
+        <span className="sr-only">{label}</span>
       </div>
       {source && <ChartSource source={source} />}
     </div>
@@ -1900,22 +1957,18 @@ function ErrorState({
         aria-live="assertive"
         aria-label={`${label}: ${message}`}
       >
-        <div
-          className="font-pixel text-xs tracking-wider text-muted-foreground/60"
-          aria-hidden
-        >
-          ▲▲▲ {label}
-        </div>
+        <WarningIcon className="h-7 w-7 text-muted-foreground/50" />
+        <div className="sr-only">{label}</div>
         <div className="max-w-md font-sans text-sm text-foreground">
           {message}
         </div>
         {onRetry && (
           <button
             onClick={onRetry}
-            className="mt-1 cursor-pointer rounded-[2px] border border-border bg-muted/40 px-3 py-1 font-mono text-xs tracking-wider text-foreground uppercase transition-colors hover:border-brock-accent/60 hover:bg-muted"
+            className="mt-1 cursor-pointer rounded-md border border-border bg-muted/40 px-3 py-1 font-sans text-xs text-foreground transition-colors hover:bg-muted"
             type="button"
           >
-            ↻ {retryLabel}
+            {retryLabel}
           </button>
         )}
       </div>
@@ -1928,11 +1981,12 @@ function LoadingOverlay({ label }: { label: string }) {
   return (
     <div className="brock-loading-overlay pointer-events-none absolute inset-0 z-20 flex items-start justify-end p-2">
       <span
-        className="brock-loading-spinner bg-background px-1.5 py-0.5 font-pixel text-[10px] tracking-wider text-muted-foreground uppercase"
+        className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-muted-foreground shadow-sm"
         role="status"
         aria-live="polite"
       >
-        ▒ {label}
+        <Spinner className="h-3.5 w-3.5" />
+        <span className="sr-only">{label}</span>
       </span>
     </div>
   );
@@ -2783,19 +2837,23 @@ function LineAnimationStyles() {
         animation: brock-skeleton-pulse 1400ms ease-in-out infinite;
       }
       @keyframes brock-skeleton-pulse {
-        0%, 100% { opacity: 0.75; }
+        0%, 100% { opacity: 0.6; }
         50%      { opacity: 1; }
       }
       .brock-loading-overlay {
         background: color-mix(in oklab, var(--background) 55%, transparent);
         backdrop-filter: blur(0.5px);
       }
-      .brock-loading-spinner {
-        animation: brock-skeleton-pulse 1400ms ease-in-out infinite;
+      .brock-spinner {
+        animation: brock-spin 700ms linear infinite;
+        transform-origin: center;
+      }
+      @keyframes brock-spin {
+        to { transform: rotate(360deg); }
       }
       @media (prefers-reduced-motion: reduce) {
         .brock-skeleton-line,
-        .brock-loading-spinner { animation: none; }
+        .brock-spinner { animation: none; }
       }
       /* Container queries — decimate X labels in narrow containers. */
       @container (max-width: 420px) {

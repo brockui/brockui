@@ -1671,8 +1671,8 @@ describe("ColumnChart — slots", () => {
     const { container } = render(
       <ColumnChart data={[]} source="FT" />,
     );
-    // Default ASCII empty still shows
-    expect(screen.getByText(/no data for this period/)).toBeInTheDocument();
+    // Default empty state still shows
+    expect(screen.getByText(/no data for this period/i)).toBeInTheDocument();
     expect(container.querySelector('[data-testid="custom-empty"]')).toBeFalsy();
   });
 
