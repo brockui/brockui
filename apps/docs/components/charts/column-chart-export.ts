@@ -403,11 +403,18 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
   }
   if (hasTrend) {
     const isPositive = trend! >= 0;
-    const txt = `${isPositive ? "↗ +" : "↘ "}${(trend! * 100).toFixed(1)}%`;
+    const pct = `${isPositive ? "+" : ""}${(trend! * 100).toFixed(1)}%`;
     const fill = isPositive ? accent : muted;
-    const y = hasHeader ? 16 : 16;
+    // Iconly trend arrow (0–24 viewBox) scaled to 12px, placed left of the
+    // value — matches the on-screen TrendIndicator (no unicode ↗ glyph).
+    const textW = pct.length * 6.6;
+    const arrowX = r2(width - textW - 3 - 12);
+    const arrowPaths = isPositive
+      ? '<path d="M16.0913 7.09137H20.9999L20.9999 12"/><path d="M20.9999 7.09033L13.2269 14.8634L9.13651 10.772L3 16.9086"/>'
+      : '<path d="M16.0903 16.9095L20.9999 16.9096L20.999 12.0009"/><path d="M21 16.9086L13.2269 9.13649L9.13654 13.2269L3 7.09033"/>';
     parts.push(
-      `<text x="${r2(width)}" y="${y}" text-anchor="end" font-family="${monoFont}" font-size="11" font-variant-numeric="tabular-nums" fill="${fill}">${escapeXml(txt)}</text>`,
+      `<g transform="translate(${arrowX},5) scale(0.5)" fill="none" stroke="${fill}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${arrowPaths}</g>`,
+      `<text x="${r2(width)}" y="16" text-anchor="end" font-family="${monoFont}" font-size="11" font-variant-numeric="tabular-nums" fill="${fill}">${escapeXml(pct)}</text>`,
     );
   }
 

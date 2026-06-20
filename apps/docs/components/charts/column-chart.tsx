@@ -2037,15 +2037,45 @@ function TrendIndicator({ value }: { value: number }) {
   return (
     <div className="mb-3 flex justify-end" aria-label={label}>
       <span
-        className={`font-mono text-xs tabular-nums ${
+        className={`inline-flex items-center gap-1 font-mono text-xs tabular-nums ${
           isPositive ? "text-brock-accent" : "text-muted-foreground"
         }`}
         aria-hidden
       >
-        {isPositive ? "↗" : "↘"} {isPositive ? "+" : ""}
+        <TrendArrow up={isPositive} className="h-3.5 w-3.5 shrink-0" />
+        {isPositive ? "+" : ""}
         {(value * 100).toFixed(1)}%
       </span>
     </div>
+  );
+}
+
+/** Trend arrow (founder-supplied Iconly) — currentColor. */
+function TrendArrow({ up, className }: { up: boolean; className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      {up ? (
+        <>
+          <path d="M16.0913 7.09137H20.9999L20.9999 12" />
+          <path d="M20.9999 7.09033L13.2269 14.8634L9.13651 10.772L3 16.9086" />
+        </>
+      ) : (
+        <>
+          <path d="M16.0903 16.9095L20.9999 16.9096L20.999 12.0009" />
+          <path d="M21 16.9086L13.2269 9.13649L9.13654 13.2269L3 7.09033" />
+        </>
+      )}
+    </svg>
   );
 }
 
