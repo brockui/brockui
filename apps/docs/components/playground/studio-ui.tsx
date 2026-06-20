@@ -27,6 +27,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { HexColorPicker } from "react-colorful";
+import { Tooltip } from "radix-ui";
 import { useTranslations } from "next-intl";
 
 /* ─── Shared colour constants + helpers ──────────────────────────────── */
@@ -368,17 +369,59 @@ export function ColorCustomInput({
   );
 }
 
+/**
+ * HintTooltip — the canonical studio tooltip (Vercel / Linear / Resend spirit).
+ * Wraps a setting's label so hovering it reveals the full description. Compact,
+ * rounded, elevated card; opens to the left so it never clips off the right-hand
+ * settings rail. Self-contained (its own Tooltip.Provider) so any control can
+ * drop one in without an ancestor provider.
+ */
+export function HintTooltip({
+  text,
+  children,
+}: {
+  text: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip.Provider delayDuration={150} skipDelayDuration={300}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            side="left"
+            align="center"
+            sideOffset={6}
+            collisionPadding={10}
+            className="z-[60] max-w-[240px] rounded-md border border-border bg-popover px-2.5 py-1.5 font-sans text-xs leading-relaxed text-popover-foreground shadow-md data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+          >
+            {text}
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
+  );
+}
+
 export function Field({
   label,
+  hint,
   children,
 }: {
   label: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <label className="block">
       <div className="mb-1 text-[11px] font-medium text-muted-foreground">
-        {label}
+        {hint ? (
+          <HintTooltip text={hint}>
+            <span className="cursor-help">{label}</span>
+          </HintTooltip>
+        ) : (
+          <span>{label}</span>
+        )}
       </div>
       {children}
     </label>
@@ -499,10 +542,12 @@ export function Toggle({
   label,
   checked,
   onChange,
+  hint,
 }: {
   label: string;
   checked: boolean;
   onChange: (next: boolean) => void;
+  hint?: string;
 }) {
   return (
     <label className="flex cursor-pointer items-center gap-2 font-sans text-xs text-muted-foreground hover:text-foreground">
@@ -533,7 +578,13 @@ export function Toggle({
           </svg>
         )}
       </span>
-      <span>{label}</span>
+      {hint ? (
+        <HintTooltip text={hint}>
+          <span>{label}</span>
+        </HintTooltip>
+      ) : (
+        <span>{label}</span>
+      )}
     </label>
   );
 }

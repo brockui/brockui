@@ -276,6 +276,13 @@
       "sharedXLabels": "X labels are shared across every series.",
       "emphasisLine": "The emphasized series takes the accent; the rest mute to grey."
     },
+    "tips": {
+      "preset": "Swap the demo dataset — 7 to 90 days of sample bars",
+      "bars": "Edit each bar's label and value; remove one with the − button",
+      "sortByValue": "Reorder bars by value (ascending / descending) or keep the input order",
+      "topNOther": "Keep the N largest bars and roll the rest into a single 'Other'",
+      "rollLongTail": "Collapse the long tail beyond N into one aggregated 'Other' bar"
+    },
     "placeholders": {
       "loading": "Loading…",
       "errorMessage": "Couldn't load metrics…",

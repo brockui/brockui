@@ -1109,7 +1109,7 @@ export function ColumnChartStudio() {
         <PanelHeader label={t("panels.settings")} />
         <div className="divide-y divide-border">
           <Accordion label={t("sections.data")} defaultOpen>
-            <Field label={t("fields.preset")}>
+            <Field label={t("fields.preset")} hint={t("tips.preset")}>
               <Segmented
                 options={(Object.keys(DATASETS) as DatasetKey[]).map(
                   (k) => datasets[k].label,
@@ -1122,7 +1122,7 @@ export function ColumnChartStudio() {
                 }
               />
             </Field>
-            <Field label={t("fields.bars")}>
+            <Field label={t("fields.bars")} hint={t("tips.bars")}>
               <div className="space-y-1.5">
                 {s.rows.map((row, i) => (
                   <div key={i} className="flex items-center gap-1.5">
@@ -1162,7 +1162,7 @@ export function ColumnChartStudio() {
                 )}
               </div>
             </Field>
-            <Field label={t("fields.sortByValue")}>
+            <Field label={t("fields.sortByValue")} hint={t("tips.sortByValue")}>
               <Segmented
                 options={[
                   t("options.sort.none"),
@@ -1173,10 +1173,11 @@ export function ColumnChartStudio() {
                 onSelect={(i) => update("sortIdx", i)}
               />
             </Field>
-            <Field label={t("fields.topNOther")}>
+            <Field label={t("fields.topNOther")} hint={t("tips.topNOther")}>
               <div className="space-y-1.5">
                 <Toggle
                   label={t("toggles.rollLongTail")}
+                  hint={t("tips.rollLongTail")}
                   checked={s.topNEnabled}
                   onChange={(v) => update("topNEnabled", v)}
                 />
