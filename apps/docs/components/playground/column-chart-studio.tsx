@@ -1192,7 +1192,7 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label={t("sections.states")}>
-            <Field label={t("fields.mode")}>
+            <Field label={t("fields.mode")} hint={t("tips.statesMode")}>
               <Segmented
                 options={[
                   t("options.state.ready"),
@@ -1225,7 +1225,7 @@ export function ColumnChartStudio() {
             </Field>
             {(s.stateMode === "loading" ||
               s.stateMode === "loading-overlay") && (
-              <Field label={t("fields.loadingLabel")}>
+              <Field label={t("fields.loadingLabel")} hint={t("tips.loadingLabel")}>
                 <TextInput
                   value={s.loadingLabel}
                   onChange={(v) => update("loadingLabel", v)}
@@ -1235,14 +1235,14 @@ export function ColumnChartStudio() {
             )}
             {s.stateMode === "error" && (
               <>
-                <Field label={t("fields.errorMessage")}>
+                <Field label={t("fields.errorMessage")} hint={t("tips.errorMessage")}>
                   <TextInput
                     value={s.errorMessage}
                     onChange={(v) => update("errorMessage", v)}
                     placeholder={t("placeholders.errorMessage")}
                   />
                 </Field>
-                <Field label={t("fields.errorLabel")}>
+                <Field label={t("fields.errorLabel")} hint={t("tips.errorLabel")}>
                   <TextInput
                     value={s.errorLabel}
                     onChange={(v) => update("errorLabel", v)}
@@ -1251,11 +1251,12 @@ export function ColumnChartStudio() {
                 </Field>
                 <Toggle
                   label={t("toggles.showRetry")}
+                  hint={t("tips.showRetry")}
                   checked={s.withRetry}
                   onChange={(v) => update("withRetry", v)}
                 />
                 {s.withRetry && (
-                  <Field label={t("fields.retryLabel")}>
+                  <Field label={t("fields.retryLabel")} hint={t("tips.retryLabel")}>
                     <TextInput
                       value={s.retryLabel}
                       onChange={(v) => update("retryLabel", v)}
@@ -1268,31 +1269,35 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label={t("sections.export")}>
-            <Field label={t("fields.formats")}>
+            <Field label={t("fields.formats")} hint={t("tips.formats")}>
               <div className="space-y-1.5">
                 <Toggle
                   label={t("toggles.pngButton")}
+                  hint={t("tips.pngButton")}
                   checked={s.exportPNG}
                   onChange={(v) => update("exportPNG", v)}
                 />
                 <Toggle
                   label={t("toggles.svgButton")}
+                  hint={t("tips.svgButton")}
                   checked={s.exportSVG}
                   onChange={(v) => update("exportSVG", v)}
                 />
                 <Toggle
                   label={t("toggles.csvButton")}
+                  hint={t("tips.csvButton")}
                   checked={s.exportCSV}
                   onChange={(v) => update("exportCSV", v)}
                 />
                 <Toggle
                   label={t("toggles.copyImageButton")}
+                  hint={t("tips.copyImageButton")}
                   checked={s.exportCopy}
                   onChange={(v) => update("exportCopy", v)}
                 />
               </div>
             </Field>
-            <Field label={t("fields.fileName")}>
+            <Field label={t("fields.fileName")} hint={t("tips.fileName")}>
               <TextInput
                 value={s.exportFileName}
                 onChange={(v) => update("exportFileName", v)}
@@ -1304,12 +1309,13 @@ export function ColumnChartStudio() {
           <Accordion label={t("sections.events")}>
             <Toggle
               label={t("toggles.trackEvents")}
+              hint={t("tips.trackEvents")}
               checked={s.eventsEnabled}
               onChange={(v) => update("eventsEnabled", v)}
             />
             {s.eventsEnabled && (
               <>
-                <Field label={t("fields.lastClick")}>
+                <Field label={t("fields.lastClick")} hint={t("tips.lastClick")}>
                   <div
                     className="rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
@@ -1319,7 +1325,7 @@ export function ColumnChartStudio() {
                       : t("hints.noClicksYet")}
                   </div>
                 </Field>
-                <Field label={t("fields.hovering")}>
+                <Field label={t("fields.hovering")} hint={t("tips.hovering")}>
                   <div
                     className="rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
@@ -1329,7 +1335,7 @@ export function ColumnChartStudio() {
                       : t("hints.mouseOutside")}
                   </div>
                 </Field>
-                <Field label={t("fields.focused")}>
+                <Field label={t("fields.focused")} hint={t("tips.focused")}>
                   <div
                     className="rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
@@ -1339,7 +1345,7 @@ export function ColumnChartStudio() {
                       : t("hints.noFocusYet")}
                   </div>
                 </Field>
-                <Field label={t("fields.programmaticFocus")}>
+                <Field label={t("fields.programmaticFocus")} hint={t("tips.programmaticFocus")}>
                   <div className="flex gap-1.5">
                     <button
                       type="button"
@@ -1375,14 +1381,14 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label={t("sections.header")}>
-            <Field label={t("fields.title")}>
+            <Field label={t("fields.title")} hint={t("tips.headerTitle")}>
               <TextInput
                 value={s.headerTitle}
                 onChange={(v) => update("headerTitle", v)}
                 placeholder={t("placeholders.headerTitleColumn")}
               />
             </Field>
-            <Field label={t("fields.subtitle")}>
+            <Field label={t("fields.subtitle")} hint={t("tips.subtitle")}>
               <TextInput
                 value={s.headerSubtitle}
                 onChange={(v) => update("headerSubtitle", v)}
@@ -1392,7 +1398,7 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label={t("sections.xAxis")}>
-            <Field label={t("fields.title")}>
+            <Field label={t("fields.title")} hint={t("tips.xAxisTitle")}>
               <TextInput
                 value={s.xAxisTitle}
                 onChange={(v) => update("xAxisTitle", v)}
@@ -1401,13 +1407,14 @@ export function ColumnChartStudio() {
             </Field>
             <Toggle
               label={t("toggles.hideTickLabels")}
+              hint={t("tips.hideXTicks")}
               checked={s.xAxisHideTicks}
               onChange={(v) => update("xAxisHideTicks", v)}
             />
           </Accordion>
 
           <Accordion label={t("sections.yAxis")}>
-            <Field label={t("fields.title")}>
+            <Field label={t("fields.title")} hint={t("tips.yAxisTitle")}>
               <TextInput
                 value={s.yAxisTitle}
                 onChange={(v) => update("yAxisTitle", v)}
@@ -1416,11 +1423,12 @@ export function ColumnChartStudio() {
             </Field>
             <Toggle
               label={t("toggles.customMax")}
+              hint={t("tips.customMax")}
               checked={s.yAxisMaxEnabled}
               onChange={(v) => update("yAxisMaxEnabled", v)}
             />
             {s.yAxisMaxEnabled && (
-              <Field label={t("fields.maxValue")}>
+              <Field label={t("fields.maxValue")} hint={t("tips.maxValue")}>
                 <NumberInput
                   value={s.yAxisMax}
                   onChange={(v) => update("yAxisMax", v)}
@@ -1429,33 +1437,34 @@ export function ColumnChartStudio() {
             )}
             <Toggle
               label={t("toggles.hideTickLabels")}
+              hint={t("tips.hideYTicks")}
               checked={s.yAxisHideTicks}
               onChange={(v) => update("yAxisHideTicks", v)}
             />
           </Accordion>
 
           <Accordion label={t("sections.numberFormat")}>
-            <Field label={t("fields.prefix")}>
+            <Field label={t("fields.prefix")} hint={t("tips.prefix")}>
               <TextInput
                 value={s.numberPrefix}
                 onChange={(v) => update("numberPrefix", v)}
                 placeholder={t("placeholders.prefix")}
               />
             </Field>
-            <Field label={t("fields.suffix")}>
+            <Field label={t("fields.suffix")} hint={t("tips.suffix")}>
               <TextInput
                 value={s.numberSuffix}
                 onChange={(v) => update("numberSuffix", v)}
                 placeholder={t("placeholders.suffix")}
               />
             </Field>
-            <Field label={t("fields.decimals")}>
+            <Field label={t("fields.decimals")} hint={t("tips.decimals")}>
               <NumberInput
                 value={s.numberDecimals}
                 onChange={(v) => update("numberDecimals", Math.max(0, v))}
               />
             </Field>
-            <Field label={t("fields.notation")}>
+            <Field label={t("fields.notation")} hint={t("tips.notation")}>
               <Segmented
                 options={[
                   t("options.notation.std"),
@@ -1466,7 +1475,7 @@ export function ColumnChartStudio() {
                 onSelect={(i) => update("numberNotationIdx", i)}
               />
             </Field>
-            <Field label={t("fields.style")}>
+            <Field label={t("fields.style")} hint={t("tips.numberStyle")}>
               <Segmented
                 options={[
                   t("options.numberStyle.decimal"),
@@ -1478,7 +1487,7 @@ export function ColumnChartStudio() {
               />
             </Field>
             {NUMBER_STYLES[s.numberStyleIdx].value === "currency" && (
-              <Field label={t("fields.currency")}>
+              <Field label={t("fields.currency")} hint={t("tips.currency")}>
                 <TextInput
                   value={s.numberCurrency}
                   onChange={(v) => update("numberCurrency", v.toUpperCase())}
@@ -1491,26 +1500,27 @@ export function ColumnChartStudio() {
           <Accordion label={t("sections.dataLabels")}>
             <Toggle
               label={t("toggles.showValueAboveBar")}
+              hint={t("tips.showValueAboveBar")}
               checked={s.dataLabelsShow}
               onChange={(v) => update("dataLabelsShow", v)}
             />
           </Accordion>
 
           <Accordion label={t("sections.color")}>
-            <Field label={t("fields.palette")}>
+            <Field label={t("fields.palette")} hint={t("tips.palette")}>
               <ColorPalette
                 value={s.accentValue}
                 onSelect={pickColor}
               />
             </Field>
-            <Field label={t("fields.custom")}>
+            <Field label={t("fields.custom")} hint={t("tips.custom")}>
               <ColorCustomInput
                 value={s.accentValue}
                 onChange={pickColor}
               />
             </Field>
             {s.recentColors.length > 0 && (
-              <Field label={t("fields.recent")}>
+              <Field label={t("fields.recent")} hint={t("tips.recent")}>
                 <div className="flex gap-1.5">
                   {s.recentColors.map((c) => (
                     <Swatch
@@ -1529,7 +1539,7 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label={t("sections.barStyle")}>
-            <Field label={t("fields.cornerRadius")}>
+            <Field label={t("fields.cornerRadius")} hint={t("tips.cornerRadius")}>
               <Segmented
                 options={[
                   t("options.radius.sharp"),
@@ -1540,7 +1550,7 @@ export function ColumnChartStudio() {
                 onSelect={(i) => update("radiusIdx", i)}
               />
             </Field>
-            <Field label={t("fields.density")}>
+            <Field label={t("fields.density")} hint={t("tips.density")}>
               <Segmented
                 options={[
                   t("options.density.compact"),
@@ -1556,10 +1566,11 @@ export function ColumnChartStudio() {
           <Accordion label={t("sections.scalability")}>
             <Toggle
               label={t("toggles.horizontalScroll")}
+              hint={t("tips.horizontalScroll")}
               checked={s.scrollEnabled}
               onChange={(v) => update("scrollEnabled", v)}
             />
-            <Field label={t("fields.minBarWidth")}>
+            <Field label={t("fields.minBarWidth")} hint={t("tips.minBarWidth")}>
               <NumberInput
                 value={s.minBarWidth}
                 onChange={(v) =>
@@ -1570,7 +1581,7 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label={t("sections.pattern")}>
-            <Field label={t("fields.mode")}>
+            <Field label={t("fields.mode")} hint={t("tips.patternMode")}>
               <Segmented
                 options={[
                   t("options.patternMode.none"),
@@ -1606,7 +1617,7 @@ export function ColumnChartStudio() {
               </Field>
             )}
             {s.hatchMode !== "none" && (
-              <Field label={t("fields.style")}>
+              <Field label={t("fields.style")} hint={t("tips.patternStyle")}>
                 <Select
                   options={[
                     t("options.patternStyle.diagonal"),
@@ -1623,7 +1634,7 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label={t("sections.emphasis")}>
-            <Field label={t("fields.mode")}>
+            <Field label={t("fields.mode")} hint={t("tips.emphasisMode")}>
               <Segmented
                 options={[
                   t("options.emphasis.none"),
@@ -1643,7 +1654,7 @@ export function ColumnChartStudio() {
               />
             </Field>
             {s.emphasisMode === "index" && (
-              <Field label={t("fields.barIndex")}>
+              <Field label={t("fields.barIndex")} hint={t("tips.barIndex")}>
                 <NumberInput
                   value={s.emphasisIndex}
                   onChange={(v) =>
@@ -1654,14 +1665,14 @@ export function ColumnChartStudio() {
             )}
             {s.emphasisMode !== "none" && (
               <>
-                <Field label={t("fields.note")}>
+                <Field label={t("fields.note")} hint={t("tips.note")}>
                   <TextInput
                     value={s.emphasisNote}
                     onChange={(v) => update("emphasisNote", v)}
                     placeholder={t("placeholders.emphasisNote")}
                   />
                 </Field>
-                <Field label={t("fields.customColorOptional")}>
+                <Field label={t("fields.customColorOptional")} hint={t("tips.customColorOptional")}>
                   <ColorCustomInput
                     value={s.emphasisColor || s.accentValue}
                     onChange={(v) => update("emphasisColor", v)}
@@ -1682,12 +1693,13 @@ export function ColumnChartStudio() {
           <Accordion label={t("sections.referenceLine")}>
             <Toggle
               label={t("toggles.showReferenceLine")}
+              hint={t("tips.showReferenceLine")}
               checked={s.refShow}
               onChange={(v) => update("refShow", v)}
             />
             {s.refShow && (
               <>
-                <Field label={t("fields.mode")}>
+                <Field label={t("fields.mode")} hint={t("tips.referenceMode")}>
                   <Segmented
                     options={[
                       t("options.refMode.value"),
@@ -1700,13 +1712,13 @@ export function ColumnChartStudio() {
                 </Field>
                 {s.refStatIdx === 0 && (
                   <>
-                    <Field label={t("fields.value")}>
+                    <Field label={t("fields.value")} hint={t("tips.referenceValue")}>
                       <NumberInput
                         value={s.refValue}
                         onChange={(v) => update("refValue", v)}
                       />
                     </Field>
-                    <Field label={t("fields.label")}>
+                    <Field label={t("fields.label")} hint={t("tips.referenceLabel")}>
                       <TextInput
                         value={s.refLabel}
                         onChange={(v) => update("refLabel", v)}
@@ -1721,12 +1733,13 @@ export function ColumnChartStudio() {
           <Accordion label={t("sections.bands")}>
             <Toggle
               label={t("toggles.showPlotBand")}
+              hint={t("tips.showPlotBand")}
               checked={s.bandsEnabled}
               onChange={(v) => update("bandsEnabled", v)}
             />
             {s.bandsEnabled && (
               <>
-                <Field label={t("fields.fromIndex")}>
+                <Field label={t("fields.fromIndex")} hint={t("tips.fromIndex")}>
                   <NumberInput
                     value={s.bandFrom}
                     onChange={(v) =>
@@ -1734,7 +1747,7 @@ export function ColumnChartStudio() {
                     }
                   />
                 </Field>
-                <Field label={t("fields.toIndex")}>
+                <Field label={t("fields.toIndex")} hint={t("tips.toIndex")}>
                   <NumberInput
                     value={s.bandTo}
                     onChange={(v) =>
@@ -1742,7 +1755,7 @@ export function ColumnChartStudio() {
                     }
                   />
                 </Field>
-                <Field label={t("fields.label")}>
+                <Field label={t("fields.label")} hint={t("tips.bandLabel")}>
                   <TextInput
                     value={s.bandLabel}
                     onChange={(v) => update("bandLabel", v)}
@@ -1756,11 +1769,12 @@ export function ColumnChartStudio() {
           <Accordion label={t("sections.trend")}>
             <Toggle
               label={t("toggles.showTrend")}
+              hint={t("tips.showTrend")}
               checked={s.trendShow}
               onChange={(v) => update("trendShow", v)}
             />
             {s.trendShow && (
-              <Field label={t("fields.trendValue")}>
+              <Field label={t("fields.trendValue")} hint={t("tips.trendValue")}>
                 <NumberInput
                   value={s.trendValue}
                   step={0.01}
@@ -1771,14 +1785,14 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label={t("sections.editorial")}>
-            <Field label={t("fields.caption")}>
+            <Field label={t("fields.caption")} hint={t("tips.caption")}>
               <TextInput
                 value={s.captionText}
                 onChange={(v) => update("captionText", v)}
                 placeholder={t("placeholders.captionColumn")}
               />
             </Field>
-            <Field label={t("fields.watermark")}>
+            <Field label={t("fields.watermark")} hint={t("tips.watermark")}>
               <TextInput
                 value={s.watermarkText}
                 onChange={(v) => update("watermarkText", v)}
@@ -1787,32 +1801,33 @@ export function ColumnChartStudio() {
             </Field>
             <Toggle
               label={t("toggles.showAnnotation")}
+              hint={t("tips.showAnnotation")}
               checked={s.annotationsEnabled}
               onChange={(v) => update("annotationsEnabled", v)}
             />
             {s.annotationsEnabled && (
               <>
-                <Field label={t("fields.text")}>
+                <Field label={t("fields.text")} hint={t("tips.annotationText")}>
                   <TextInput
                     value={s.annotationText}
                     onChange={(v) => update("annotationText", v)}
                     placeholder={t("placeholders.annotationText")}
                   />
                 </Field>
-                <Field label={t("fields.annotationX")}>
+                <Field label={t("fields.annotationX")} hint={t("tips.annotationX")}>
                   <TextInput
                     value={s.annotationLabel}
                     onChange={(v) => update("annotationLabel", v)}
                     placeholder={t("placeholders.annotationX")}
                   />
                 </Field>
-                <Field label={t("fields.annotationY")}>
+                <Field label={t("fields.annotationY")} hint={t("tips.annotationY")}>
                   <NumberInput
                     value={s.annotationY}
                     onChange={(v) => update("annotationY", v)}
                   />
                 </Field>
-                <Field label={t("fields.anchor")}>
+                <Field label={t("fields.anchor")} hint={t("tips.anchor")}>
                   <Segmented
                     options={[
                       t("options.anchor.top"),
@@ -1835,6 +1850,7 @@ export function ColumnChartStudio() {
                 </Field>
                 <Toggle
                   label={t("toggles.dashedConnector")}
+                  hint={t("tips.dashedConnector")}
                   checked={s.annotationArrow}
                   onChange={(v) => update("annotationArrow", v)}
                 />
@@ -1845,11 +1861,12 @@ export function ColumnChartStudio() {
           <Accordion label={t("sections.source")}>
             <Toggle
               label={t("toggles.showSourceLine")}
+              hint={t("tips.showSourceLine")}
               checked={s.sourceShow}
               onChange={(v) => update("sourceShow", v)}
             />
             {s.sourceShow && (
-              <Field label={t("fields.text")}>
+              <Field label={t("fields.text")} hint={t("tips.sourceText")}>
                 <TextInput
                   value={s.sourceText}
                   onChange={(v) => update("sourceText", v)}
@@ -1861,11 +1878,12 @@ export function ColumnChartStudio() {
           <Accordion label={t("sections.animation")}>
             <Toggle
               label={t("toggles.enableAnimation")}
+              hint={t("tips.enableAnimation")}
               checked={s.animationEnabled}
               onChange={(v) => update("animationEnabled", v)}
             />
             {s.animationEnabled && (
-              <Field label={t("fields.duration")}>
+              <Field label={t("fields.duration")} hint={t("tips.duration")}>
                 <NumberInput
                   value={s.animationDuration}
                   step={50}
@@ -1878,14 +1896,14 @@ export function ColumnChartStudio() {
           </Accordion>
 
           <Accordion label={t("sections.forwardCompat")}>
-            <Field label={t("fields.dataDescription")}>
+            <Field label={t("fields.dataDescription")} hint={t("tips.dataDescription")}>
               <TextInput
                 value={s.dataDescription}
                 onChange={(v) => update("dataDescription", v)}
                 placeholder={t("placeholders.dataDescriptionColumn")}
               />
             </Field>
-            <Field label={t("fields.testId")}>
+            <Field label={t("fields.testId")} hint={t("tips.testId")}>
               <TextInput
                 value={s.testId}
                 onChange={(v) => update("testId", v)}
@@ -1894,6 +1912,7 @@ export function ColumnChartStudio() {
             </Field>
             <Toggle
               label={t("toggles.showJSON")}
+              hint={t("tips.showJSON")}
               checked={s.showJSON}
               onChange={(v) => update("showJSON", v)}
             />
