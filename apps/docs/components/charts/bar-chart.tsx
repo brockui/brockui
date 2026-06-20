@@ -2633,15 +2633,16 @@ function Tooltip({
     : "hidden group-hover/hbar:flex group-focus/hbar:flex";
   return (
     <div
-      className={`brock-hbar-tip pointer-events-none absolute z-10 flex-col gap-1 ${visClass} ${TOOLTIP_POSITION[edge]}`}
+      className={`brock-hbar-tip pointer-events-none absolute z-10 flex-col gap-0.5 rounded-md border border-border bg-background px-2.5 py-1.5 shadow-md ${visClass} ${TOOLTIP_POSITION[edge]}`}
+      role="tooltip"
       aria-hidden
     >
       {label && (
-        <span className="bg-foreground px-1.5 py-0.5 font-sans text-[11px] font-medium whitespace-nowrap text-background">
+        <span className="font-sans text-[11px] whitespace-nowrap text-muted-foreground">
           {label}
         </span>
       )}
-      <span className="rounded-[2px] border border-border bg-background px-2 py-1 font-mono text-xs tabular-nums whitespace-nowrap text-foreground">
+      <span className="font-mono text-xs tabular-nums whitespace-nowrap text-foreground">
         {value}
       </span>
     </div>

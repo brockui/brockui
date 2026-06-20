@@ -2656,21 +2656,25 @@ function DirectLabels({
 
 function CrosshairTooltip({ data }: { data: LineChartTooltipSlotProps }) {
   return (
-    <div className="flex flex-col gap-1 rounded-[2px] border border-border bg-background px-2 py-1.5">
-      <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+    <div className="flex flex-col gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 shadow-md">
+      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
         {data.xLabel}
       </span>
       {data.points.map((pt) => (
         <span
           key={pt.series}
-          className="flex items-center gap-1.5 font-mono text-xs tabular-nums whitespace-nowrap text-foreground"
+          className="flex items-center gap-1.5 whitespace-nowrap"
         >
           <span
             className="inline-block h-2 w-2 shrink-0 rounded-full"
             style={{ backgroundColor: pt.color }}
           />
-          <span className="text-muted-foreground">{pt.series}</span>
-          <span className="ms-auto ps-2">{pt.formatted}</span>
+          <span className="font-sans text-xs text-muted-foreground">
+            {pt.series}
+          </span>
+          <span className="ms-auto ps-3 font-mono text-xs tabular-nums text-foreground">
+            {pt.formatted}
+          </span>
         </span>
       ))}
     </div>
