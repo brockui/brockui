@@ -1,51 +1,48 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
 /**
- * Header language switcher. Canon for docs sites: always visible in the
- * header (not buried in settings — there are no settings on a docs site),
- * URL-based (the locale lives in the path, so links shared from /ru stay
- * Russian and search engines index both languages).
+ * Header language switcher — a soft segmented RU/EN pill (both languages
+ * visible, the active one filled), matching the kasymzhanov.com blog chrome.
  *
- * The label shows the TARGET language in its own language ("Русская версия"
- * on the EN site) — the universal i18n convention: a person who doesn't read
- * the current language must still recognize their own.
+ * URL-based: each segment links to the same path under the other locale, so a
+ * link shared from /ru stays Russian and search engines index both languages.
+ * Each segment is labelled in its OWN language (the universal i18n convention:
+ * a person who doesn't read the current UI language must still recognise theirs).
  */
+const LOCALES = [
+  { code: "ru", label: "RU", aria: "Русская версия" },
+  { code: "en", label: "EN", aria: "English version" },
+] as const;
+
 export function LocaleSwitcher() {
   const locale = useLocale();
   const pathname = usePathname();
-  const t = useTranslations("chrome");
-  const target = locale === "en" ? "ru" : "en";
 
   return (
-    <Link
-      href={pathname}
-      locale={target}
-      aria-label={t("localeSwitchAria")}
-      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[2px] border border-border bg-muted/40 px-2.5 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:bg-muted hover:text-foreground"
-    >
-      <GlobeIcon className="h-3.5 w-3.5" />
-      {target}
-    </Link>
-  );
-}
-
-function GlobeIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="square"
-      className={className}
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
-    </svg>
+    <div className="inline-flex h-8 items-center gap-0.5 rounded-full border border-border bg-muted/50 p-0.5">
+      {LOCALES.map(({ code, label, aria }) => {
+        const active = code === locale;
+        return (
+          <Link
+            key={code}
+            href={pathname}
+            locale={code}
+            aria-label={aria}
+            aria-current={active ? "true" : undefined}
+            className={[
+              "inline-flex h-7 cursor-pointer items-center justify-center rounded-full px-2.5 font-mono text-[11px] font-bold transition-colors",
+              active
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            ].join(" ")}
+          >
+            {label}
+          </Link>
+        );
+      })}
+    </div>
   );
 }

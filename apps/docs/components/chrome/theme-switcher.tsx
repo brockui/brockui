@@ -11,19 +11,23 @@ function getInitialTheme(): Theme {
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
+/**
+ * Theme switcher — a soft segmented sun/moon pill (both options visible, the
+ * active one filled), matching the kasymzhanov.com blog chrome. Friendlier
+ * than a single cryptic toggle: a reader sees both choices and which is on.
+ */
 export function ThemeSwitcher() {
   const t = useTranslations("chrome");
   const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
-  // After mount, sync from the actual class set by the inline pre-hydration script
+  // After mount, sync from the class set by the inline pre-hydration script.
   useEffect(() => {
     setTheme(getInitialTheme());
     setMounted(true);
   }, []);
 
-  function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
+  function apply(next: Theme) {
     setTheme(next);
     const root = document.documentElement;
     if (next === "dark") root.classList.add("dark");
@@ -35,30 +39,40 @@ export function ThemeSwitcher() {
     }
   }
 
-  // Avoid mismatch during hydration — render a neutral button until mounted
-  const ariaLabel = mounted
-    ? theme === "dark"
-      ? t("themeToLight")
-      : t("themeToDark")
-    : "Toggle theme";
+  // Until mounted, highlight neither (avoids a hydration class mismatch).
+  const active: Theme | undefined = mounted ? theme : undefined;
 
   return (
-    <button
-      onClick={toggle}
-      aria-label={ariaLabel}
-      className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[2px] border border-border bg-muted/40 text-muted-foreground transition-colors hover:border-brock-accent/60 hover:bg-muted hover:text-foreground"
-    >
-      {mounted ? (
-        theme === "dark" ? (
-          <SunIcon className="h-3.5 w-3.5" />
-        ) : (
-          <MoonIcon className="h-3.5 w-3.5" />
-        )
-      ) : (
-        <span className="block h-3.5 w-3.5" aria-hidden />
-      )}
-    </button>
+    <div className="inline-flex h-8 items-center gap-0.5 rounded-full border border-border bg-muted/50 p-0.5">
+      <button
+        type="button"
+        onClick={() => apply("light")}
+        aria-label={t("themeToLight")}
+        aria-pressed={active === "light"}
+        className={segmentClass(active === "light")}
+      >
+        <SunIcon className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => apply("dark")}
+        aria-label={t("themeToDark")}
+        aria-pressed={active === "dark"}
+        className={segmentClass(active === "dark")}
+      >
+        <MoonIcon className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
+}
+
+function segmentClass(active: boolean): string {
+  return [
+    "inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors",
+    active
+      ? "bg-background text-foreground shadow-sm"
+      : "text-muted-foreground hover:text-foreground",
+  ].join(" ");
 }
 
 function SunIcon({ className }: { className?: string }) {
@@ -69,7 +83,8 @@ function SunIcon({ className }: { className?: string }) {
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
-      strokeLinecap="square"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
       aria-hidden
     >
@@ -87,7 +102,8 @@ function MoonIcon({ className }: { className?: string }) {
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
-      strokeLinecap="square"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
       aria-hidden
     >
