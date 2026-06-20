@@ -7,22 +7,22 @@ import { MotionIcon } from "./motion-icon";
 import filesMotion from "./icons/files-motion.json";
 import workflowMotion from "./icons/workflow-motion.json";
 
-type IconProps = { className?: string };
-
-function ChevronIcon({ className }: IconProps) {
+/** Static disclosure caret — points down; rotated −90° (right) when collapsed.
+ *  currentColor, so it themes itself with the row's text colour. */
+function CaretIcon({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
-      strokeMiterlimit="10"
-      strokeLinecap="square"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
       aria-hidden="true"
     >
-      <path d="M8 20.5L16.5 12L8 3.5" />
+      <path d="M15 11L12 14L9 11" />
     </svg>
   );
 }
@@ -37,7 +37,7 @@ const ROW =
 const ROW_GROUP =
   "hidden min-w-0 flex-1 items-center gap-1.5 group-hover/sidebar:flex";
 const ROW_LABEL = "truncate text-left";
-const ROW_CHEVRON = "h-3.5 w-3.5 shrink-0 transition-transform";
+const ROW_CHEVRON = "h-3.5 w-3.5 shrink-0";
 const SUB_BASE =
   "flex h-9 w-full items-center border-l pr-5 pl-5 text-sm transition-colors";
 const IDLE = "text-muted-foreground hover:bg-accent hover:text-foreground";
@@ -103,8 +103,10 @@ export function Sidebar() {
               />
               <span className={ROW_GROUP}>
                 <span className={ROW_LABEL}>Libraries</span>
-                <ChevronIcon
-                  className={`${ROW_CHEVRON} ${librariesOpen ? "rotate-90" : ""}`}
+                <CaretIcon
+                  className={`${ROW_CHEVRON} transition-transform ${
+                    librariesOpen ? "" : "-rotate-90"
+                  }`}
                 />
               </span>
             </button>
@@ -136,8 +138,10 @@ export function Sidebar() {
               />
               <span className={ROW_GROUP}>
                 <span className={ROW_LABEL}>Workflows</span>
-                <ChevronIcon
-                  className={`${ROW_CHEVRON} ${workflowsOpen ? "rotate-90" : ""}`}
+                <CaretIcon
+                  className={`${ROW_CHEVRON} transition-transform ${
+                    workflowsOpen ? "" : "-rotate-90"
+                  }`}
                 />
               </span>
             </button>

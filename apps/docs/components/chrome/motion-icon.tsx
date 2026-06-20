@@ -31,7 +31,7 @@ export function MotionIcon({
 
   return (
     <span
-      className={`inline-block opacity-65 transition-opacity duration-150 dark:opacity-80 dark:invert ${className ?? ""}`}
+      className={`inline-block opacity-65 transition-[opacity,transform] duration-150 dark:opacity-80 dark:invert ${className ?? ""}`}
       aria-hidden
     >
       <Lottie
