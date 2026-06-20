@@ -2571,7 +2571,7 @@ function Plot({
       </div>
 
       {showXTicks && xTicks.length > 0 && (
-        <div className="brock-xaxis relative mt-2 h-4 font-pixel text-[10px] tracking-wider text-muted-foreground/70 uppercase">
+        <div className="brock-xaxis relative mt-2 h-4 font-mono text-[10px] tabular-nums text-muted-foreground/70">
           {xTicks.map((tick, i) => {
             const left = xToPercent(tick, xMin, xMax);
             return (

@@ -723,7 +723,7 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
     xTicks.forEach((tick) => {
       const tx = xToPx(tick);
       parts.push(
-        `<text x="${r2(tx)}" y="${r2(plotBottom + 14)}" text-anchor="middle" font-family="${pixelFont}" font-size="10" letter-spacing="0.06em" fill="${muted}">${escapeXml(xAxisFormat(tick).toUpperCase())}</text>`,
+        `<text x="${r2(tx)}" y="${r2(plotBottom + 14)}" text-anchor="middle" font-family="${monoFont}" font-size="10" font-variant-numeric="tabular-nums" fill="${muted}">${escapeXml(xAxisFormat(tick))}</text>`,
       );
     });
   }

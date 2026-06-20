@@ -2800,7 +2800,8 @@ describe("renderToHTMLString — live-render parity (C2)", () => {
       topN: 1,
     });
     // Other = 9, pinned last, rendered muted (the default otherFill color).
-    expect(html).toContain("OTHER");
+    // Axis labels are no longer force-uppercased (enterprise: Hack mono, as-is).
+    expect(html).toContain("Other");
     expect(html).toContain("#a1a1aa");
   });
 

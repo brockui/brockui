@@ -661,7 +661,7 @@ export function synthesizeSVG(ctx: SynthesisContext): string {
       if (!point.label || i % everyNth !== 0) return;
       const cx = barsLeft + i * (barWidth + gap) + barWidth / 2;
       parts.push(
-        `<text x="${r2(cx)}" y="${r2(barsBottom + 14)}" text-anchor="middle" font-family="${pixelFont}" font-size="10" letter-spacing="0.06em" fill="${muted}">${escapeXml(point.label.toUpperCase())}</text>`,
+        `<text x="${r2(cx)}" y="${r2(barsBottom + 14)}" text-anchor="middle" font-family="${monoFont}" font-size="10" font-variant-numeric="tabular-nums" fill="${muted}">${escapeXml(point.label)}</text>`,
       );
     });
   }

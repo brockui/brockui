@@ -2956,7 +2956,7 @@ function XAxis({
 }) {
   return (
     <div
-      className="brock-xaxis mt-2 flex font-pixel text-[10px] tracking-wider text-muted-foreground/70 uppercase"
+      className="brock-xaxis mt-2 flex font-mono text-[10px] tabular-nums text-muted-foreground/70"
       style={{ gap, paddingLeft }}
       aria-hidden
     >
