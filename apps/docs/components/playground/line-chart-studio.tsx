@@ -324,7 +324,7 @@ const INITIAL_STATE: StudioState = {
   bandEnabled: false,
   bandFrom: "APR",
   bandTo: "MAY",
-  bandLabel: "Q2 push",
+  bandLabel: "Campaign",
   stateMode: "ready",
   errorMessage: "Couldn't load the series — the upstream API timed out.",
   loadingLabel: "Loading…",
@@ -617,7 +617,7 @@ export function LineChartStudio() {
           retryLabel: "Повторить",
           refLabel: "Цель",
           eventLabel: "Запуск",
-          bandLabel: "Спринт Q2",
+          bandLabel: "Кампания",
         }
       : {};
 

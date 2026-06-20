@@ -30,7 +30,6 @@ function extractEn(file) {
 
 const FILES = [
   "app/[locale]/installation/content.ts",
-  "app/[locale]/components/sparkline/content.ts",
   "app/[locale]/components/column-chart/content.ts",
   "app/[locale]/components/bar-chart/content.ts",
   "app/[locale]/components/line-chart/content.ts",

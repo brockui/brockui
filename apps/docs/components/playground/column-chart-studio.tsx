@@ -747,9 +747,15 @@ export function ColumnChartStudio() {
 
   function setPeriod(period: DatasetKey) {
     const ds = datasets[period];
+    // Keep the demo subtitle in step with the preset — otherwise a 90-day
+    // chart still reads "Last 7 days". (7/14/20/30/40/90 all take "дней".)
+    const days = ds.data.length;
+    const subtitle =
+      locale === "ru" ? `Последние ${days} дней` : `Last ${days} days`;
     setS((prev) => ({
       ...prev,
       period,
+      headerSubtitle: subtitle,
       rows: ds.data.map((value, i) => ({ label: ds.labels[i] ?? "", value })),
     }));
   }

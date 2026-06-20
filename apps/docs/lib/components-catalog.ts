@@ -157,18 +157,6 @@ export const components: ComponentItem[] = [
     },
   },
   {
-    id: "sparkline",
-    name: "Sparkline",
-    category: "Charts",
-    status: "NEW",
-    href: "/components/sparkline",
-    description: {
-      en: "Word-sized chart for inline data context.",
-      ru: "График размером со слово — данные прямо в тексте.",
-    },
-  },
-
-  {
     id: "agent-flow-visualizer",
     name: "Agent Flow Visualizer",
     category: "Workflows",
