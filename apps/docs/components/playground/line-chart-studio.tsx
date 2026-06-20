@@ -30,7 +30,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   LineChart,
@@ -43,24 +42,20 @@ import {
   StudioThemeToggle,
   useStudioPreviewTheme,
 } from "./studio-theme";
+import {
+  Accordion,
+  ColorCustomInput,
+  DEFAULT_ACCENT,
+  Field,
+  NumberInput,
+  PanelHeader,
+  Segmented,
+  Select,
+  TextInput,
+  Toggle,
+} from "./studio-ui";
 
 /* ─── Presets ────────────────────────────────────────────────────────── */
-
-const DEFAULT_ACCENT = "#F54900";
-
-const HEX_RE = /^#([0-9a-f]{6}|[0-9a-f]{3})$/i;
-
-function normalizeHex(input: string): string | null {
-  const trimmed = input.trim();
-  const withHash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
-  if (!HEX_RE.test(withHash)) return null;
-  if (withHash.length === 4) {
-    // Expand #rgb → #rrggbb
-    const [, r, g, b] = withHash;
-    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
-  }
-  return withHash.toLowerCase();
-}
 
 const CURVES = [
   { name: "Linear", value: "linear" },
@@ -949,7 +944,7 @@ export function LineChartStudio() {
               {s.series.map((ser, si) => (
                 <div
                   key={si}
-                  className="space-y-1.5 rounded-[2px] border border-border p-2"
+                  className="space-y-1.5 rounded-lg border border-border p-2"
                 >
                   <div className="flex items-center gap-1.5">
                     <div className="flex-1">
@@ -965,7 +960,7 @@ export function LineChartStudio() {
                       disabled={s.series.length <= 1}
                       aria-label={t("aria.removeSeries")}
                       title={t("aria.removeSeries")}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[2px] border border-border text-muted-foreground transition-colors hover:border-brock-accent/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       −
                     </button>
@@ -986,10 +981,10 @@ export function LineChartStudio() {
                       type="button"
                       onClick={() => update("emphasisIdx", si)}
                       aria-pressed={s.emphasisIdx === si}
-                      className={`shrink-0 cursor-pointer rounded-[2px] border px-2 py-1 font-mono text-[10px] tracking-wider uppercase transition-colors ${
+                      className={`shrink-0 cursor-pointer rounded-md border px-2 py-1 font-sans text-[11px] transition-colors ${
                         s.emphasisIdx === si
-                          ? "border-brock-accent/70 bg-brock-accent/10 text-foreground"
-                          : "border-border bg-muted/40 text-muted-foreground hover:border-brock-accent/60 hover:text-foreground"
+                          ? "border-brock-accent/60 bg-brock-accent/10 text-brock-accent"
+                          : "border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
                       {t("toggles.emphasizeSeries")}
@@ -1008,7 +1003,7 @@ export function LineChartStudio() {
                               updateSeriesValue(si, pi, next);
                             }
                           }}
-                          className="w-full rounded-[2px] border border-border bg-background px-1 py-1 font-mono text-[10px] tabular-nums text-foreground focus:border-brock-accent focus:outline-none"
+                          className="w-full rounded-md border border-border bg-background px-1 py-1 font-mono text-[10px] tabular-nums text-foreground outline-none transition-colors focus-visible:border-brock-accent/40 focus-visible:ring-2 focus-visible:ring-brock-accent/40"
                         />
                       ))}
                     </div>
@@ -1019,12 +1014,12 @@ export function LineChartStudio() {
                 <button
                   type="button"
                   onClick={addSeries}
-                  className="w-full rounded-[2px] border border-dashed border-border py-1.5 font-mono text-[10px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground"
+                  className="w-full rounded-md border border-dashed border-border py-1.5 font-sans text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   {t("buttons.addSeries")}
                 </button>
               )}
-              <div className="font-mono text-[10px] text-muted-foreground/60">
+              <div className="font-sans text-[11px] text-muted-foreground/60">
                 {t("hints.sharedXLabels")}
               </div>
             </div>
@@ -1474,7 +1469,7 @@ export function LineChartStudio() {
               <>
                 <Field label={t("fields.lastClick")}>
                   <div
-                    className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
+                    className="rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
                   >
                     {s.lastClickKey !== null
@@ -1484,7 +1479,7 @@ export function LineChartStudio() {
                 </Field>
                 <Field label={t("fields.hovering")}>
                   <div
-                    className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
+                    className="rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
                   >
                     {s.hoverKey !== null ? s.hoverKey : t("hints.mouseOutside")}
@@ -1492,7 +1487,7 @@ export function LineChartStudio() {
                 </Field>
                 <Field label={t("fields.focused")}>
                   <div
-                    className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
+                    className="rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-[11px] tabular-nums text-foreground"
                     aria-live="polite"
                   >
                     {s.focusKey !== null ? s.focusKey : t("hints.noFocusYet")}
@@ -1573,7 +1568,7 @@ export function LineChartStudio() {
               onChange={(v) => update("showJSON", v)}
             />
             {s.showJSON && (
-              <div className="rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
+              <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
                 {t.rich("hints.showJSON", {
                   code: (chunks) => <code>{chunks}</code>,
                 })}
@@ -1635,270 +1630,3 @@ function jsonOf(s: StudioState, liveSeries: LineChartSeries[]): string {
   );
 }
 
-/* ─── Panel/section primitives (copied — see Rule-of-Three note up top) ── */
-
-function PanelHeader({
-  label,
-  children,
-}: {
-  label: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="flex h-9 items-center justify-between border-b border-border px-3">
-      <span className="font-mono text-[10px] tracking-wider text-muted-foreground/70 uppercase">
-        {label}
-      </span>
-      {children}
-    </div>
-  );
-}
-
-function Accordion({
-  label,
-  children,
-  defaultOpen = false,
-}: {
-  label: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full cursor-pointer items-center justify-between px-3 py-2.5 text-left text-xs font-medium text-foreground hover:bg-muted/40"
-        aria-expanded={open}
-      >
-        <span>{label}</span>
-        <ChevronDown
-          className={`h-3 w-3 text-muted-foreground transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-          aria-hidden
-        />
-      </button>
-      {open && <div className="space-y-2.5 px-3 pb-3">{children}</div>}
-    </div>
-  );
-}
-
-function ColorCustomInput({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (hex: string) => void;
-}) {
-  const t = useTranslations("studio");
-  const [text, setText] = useState(value);
-
-  // Keep the text field in sync when color changes from outside (palette click).
-  if (
-    text.toLowerCase() !== value.toLowerCase() &&
-    document.activeElement?.tagName !== "INPUT"
-  ) {
-    setText(value);
-  }
-
-  function commit(raw: string) {
-    const normalized = normalizeHex(raw);
-    if (normalized) onChange(normalized);
-  }
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-7 w-7 shrink-0 cursor-pointer rounded-[2px] border border-border bg-transparent p-0.5"
-        aria-label={t("aria.pickCustomColor")}
-        title={t("aria.colorPicker")}
-      />
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => commit(text)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-        }}
-        placeholder={t("placeholders.hex")}
-        spellCheck={false}
-        className="flex-1 rounded-[2px] border border-border bg-background px-2 py-1.5 font-mono text-xs uppercase text-foreground placeholder:text-muted-foreground/40 focus:border-brock-accent focus:outline-none"
-      />
-    </div>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <div className="mb-1 font-mono text-[10px] tracking-wider text-muted-foreground/70 uppercase">
-        {label}
-      </div>
-      {children}
-    </label>
-  );
-}
-
-function TextInput({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full rounded-[2px] border border-border bg-background px-2 py-1.5 font-sans text-xs text-foreground placeholder:text-muted-foreground/40 focus:border-brock-accent focus:outline-none"
-    />
-  );
-}
-
-function NumberInput({
-  value,
-  onChange,
-  step = 1,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  step?: number;
-}) {
-  return (
-    <input
-      type="number"
-      value={value}
-      step={step}
-      onChange={(e) => {
-        const next = Number(e.target.value);
-        if (!Number.isNaN(next)) onChange(next);
-      }}
-      className="w-full rounded-[2px] border border-border bg-background px-2 py-1.5 font-mono text-xs tabular-nums text-foreground focus:border-brock-accent focus:outline-none"
-    />
-  );
-}
-
-function Segmented({
-  options,
-  selectedIndex,
-  onSelect,
-}: {
-  options: readonly string[];
-  selectedIndex: number;
-  onSelect: (i: number) => void;
-}) {
-  return (
-    <div className="flex rounded-[2px] border border-border bg-muted/40 p-0.5">
-      {options.map((opt, i) => {
-        const selected = i === selectedIndex;
-        return (
-          <button
-            key={opt}
-            onClick={() => onSelect(i)}
-            title={opt}
-            className={`min-w-0 flex-1 cursor-pointer truncate rounded-[2px] px-1.5 py-1 text-center text-[11px] transition-colors ${
-              selected
-                ? "bg-brock-accent text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            aria-pressed={selected}
-          >
-            {opt}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * Compact native-select dropdown for option lists too long or too wordy for a
- * Segmented control in the 260px settings rail.
- */
-function Select({
-  options,
-  selectedIndex,
-  onSelect,
-}: {
-  options: readonly string[];
-  selectedIndex: number;
-  onSelect: (i: number) => void;
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={selectedIndex}
-        onChange={(e) => onSelect(Number(e.target.value))}
-        className="w-full cursor-pointer appearance-none rounded-[2px] border border-border bg-background py-1.5 pr-7 pl-2 font-sans text-xs text-foreground focus:border-brock-accent focus:outline-none"
-      >
-        {options.map((opt, i) => (
-          <option key={`${opt}-${i}`} value={i}>
-            {opt}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute top-1/2 right-2 h-3 w-3 -translate-y-1/2 text-muted-foreground"
-        aria-hidden
-      />
-    </div>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
-      <span
-        className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[2px] border transition-colors ${
-          checked
-            ? "border-brock-accent bg-brock-accent"
-            : "border-muted-foreground/50 bg-transparent"
-        }`}
-      >
-        {checked && (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            className="h-2.5 w-2.5 text-primary-foreground"
-            aria-hidden
-          >
-            <path d="M5 12l5 5L20 7" />
-          </svg>
-        )}
-      </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="sr-only"
-      />
-      <span>{label}</span>
-    </label>
-  );
-}
