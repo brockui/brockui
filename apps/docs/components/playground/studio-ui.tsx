@@ -212,7 +212,7 @@ export function ColorCustomInput({
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-7 w-7 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+        className="h-7 w-7 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5 [&::-moz-color-swatch]:rounded-[4px] [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch]:rounded-[4px] [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0"
         aria-label={t("aria.pickCustomColor")}
         title={t("aria.colorPicker")}
       />
