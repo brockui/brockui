@@ -17,6 +17,11 @@
           "target": "components/brockui/column-chart.tsx"
         },
         {
+          "path": "components/charts/chart-toolbar.tsx",
+          "type": "registry:component",
+          "target": "components/brockui/chart-toolbar.tsx"
+        },
+        {
           "path": "components/charts/column-chart-export.ts",
           "type": "registry:component",
           "target": "components/brockui/column-chart-export.ts"
@@ -45,6 +50,11 @@
           "target": "components/brockui/bar-chart.tsx"
         },
         {
+          "path": "components/charts/chart-toolbar.tsx",
+          "type": "registry:component",
+          "target": "components/brockui/chart-toolbar.tsx"
+        },
+        {
           "path": "components/charts/bar-chart-export.ts",
           "type": "registry:component",
           "target": "components/brockui/bar-chart-export.ts"
@@ -71,6 +81,11 @@
           "path": "components/charts/line-chart.tsx",
           "type": "registry:component",
           "target": "components/brockui/line-chart.tsx"
+        },
+        {
+          "path": "components/charts/chart-toolbar.tsx",
+          "type": "registry:component",
+          "target": "components/brockui/chart-toolbar.tsx"
         },
         {
           "path": "components/charts/line-chart-export.ts",

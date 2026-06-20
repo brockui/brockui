@@ -84,6 +84,7 @@ import {
   type ExportSeries,
   type SynthesisContext,
 } from "./line-chart-export";
+import { ChartExportMenu } from "./chart-toolbar";
 
 /* ─── Public enums / unions ─────────────────────────────────────────── */
 
@@ -1576,7 +1577,7 @@ export function LineChart({
             );
           })()
         ) : (
-          <Toolbar
+          <ChartExportMenu
             config={toolbarConfig}
             onPNG={runPNG}
             onSVG={runSVG}
@@ -1933,100 +1934,6 @@ function LoadingOverlay({ label }: { label: string }) {
       >
         ▒ {label}
       </span>
-    </div>
-  );
-}
-
-function Toolbar({
-  config,
-  onPNG,
-  onSVG,
-  onCSV,
-  onCopy,
-}: {
-  config: ToolbarConfig;
-  onPNG: () => void | Promise<void>;
-  onSVG: () => void | Promise<void>;
-  onCSV: () => void | Promise<void>;
-  onCopy: () => void | Promise<void>;
-}) {
-  const [busy, setBusy] = useState<"png" | "svg" | "csv" | "copy" | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const run = async (
-    kind: "png" | "svg" | "csv" | "copy",
-    action: () => void | Promise<void>,
-  ) => {
-    if (busy) return;
-    setBusy(kind);
-    try {
-      await action();
-      if (kind === "copy") {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const btn =
-    "cursor-pointer rounded-[2px] border border-border bg-background px-1.5 py-0.5 font-pixel text-[10px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-brock-accent/60 hover:text-foreground disabled:opacity-50 disabled:cursor-wait";
-
-  return (
-    <div
-      className="brock-toolbar absolute top-0 end-0 z-30 flex gap-1"
-      role="toolbar"
-      aria-label="Chart export"
-    >
-      {config.png && (
-        <button
-          type="button"
-          className={btn}
-          onClick={() => run("png", onPNG)}
-          disabled={!!busy}
-          aria-label="Download PNG"
-          title="Download PNG"
-        >
-          PNG
-        </button>
-      )}
-      {config.svg && (
-        <button
-          type="button"
-          className={btn}
-          onClick={() => run("svg", onSVG)}
-          disabled={!!busy}
-          aria-label="Download SVG"
-          title="Download SVG"
-        >
-          SVG
-        </button>
-      )}
-      {config.csv && (
-        <button
-          type="button"
-          className={btn}
-          onClick={() => run("csv", onCSV)}
-          disabled={!!busy}
-          aria-label="Download CSV"
-          title="Download CSV"
-        >
-          CSV
-        </button>
-      )}
-      {config.copy && (
-        <button
-          type="button"
-          className={btn}
-          onClick={() => run("copy", onCopy)}
-          disabled={!!busy}
-          aria-label="Copy image to clipboard"
-          title="Copy image to clipboard"
-        >
-          {copied ? "✓ COPIED" : "▒ COPY"}
-        </button>
-      )}
     </div>
   );
 }

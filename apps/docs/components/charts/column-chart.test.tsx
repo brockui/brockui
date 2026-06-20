@@ -1886,24 +1886,24 @@ describe("ColumnChart — toolbar (exportable prop)", () => {
     expect(container.querySelector('[role="toolbar"]')).toBeFalsy();
   });
 
-  it("renders all 4 buttons when exportable={true}", () => {
-    const { container } = render(<ColumnChart data={[10]} exportable />);
-    const toolbar = container.querySelector('[role="toolbar"]') as HTMLElement;
-    expect(toolbar).toBeTruthy();
-    expect(toolbar.getAttribute("aria-label")).toBe("Chart export");
-    expect(within(toolbar).getByRole("button", { name: "Download PNG" })).toBeInTheDocument();
-    expect(within(toolbar).getByRole("button", { name: "Download SVG" })).toBeInTheDocument();
-    expect(within(toolbar).getByRole("button", { name: "Download CSV" })).toBeInTheDocument();
-    expect(within(toolbar).getByRole("button", { name: "Copy image to clipboard" })).toBeInTheDocument();
+  it("opens a menu with all four actions when exportable={true}", async () => {
+    const user = userEvent.setup();
+    render(<ColumnChart data={[10]} exportable />);
+    await user.click(screen.getByRole("button", { name: "Export chart" }));
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: /Download PNG/ })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: /Download SVG/ })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: /Download CSV/ })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: /Copy image/ })).toBeInTheDocument();
   });
 
-  it("renders only chosen actions in object form", () => {
-    const { container } = render(
-      <ColumnChart data={[10]} exportable={{ csv: true }} />,
-    );
-    const toolbar = container.querySelector('[role="toolbar"]') as HTMLElement;
-    expect(toolbar.querySelectorAll("button").length).toBe(1);
-    expect(within(toolbar).getByText("CSV")).toBeInTheDocument();
+  it("menu shows only chosen actions in object form", async () => {
+    const user = userEvent.setup();
+    render(<ColumnChart data={[10]} exportable={{ csv: true }} />);
+    await user.click(screen.getByRole("button", { name: "Export chart" }));
+    const items = screen.getAllByRole("menuitem");
+    expect(items.length).toBe(1);
+    expect(items[0]).toHaveTextContent(/Download CSV/);
   });
 
   it("renders no toolbar when all object flags are false", () => {
@@ -1931,7 +1931,8 @@ describe("ColumnChart — toolbar (exportable prop)", () => {
           onExport={onExport}
         />,
       );
-      await user.click(screen.getByRole("button", { name: "Download CSV" }));
+      await user.click(screen.getByRole("button", { name: "Export chart" }));
+      await user.click(screen.getByRole("menuitem", { name: /Download CSV/ }));
       expect(onExport).toHaveBeenCalledWith("csv", expect.stringContaining("label,value"));
       const csv = onExport.mock.calls[0][1] as string;
       expect(csv).toContain("A,10");
@@ -1955,7 +1956,8 @@ describe("ColumnChart — toolbar (exportable prop)", () => {
         onExport={onExport}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Download SVG" }));
+    await user.click(screen.getByRole("button", { name: "Export chart" }));
+    await user.click(screen.getByRole("menuitem", { name: /Download SVG/ }));
     const [format, artifact] = onExport.mock.calls[0];
     expect(format).toBe("svg");
     expect(artifact).toContain("<svg ");
