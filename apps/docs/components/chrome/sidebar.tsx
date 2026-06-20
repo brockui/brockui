@@ -37,7 +37,7 @@ const ROW =
 const ROW_GROUP =
   "hidden min-w-0 flex-1 items-center gap-1.5 group-hover/sidebar:flex";
 const ROW_LABEL = "truncate text-left";
-const ROW_CHEVRON = "h-3.5 w-3.5 shrink-0";
+const ROW_CHEVRON = "h-[18px] w-[18px] shrink-0";
 const SUB_BASE =
   "flex h-9 w-full items-center border-l pr-5 pl-5 text-sm transition-colors";
 const IDLE = "text-muted-foreground hover:bg-accent hover:text-foreground";
