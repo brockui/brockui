@@ -6,9 +6,10 @@ import { useEffect, useRef } from "react";
 /**
  * Motion icon — a Lottie animation that plays while `playing` is true (e.g.
  * its sidebar row is hovered) and resets to the first frame otherwise. The
- * source icons are monochrome black; theming is handled in CSS
- * (`.brock-motion-icon` — dimmed in light, inverted+dimmed in dark) since
- * Lottie bakes its colours and can't inherit `currentColor`.
+ * source icons are monochrome black; since Lottie bakes its colours and can't
+ * inherit `currentColor`, the theme is faked with Tailwind utilities — dimmed
+ * in light, inverted-to-light + dimmed in dark. Callers pass size + any
+ * group-hover brightening via `className`.
  */
 export function MotionIcon({
   data,
@@ -29,7 +30,10 @@ export function MotionIcon({
   }, [playing]);
 
   return (
-    <span className={`brock-motion-icon ${className ?? ""}`} aria-hidden>
+    <span
+      className={`inline-block opacity-65 transition-opacity duration-150 dark:opacity-80 dark:invert ${className ?? ""}`}
+      aria-hidden
+    >
       <Lottie
         lottieRef={ref}
         animationData={data}

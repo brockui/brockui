@@ -29,10 +29,15 @@ function ChevronIcon({ className }: IconProps) {
 
 const SECTION_LABEL =
   "hidden px-5 pt-5 pb-2 font-sans text-[11px] font-medium text-muted-foreground/60 group-hover/sidebar:block";
-const ROW = "flex h-10 w-full items-center gap-2 px-4 text-sm transition-colors";
-const ROW_LABEL = "hidden flex-1 truncate text-left group-hover/sidebar:block";
-const ROW_CHEVRON =
-  "hidden h-3.5 w-3.5 shrink-0 transition-transform group-hover/sidebar:block";
+const ROW =
+  "group/nav flex h-10 w-full items-center gap-2 px-4 text-sm transition-colors";
+// Label + chevron sit together at the left (chevron tight to the title, the
+// Resend / Linear / Vercel pattern) — the group is flex-1 so the empty space
+// falls to the right of the chevron, not between label and chevron.
+const ROW_GROUP =
+  "hidden min-w-0 flex-1 items-center gap-1.5 group-hover/sidebar:flex";
+const ROW_LABEL = "truncate text-left";
+const ROW_CHEVRON = "h-3.5 w-3.5 shrink-0 transition-transform";
 const SUB_BASE =
   "flex h-9 w-full items-center border-l pr-5 pl-5 text-sm transition-colors";
 const IDLE = "text-muted-foreground hover:bg-accent hover:text-foreground";
@@ -94,12 +99,14 @@ export function Sidebar() {
               <MotionIcon
                 data={filesMotion}
                 playing={hoverLibraries}
-                className="h-[18px] w-[18px] shrink-0"
+                className="h-[18px] w-[18px] shrink-0 group-hover/nav:opacity-100"
               />
-              <span className={ROW_LABEL}>Libraries</span>
-              <ChevronIcon
-                className={`${ROW_CHEVRON} ${librariesOpen ? "rotate-90" : ""}`}
-              />
+              <span className={ROW_GROUP}>
+                <span className={ROW_LABEL}>Libraries</span>
+                <ChevronIcon
+                  className={`${ROW_CHEVRON} ${librariesOpen ? "rotate-90" : ""}`}
+                />
+              </span>
             </button>
 
             {librariesOpen && (
@@ -125,12 +132,14 @@ export function Sidebar() {
               <MotionIcon
                 data={workflowMotion}
                 playing={hoverWorkflows}
-                className="h-[18px] w-[18px] shrink-0"
+                className="h-[18px] w-[18px] shrink-0 group-hover/nav:opacity-100"
               />
-              <span className={ROW_LABEL}>Workflows</span>
-              <ChevronIcon
-                className={`${ROW_CHEVRON} ${workflowsOpen ? "rotate-90" : ""}`}
-              />
+              <span className={ROW_GROUP}>
+                <span className={ROW_LABEL}>Workflows</span>
+                <ChevronIcon
+                  className={`${ROW_CHEVRON} ${workflowsOpen ? "rotate-90" : ""}`}
+                />
+              </span>
             </button>
 
             {workflowsOpen && (
