@@ -326,6 +326,7 @@
       "previewDark": "Preview in dark theme",
       "pickCustomColor": "Pick custom color",
       "colorPicker": "Color picker",
+      "pickFromScreen": "Pick a color from the screen",
       "color": "Color {name}",
       "removeBar": "Remove bar",
       "removeSeries": "Remove series",

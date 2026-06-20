@@ -326,6 +326,7 @@
       "previewDark": "Предпросмотр в тёмной теме",
       "pickCustomColor": "Выбрать свой цвет",
       "colorPicker": "Выбор цвета",
+      "pickFromScreen": "Взять цвет с экрана",
       "color": "Цвет {name}",
       "removeBar": "Удалить столбец",
       "removeSeries": "Удалить ряд",

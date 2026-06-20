@@ -136,3 +136,27 @@
     @apply font-sans;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   react-colorful — studio custom colour picker, tuned to Brock canon:
+   full-width, compact, fully rounded (the library rounds only top corners
+   by default), with a slightly larger pointer for fine control.
+   ────────────────────────────────────────────────────────────────────── */
+.brock-colorful.react-colorful {
+  width: 100%;
+  height: 156px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+.brock-colorful .react-colorful__saturation {
+  border-radius: 0;
+  border-bottom: none;
+}
+.brock-colorful .react-colorful__hue {
+  height: 16px;
+  border-radius: 0;
+}
+.brock-colorful .react-colorful__pointer {
+  width: 16px;
+  height: 16px;
+}

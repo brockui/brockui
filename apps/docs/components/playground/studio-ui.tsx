@@ -24,8 +24,9 @@
  *  - Focus: soft `focus-visible:ring-2 ring-brock-accent/40`, no hard outlines.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { HexColorPicker } from "react-colorful";
 import { useTranslations } from "next-intl";
 
 /* ─── Shared colour constants + helpers ──────────────────────────────── */
@@ -183,6 +184,42 @@ export function ColorPalette({
   );
 }
 
+/** Eyedropper / pipette glyph (founder-supplied) — fill/currentColor. */
+function PipetteIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 68 68"
+      fill="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path d="M30.8 44.5c-1 0-1.9.4-2.5 1-.8.8-1.7 1.2-2.8 1.4.1 2 .1 4.5-.9 5.9-1.8 2.7-5.4 3.5-8.1 1.7-2.7-1.7-3.5-5.3-1.7-8.1 1-1.5 3.5-2.6 5.4-3.3-.1-.3-.1-.7-.1-1 0-1.3.5-2.5 1.4-3.4.5-.5.8-1 .9-1.6-1.5-.5-3.1-.8-4.8-.8-8.1.1-14.7 6.7-14.7 14.9S9.5 66 17.7 66c8.2 0 14.8-6.6 14.8-14.8 0-2.4-.6-4.7-1.6-6.7h-.1zM63.5 3.7c-2.2-2.2-5.8-2.2-8 0l-7.6 7.6 8 8 7.6-7.6c2.2-2.3 2.2-5.8 0-8z" />
+      <path d="M46.2 11.6c-1.1-1.1-2.8-1.1-3.9 0l-.2.2c-1.1 1.1-1.1 2.8 0 3.9l.2.2-16.4 16.2a6.55 6.55 0 0 0-1.9 4.2c-.1 1.4-.6 2.6-1.5 3.5-1.3 1.3-1.3 3.3 0 4.6 1.3 1.3 3.3 1.3 4.7 0 .9-.9 2.1-1.4 3.5-1.5 1.6-.1 3.1-.7 4.2-1.9l16.3-16.3c1.1 1 2.7 1 3.8-.1l.2-.2c1.1-1.1 1.1-2.8 0-3.9l-9-8.9zM35 25.2l8.4-8.4 6.9 6.9-5.6 5.6-9.7-4.1zM16.1 47.3c-1.3 2-.7 4.7 1.3 6 2.1 1.3 4.7.7 6-1.3.7-1.1.7-3.4.6-5.2-1.4-.3-2.6-1.2-3.2-2.3-1.7.7-3.9 1.6-4.7 2.8z" />
+    </svg>
+  );
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return { r: 0, g: 0, b: 0 };
+  const n = parseInt(m[1], 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const c = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v || 0)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${c(r)}${c(g)}${c(b)}`.toUpperCase();
+}
+
+/** Brock-styled colour picker. Replaces the OS-native `<input type=color>`
+ *  popup (whose huge, square RGB fields clashed with our canon) with a custom
+ *  popover: react-colorful saturation/hue + rounded R/G/B chips + a screen
+ *  eyedropper (EyeDropper API, where supported). The palette above covers the
+ *  common picks; this is the precise/expressive path. */
 export function ColorCustomInput({
   value,
   onChange,
@@ -192,6 +229,32 @@ export function ColorCustomInput({
 }) {
   const t = useTranslations("studio");
   const [text, setText] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [hasEyeDropper, setHasEyeDropper] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setHasEyeDropper(typeof window !== "undefined" && "EyeDropper" in window);
+  }, []);
+
+  // Close the popover on outside click / Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   // Keep the text field in sync when accent changes from outside (palette click).
   if (
@@ -206,28 +269,101 @@ export function ColorCustomInput({
     if (normalized) onChange(normalized);
   }
 
+  const rgb = hexToRgb(value);
+  const setChannel = (ch: "r" | "g" | "b", raw: string) => {
+    const v = Number(raw);
+    if (Number.isNaN(v)) return;
+    onChange(rgbToHex(ch === "r" ? v : rgb.r, ch === "g" ? v : rgb.g, ch === "b" ? v : rgb.b));
+  };
+
+  async function pickFromScreen() {
+    const ED = (
+      window as unknown as {
+        EyeDropper?: new () => { open: () => Promise<{ sRGBHex: string }> };
+      }
+    ).EyeDropper;
+    if (!ED) return;
+    try {
+      const res = await new ED().open();
+      if (res?.sRGBHex) onChange(res.sRGBHex.toUpperCase());
+    } catch {
+      /* user dismissed the eyedropper */
+    }
+  }
+
   return (
-    <div className="flex items-center gap-1.5">
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-7 w-7 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5 [&::-moz-color-swatch]:rounded-[4px] [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch]:rounded-[4px] [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0"
-        aria-label={t("aria.pickCustomColor")}
-        title={t("aria.colorPicker")}
-      />
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => commit(text)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-        }}
-        placeholder={t("placeholders.hex")}
-        spellCheck={false}
-        className="flex-1 rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-xs uppercase text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus-visible:border-brock-accent/40 focus-visible:ring-2 focus-visible:ring-brock-accent/40"
-      />
+    <div ref={rootRef} className="relative">
+      <div className="flex items-center gap-1.5">
+        {/* swatch trigger — opens the popover */}
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-label={t("aria.colorPicker")}
+          title={t("aria.colorPicker")}
+          className="h-7 w-7 shrink-0 cursor-pointer rounded-md border border-border outline-none transition-all focus-visible:ring-2 focus-visible:ring-brock-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+          style={{ backgroundColor: value }}
+        />
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => commit(text)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          }}
+          placeholder={t("placeholders.hex")}
+          spellCheck={false}
+          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-muted/40 px-2 font-mono text-xs uppercase text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus-visible:border-brock-accent/40 focus-visible:ring-2 focus-visible:ring-brock-accent/40"
+        />
+      </div>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label={t("aria.colorPicker")}
+          className="absolute start-0 top-[34px] z-50 w-[224px] space-y-2.5 rounded-lg border border-border bg-popover p-2.5 shadow-md"
+        >
+          <HexColorPicker
+            color={value}
+            onChange={onChange}
+            className="brock-colorful"
+          />
+          <div className="flex items-center gap-1.5">
+            {hasEyeDropper && (
+              <button
+                type="button"
+                onClick={pickFromScreen}
+                aria-label={t("aria.pickFromScreen")}
+                title={t("aria.pickFromScreen")}
+                className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-brock-accent/40"
+              >
+                <PipetteIcon className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {(["r", "g", "b"] as const).map((ch) => (
+              <div
+                key={ch}
+                className="flex h-7 min-w-0 flex-1 items-center rounded-md border border-border bg-muted/40 transition-colors has-[:focus-visible]:border-brock-accent/40 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brock-accent/40"
+              >
+                <span className="ps-1.5 text-[10px] font-medium uppercase text-muted-foreground">
+                  {ch}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={255}
+                  value={rgb[ch]}
+                  onChange={(e) => setChannel(ch, e.target.value)}
+                  aria-label={`${ch.toUpperCase()} 0–255`}
+                  className="w-full min-w-0 bg-transparent px-1 text-center font-mono text-xs text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
