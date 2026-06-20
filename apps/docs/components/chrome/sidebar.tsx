@@ -38,35 +38,29 @@ const ROW_GROUP =
   "hidden min-w-0 flex-1 items-center gap-1.5 group-hover/sidebar:flex";
 const ROW_LABEL = "truncate text-left";
 const ROW_CHEVRON = "h-[18px] w-[18px] shrink-0";
+// Sub-items: rounded, inset rows (Vercel / Linear / Resend nav). A single
+// faint guide line shows the nesting; hover is a soft rounded fill and the
+// active row is an accent-tinted pill — no per-item sharp rail.
 const SUB_BASE =
-  "flex h-9 w-full items-center border-l pr-5 pl-5 text-sm transition-colors";
+  "flex h-8 w-full items-center rounded-md px-3 text-[13px] transition-colors";
 const IDLE = "text-muted-foreground hover:bg-accent hover:text-foreground";
-const ACTIVE = "bg-secondary text-foreground";
+const ACTIVE = "bg-brock-accent/10 text-brock-accent font-medium";
 
 function SubItem({ item, active }: { item: ComponentItem; active: boolean }) {
   if (item.status === "SOON") {
     return (
       <span
-        className={`${SUB_BASE} cursor-not-allowed border-border text-muted-foreground/50`}
+        className={`${SUB_BASE} cursor-not-allowed text-muted-foreground/40`}
       >
         {item.name}
       </span>
     );
   }
-  if (active) {
-    return (
-      <Link
-        href={item.href}
-        className={`${SUB_BASE} border-brock-accent ${ACTIVE}`}
-      >
-        {item.name}
-      </Link>
-    );
-  }
   return (
     <Link
       href={item.href}
-      className={`${SUB_BASE} border-border hover:border-brock-accent ${IDLE}`}
+      aria-current={active ? "page" : undefined}
+      className={`${SUB_BASE} ${active ? ACTIVE : IDLE}`}
     >
       {item.name}
     </Link>
@@ -112,7 +106,7 @@ export function Sidebar() {
             </button>
 
             {librariesOpen && (
-              <ul className="ml-7 hidden group-hover/sidebar:block">
+              <ul className="ml-6 mr-2 hidden space-y-0.5 border-l border-border py-1 pl-2 group-hover/sidebar:block">
                 {charts.map((item) => (
                   <li key={item.id}>
                     <SubItem item={item} active={pathname === item.href} />
@@ -147,7 +141,7 @@ export function Sidebar() {
             </button>
 
             {workflowsOpen && (
-              <ul className="ml-7 hidden group-hover/sidebar:block">
+              <ul className="ml-6 mr-2 hidden space-y-0.5 border-l border-border py-1 pl-2 group-hover/sidebar:block">
                 {workflows.map((item) => (
                   <li key={item.id}>
                     <SubItem item={item} active={pathname === item.href} />
