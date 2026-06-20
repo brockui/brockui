@@ -43,14 +43,17 @@ export const metadata: Metadata = {
 };
 
 // Runs synchronously in <head> before React hydrates to prevent
-// "flash of wrong theme" (FOUC). Default: light. Honors localStorage.
+// "flash of wrong theme" (FOUC). Modes: 'light' | 'dark' | 'system'.
+// Default (nothing stored): light — the brand is light-first. 'system'
+// follows prefers-color-scheme.
 const themeInitScript = `
 (function() {
   try {
     var stored = localStorage.getItem('brockui-theme');
-    if (stored === 'dark') {
-      document.documentElement.classList.add('dark');
-    }
+    var dark = stored === 'dark' ||
+      (stored === 'system' &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (dark) document.documentElement.classList.add('dark');
   } catch (e) { /* localStorage unavailable */ }
 })();
 `;

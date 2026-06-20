@@ -22,7 +22,7 @@ export function LocaleSwitcher() {
   const pathname = usePathname();
 
   return (
-    <div className="inline-flex h-8 items-center gap-0.5 rounded-full border border-border bg-muted/50 p-0.5">
+    <div className="inline-flex h-7 items-center gap-0.5 rounded-md border border-border bg-muted/50 p-0.5">
       {LOCALES.map(({ code, label, aria }) => {
         const active = code === locale;
         return (
@@ -33,7 +33,7 @@ export function LocaleSwitcher() {
             aria-label={aria}
             aria-current={active ? "true" : undefined}
             className={[
-              "inline-flex h-7 cursor-pointer items-center justify-center rounded-full px-2.5 font-mono text-[11px] font-bold transition-colors",
+              "inline-flex h-6 cursor-pointer items-center justify-center rounded-[5px] px-2 font-mono text-[11px] font-bold transition-colors",
               active
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",

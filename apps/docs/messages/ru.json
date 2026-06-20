@@ -2,6 +2,7 @@
   "chrome": {
     "homeAria": "Brock UI — главная",
     "searchPlaceholder": "Поиск компонентов...",
+    "themeSystem": "Системная тема",
     "themeToLight": "Включить светлую тему",
     "themeToDark": "Включить тёмную тему",
     "localeSwitchTo": "English version",
