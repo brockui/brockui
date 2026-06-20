@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Search } from "lucide-react";
 import { CommandPalette } from "./command-palette";
+import { SearchIcon } from "./icons";
 
 export function HeaderSearch() {
   const t = useTranslations("chrome");
@@ -26,7 +26,7 @@ export function HeaderSearch() {
         onClick={() => setOpen(true)}
         className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
-        <Search className="h-3.5 w-3.5 shrink-0" />
+        <SearchIcon className="h-4 w-4 shrink-0" />
         <span className="flex-1 truncate text-left">
           {t("searchPlaceholder")}
         </span>

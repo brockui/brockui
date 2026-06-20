@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { Dialog } from "radix-ui";
-import { Search } from "lucide-react";
+import { SearchIcon } from "./icons";
 import {
   components,
   type ComponentItem,
@@ -85,7 +85,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
           </Dialog.Description>
 
           <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
               value={query}
