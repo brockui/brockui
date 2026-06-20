@@ -321,6 +321,7 @@
     },
     "aria": {
       "previewTheme": "Chart preview theme",
+      "previewAuto": "Match the site theme",
       "previewLight": "Preview in light theme",
       "previewDark": "Preview in dark theme",
       "pickCustomColor": "Pick custom color",

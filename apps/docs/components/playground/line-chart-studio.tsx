@@ -29,7 +29,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -39,6 +39,10 @@ import {
 } from "@/components/charts/line-chart";
 import { toJSON } from "@/components/charts/line-chart-export";
 import { CopyButton } from "@/components/ui/copy-button";
+import {
+  StudioThemeToggle,
+  useStudioPreviewTheme,
+} from "./studio-theme";
 
 /* ─── Presets ────────────────────────────────────────────────────────── */
 
@@ -629,22 +633,12 @@ export function LineChartStudio() {
   }));
   const chartRef = useRef<LineChartHandle>(null);
 
-  // Chart-preview theme. Follows the site theme until the user explicitly
-  // overrides it via the toggle in the Chart panel header — then it sticks.
-  const [previewTheme, setPreviewTheme] = useState<"light" | "dark">("light");
-  const previewOverridden = useRef(false);
-  useEffect(() => {
-    const root = document.documentElement;
-    const sync = () => {
-      if (!previewOverridden.current) {
-        setPreviewTheme(root.classList.contains("dark") ? "dark" : "light");
-      }
-    };
-    sync();
-    const observer = new MutationObserver(sync);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
+  // Chart-preview theme — auto (follow the site), or pinned light/dark.
+  const {
+    previewTheme,
+    mode: previewMode,
+    setMode: setPreviewMode,
+  } = useStudioPreviewTheme();
 
   function update<K extends keyof StudioState>(key: K, value: StudioState[K]) {
     setS((prev) => ({ ...prev, [key]: value }));
@@ -775,13 +769,7 @@ export function LineChartStudio() {
       {/* ── Chart panel (center) ──────────────────────────────────── */}
       <div className="border border-border bg-card">
         <PanelHeader label={t("panels.chart")}>
-          <PreviewThemeToggle
-            value={previewTheme}
-            onChange={(next) => {
-              previewOverridden.current = true;
-              setPreviewTheme(next);
-            }}
-          />
+          <StudioThemeToggle mode={previewMode} onChange={setPreviewMode} />
         </PanelHeader>
         <div className={`${previewTheme} bg-background p-6`}>
           <LineChart
@@ -1662,72 +1650,6 @@ function PanelHeader({
         {label}
       </span>
       {children}
-    </div>
-  );
-}
-
-function PreviewThemeToggle({
-  value,
-  onChange,
-}: {
-  value: "light" | "dark";
-  onChange: (t: "light" | "dark") => void;
-}) {
-  const t = useTranslations("studio");
-  return (
-    <div
-      className="flex items-center gap-1"
-      role="group"
-      aria-label={t("aria.previewTheme")}
-    >
-      {(["light", "dark"] as const).map((mode) => (
-        <button
-          key={mode}
-          type="button"
-          onClick={() => onChange(mode)}
-          aria-pressed={value === mode}
-          aria-label={
-            mode === "light" ? t("aria.previewLight") : t("aria.previewDark")
-          }
-          title={
-            mode === "light" ? t("aria.previewLight") : t("aria.previewDark")
-          }
-          className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-[2px] border transition-colors ${
-            value === mode
-              ? "border-brock-accent/70 bg-brock-accent/10 text-foreground"
-              : "border-border bg-muted/40 text-muted-foreground hover:border-brock-accent/60 hover:text-foreground"
-          }`}
-        >
-          {mode === "light" ? (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="square"
-              className="h-3 w-3"
-              aria-hidden
-            >
-              <circle cx="12" cy="12" r="4" />
-              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-            </svg>
-          ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="square"
-              className="h-3 w-3"
-              aria-hidden
-            >
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
-          )}
-        </button>
-      ))}
     </div>
   );
 }

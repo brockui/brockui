@@ -321,6 +321,7 @@
     },
     "aria": {
       "previewTheme": "Тема предпросмотра графика",
+      "previewAuto": "Как на сайте",
       "previewLight": "Предпросмотр в светлой теме",
       "previewDark": "Предпросмотр в тёмной теме",
       "pickCustomColor": "Выбрать свой цвет",
