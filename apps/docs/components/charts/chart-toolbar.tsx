@@ -127,15 +127,63 @@ export function ChartExportMenu({
                 className="flex w-full items-center justify-between gap-6 px-3 py-1.5 text-left font-sans text-[13px] text-foreground transition-colors hover:bg-muted disabled:cursor-wait disabled:opacity-50"
               >
                 <span>{item.text}</span>
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                  {item.kind === "copy" ? (copied ? "✓" : "⧉") : item.kind}
-                </span>
+                {item.kind === "copy" ? (
+                  copied ? (
+                    <CheckGlyph className="h-3.5 w-3.5 shrink-0 text-brock-accent" />
+                  ) : (
+                    <CopyGlyph className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  )
+                ) : (
+                  <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                    {item.kind}
+                  </span>
+                )}
               </button>
             </Fragment>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+/** Copy glyph (founder-supplied, Iconly) — stroke/currentColor so it themes
+ *  itself. Matches the code-block copy button for a consistent "copy" mark. */
+function CopyGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M14.9572 5.47322C14.7283 3.9968 13.6651 3 12.0629 3H6.86577C5.0565 3 3.91992 4.28509 3.91992 6.10048V12.7954C3.91992 14.4491 4.86518 15.6678 6.41498 15.86" />
+      <path d="M17.1354 8.11328H11.94C10.1298 8.11328 8.99414 9.39488 8.99414 11.2094V17.9043C8.99414 19.7188 10.1237 21.0004 11.94 21.0004H17.1345C18.9517 21.0004 20.0812 19.7188 20.0812 17.9043V11.2094C20.0812 9.39488 18.9517 8.11328 17.1354 8.11328Z" />
+    </svg>
+  );
+}
+
+/** Check mark shown briefly after a successful copy. */
+function CheckGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M5 12l5 5L20 7" />
+    </svg>
   );
 }
 
