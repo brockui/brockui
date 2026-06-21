@@ -1,6 +1,7 @@
 {
   "chrome": {
     "homeAria": "Brock UI – главная",
+    "githubAria": "Brock UI на GitHub",
     "searchPlaceholder": "Поиск компонентов...",
     "themeSystem": "Системная тема",
     "themeToLight": "Включить светлую тему",
