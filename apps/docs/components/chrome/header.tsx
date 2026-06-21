@@ -19,7 +19,7 @@ export function Header() {
       >
         <Logo variant="lockup" className="h-[18px] w-auto text-foreground" />
       </Link>
-      <div className="w-full max-w-xs">
+      <div className="min-w-0 flex-1 max-w-xs">
         <HeaderSearch />
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2">

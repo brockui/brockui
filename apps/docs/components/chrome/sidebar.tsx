@@ -59,7 +59,7 @@ export function Sidebar() {
   const workflows = components.filter((c) => c.category === "Workflows");
 
   return (
-    <aside className="group/sidebar sticky top-12 h-[calc(100vh-3rem)] w-12 shrink-0">
+    <aside className="group/sidebar sticky top-12 hidden h-[calc(100vh-3rem)] w-12 shrink-0 lg:block">
       <div className="absolute inset-y-0 left-0 z-40 flex h-full w-12 flex-col overflow-hidden border-r border-border bg-background transition-[width] duration-100 ease-linear group-hover/sidebar:w-65">
         <nav className="flex-1 overflow-x-hidden overflow-y-auto pt-2 pb-4">
           <div className={SECTION_LABEL}>Charts</div>

@@ -30,7 +30,7 @@ export function HeaderSearch() {
         <span className="flex-1 truncate text-left">
           {t("searchPlaceholder")}
         </span>
-        <kbd className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+        <kbd className="hidden shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:block">
           ⌘K
         </kbd>
       </button>

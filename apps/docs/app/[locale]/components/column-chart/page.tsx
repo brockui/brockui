@@ -381,8 +381,8 @@ export default async function ColumnChartPage({
       </Section>
 
       <Section title={t.props.title}>
-        <div className="border border-border">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto border border-border">
+          <table className="w-full min-w-[34rem] text-xs">
             <thead>
               <tr className="border-b border-border bg-card/40">
                 {[
