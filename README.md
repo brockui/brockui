@@ -10,7 +10,7 @@
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000.svg?logo=next.js)](https://nextjs.org)
 [![GitHub stars](https://img.shields.io/github/stars/brockui/brockui?style=flat&color=F54900)](https://github.com/brockui/brockui/stargazers)
 
-**[brockui.com](https://brockui.com)** · [Components](https://brockui.com/components/column-chart) · [Installation](https://brockui.com/installation) · [Author](https://akasymzhanov.com)
+**[brockui.com](https://brockui.com)** · [Components](https://brockui.com/components/column-chart) · [Installation](https://brockui.com/installation) · [Author](https://kasymzhanov.com)
 
 </div>
 
@@ -18,7 +18,7 @@
 
 Brock UI is an open-source registry of opinionated React components for charts and data. You copy the source straight into your project through the shadcn CLI, then own and edit it like any other file in your codebase – no runtime package to install, no API to learn, no lock-in.
 
-It is built by [Almas Kasymzhanov](https://akasymzhanov.com), a data journalist, analyst, developer, and entrepreneur, for the people who do that work too: **journalists, frontend developers, and data-visualization designers**. Every component is a tool he reaches for in his own daily work, and the registry grows as that work does.
+It is built by [Almas Kasymzhanov](https://kasymzhanov.com), a data journalist, analyst, developer, and entrepreneur, for the people who do that work too: **journalists, frontend developers, and data-visualization designers**. Every component is a tool he reaches for in his own daily work, and the registry grows as that work does.
 
 Each chart is hand-built in SVG with a clear point of view, grounded in the data-visualization canon (Edward Tufte's data-ink, the Financial Times / John Burn-Murdoch school of data journalism): one accent color, no decorative chrome, monospace numerics, direct value labels, honest baselines, and built-in source attribution.
 
@@ -131,7 +131,7 @@ Brock UI is in active early development and the component set is intentionally s
 
 **Almas Kasymzhanov** – data journalist, analyst, developer, and entrepreneur, based in Kazakhstan. Brock UI is his public, open-source toolkit: the components he uses to turn data into things people can read.
 
-- Website: [akasymzhanov.com](https://akasymzhanov.com)
+- Website: [kasymzhanov.com](https://kasymzhanov.com)
 - X / Twitter: [@akasymzhanov](https://x.com/akasymzhanov) · project: [@getbrockui](https://x.com/getbrockui)
 - GitHub: [@AlmasKasymzhanov](https://github.com/AlmasKasymzhanov)
 
