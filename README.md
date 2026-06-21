@@ -8,9 +8,12 @@
 [![shadcn registry](https://img.shields.io/badge/shadcn-registry-000000.svg)](https://ui.shadcn.com/docs/registry)
 [![React 19](https://img.shields.io/badge/React-19-000000.svg?logo=react)](https://react.dev)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000.svg?logo=next.js)](https://nextjs.org)
-[![GitHub stars](https://img.shields.io/github/stars/brockui/brockui?style=flat&color=F54900)](https://github.com/brockui/brockui/stargazers)
 
 **[brockui.com](https://brockui.com)** · [Components](https://brockui.com/components/column-chart) · [Installation](https://brockui.com/installation) · [Author](https://kasymzhanov.com)
+
+<br />
+
+<img src=".github/assets/hero.png" alt="Brock UI — Column, Bar, and Line chart components" width="100%" />
 
 </div>
 
@@ -27,7 +30,7 @@ Each chart is hand-built in SVG with a clear point of view, grounded in the data
 - **You own the code.** Components install as source files via the shadcn registry. Edit them, theme them, delete the parts you do not need. There is no `node_modules` dependency to track.
 - **Opinionated, not generic.** A deliberate design point of view out of the box, instead of a neutral starting point you have to style yourself.
 - **Dependency-light.** Charts are hand-written SVG. No charting library, no D3 in your bundle – just React and the styling you already have.
-- **Production-grade by default.** TypeScript strict, full keyboard navigation, WCAG 2.2 AA semantics, screen-reader table summaries, SSR-safe rendering, light + dark themes, and PNG / SVG / CSV export.
+- **Production-grade by default.** TypeScript strict, full keyboard navigation, screen-reader table summaries, SSR-safe rendering, light + dark themes, and PNG / SVG / CSV export.
 - **Bilingual.** Docs and component copy ship in English and Russian.
 - **MIT all the way down.** Fonts ([Geist](https://vercel.com/font), [Hack](https://sourcefoundry.org/hack/), [Departure Mono](https://departuremono.com)), primitives ([Radix](https://www.radix-ui.com)), styling ([Tailwind](https://tailwindcss.com)), and distribution (shadcn registry). Nothing carries license friction downstream.
 
