@@ -10,17 +10,17 @@ export const metadata = {
 
 const COPY = {
   en: {
-    lead: "Editable React components for charts and data — grab the code and drop it straight into your project. Built by Almas Kasymzhanov, an analyst, developer, data journalist, and entrepreneur, for the people who do that work too: journalists, frontend developers, and data-viz designers. New components land as the project grows — and every one is a tool he uses in his own daily work.",
+    lead: "Editable React components for charts and data: copy the code and paste it straight into your project. Built by Almas Kasymzhanov, a data journalist, analyst, developer, and entrepreneur, for the people who do that work too: journalists, frontend developers, and data-viz designers. The collection grows with the project, and every component is one he relies on in his own daily work.",
     components: "Components",
     componentsLead:
       "Open-source and installable through the shadcn registry. Open any card for its live studio, code, and docs.",
     soon: "Coming soon",
   },
   ru: {
-    lead: "Редактируемые React-компоненты для графиков и данных — забирайте код и вставляйте прямо в свой проект. Разработка Алмаса Касымжанова — аналитика, разработчика, дата-журналиста и предпринимателя — для тех, кто занимается тем же: журналистов, фронтенд-разработчиков и визуализаторов данных. Компоненты добавляются по мере развития проекта, и каждый из них он использует в своей ежедневной работе.",
+    lead: "Редактируемые React-компоненты для графиков и данных: забирайте код и вставляйте прямо в свой проект. Их делает Алмас Касымжанов, дата-журналист, аналитик, разработчик и предприниматель, для тех, кто работает так же: журналистов, фронтенд-разработчиков и визуализаторов данных. Набор пополняется по мере развития проекта, и каждый компонент он использует в своей повседневной работе.",
     components: "Компоненты",
     componentsLead:
-      "Открытый код, установка через shadcn-реестр. Откройте карточку — живая студия, код и документация.",
+      "Открытый код, установка через shadcn-реестр. Откройте карточку, чтобы увидеть живую студию, код и документацию.",
     soon: "Скоро",
   },
 } as const;
