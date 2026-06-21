@@ -16,8 +16,8 @@
  *  2. Direct line-end labels (replaces a legend) in each line's color, with
  *     vertical collision avoidance — the FT signature. `legend` can switch to
  *     a top legend or off.
- *  3. ASCII "no data" empty state; dashed line skeleton loading state with
- *     LOADING badge; ▲▲▲ error state with optional Retry button — the same
+ *  3. accessible "no data" empty state; solid skeleton loading state with
+ *     accessible loading label; error state with optional Retry button — the same
  *     Tufte-friendly visual language as the rest of the family.
  *  4. Missing data is honest: a `y: null` point breaks the line into
  *     sub-paths (a GAP) — never silently interpolated.
@@ -548,7 +548,7 @@ export type LineChartProps = {
 
   /**
    * Mark the chart as loading. `loading=true` + empty data → full skeleton
-   * (dashed ghost line, LOADING badge). `loading=true` + data → dim overlay
+   * (solid placeholder line, accessible loading label). `loading=true` + data → dim overlay
    * with a corner spinner. Skeleton honors `prefers-reduced-motion`.
    */
   loading?: boolean;
@@ -556,14 +556,14 @@ export type LineChartProps = {
   /**
    * Render the error state. Accepts an `Error`, a string, or a falsy value.
    * When set, replaces the chart entirely (stale data next to an error is
-   * misleading). Shows the ASCII warning + message + optional retry button.
+   * misleading). Shows the warning icon + message + optional retry button.
    */
   error?: Error | string | null;
 
   /** Retry callback for the default error state. Shown only when provided. */
   onRetry?: () => void;
 
-  /** Label for the LOADING badge / skeleton ARIA. Default `"Loading…"`. */
+  /** Label for the accessible loading label / skeleton ARIA. Default `"Loading…"`. */
   loadingLabel?: string;
 
   /** Label for the error state ARIA. Default `"Error"`. */

@@ -85,13 +85,13 @@ const en: BarChartPageContent = {
       sort: "Reorder bars by value (stable). 'none' preserves input order; desc/asc turn the chart into a ranking – the bar chart's natural mode",
       topN: "Keep the N largest bars, roll the tail into one 'Other' aggregate (summed). Defaults: pinned last regardless of sort, muted --brock-other fill. Callbacks receive isOther + the collapsed items[]. Number shorthand = all defaults",
       loading:
-        "Loading state. With no data → full skeleton (dashed ghost rows + LOADING badge, ARIA role=status). With data → dim overlay on top of the chart for background refresh. Honors prefers-reduced-motion",
+        "Loading state. With no data → a full skeleton (solid placeholder rows + an accessible loading label, ARIA role=status). With data → a dim overlay with a small spinner for background refresh. Honors prefers-reduced-motion",
       error:
         "Terminal error state. Replaces the chart even when data is present (stale data next to an error is misleading). Accepts an Error, a string message, or null. ARIA role=alert",
       onRetry:
         "Callback for the retry button in the default error state. The button is rendered only when this prop is provided",
       loadingLabel:
-        "Label rendered next to the LOADING badge and used as the ARIA label for the skeleton state. Override for localization",
+        "Accessible label for the skeleton (loading) state, used as its ARIA label. Override for localization",
       errorLabel:
         "Label rendered above the error message and used as the ARIA label. Override for localization",
       retryLabel:
@@ -261,13 +261,13 @@ const ru: BarChartPageContent = {
       sort: "Сортировка полос по значению (стабильная). 'none' сохраняет исходный порядок; desc/asc превращают график в рейтинг – естественный режим bar chart",
       topN: "Оставить N крупнейших полос, свернув хвост в агрегат «Other» (сумма). По умолчанию: закреплён последним независимо от sort, приглушённая заливка --brock-other. Коллбэки получают isOther + items[]. Число = все дефолты",
       loading:
-        "Состояние загрузки. Без данных → полный скелетон (пунктирные строки-призраки + плашка LOADING, ARIA role=status). С данными → полупрозрачный оверлей для фонового обновления. Уважает prefers-reduced-motion",
+        "Состояние загрузки. Без данных → полный скелетон (сплошные строки-плейсхолдеры + доступная подпись загрузки, ARIA role=status). С данными → полупрозрачный оверлей со спиннером для фонового обновления. Уважает prefers-reduced-motion",
       error:
         "Терминальная ошибка. Замещает график даже при наличии данных. Принимает Error, строку или null. ARIA role=alert",
       onRetry:
         "Коллбэк кнопки повтора в дефолтном состоянии ошибки. Кнопка рендерится только когда проп передан",
       loadingLabel:
-        "Подпись рядом с плашкой LOADING и ARIA-метка скелетона. Переопределите для локализации",
+        "Доступная подпись состояния загрузки (скелетона), используется как его ARIA-метка. Переопределите для локализации",
       errorLabel:
         "Подпись над сообщением об ошибке и ARIA-метка. Переопределите для локализации",
       retryLabel:

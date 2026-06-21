@@ -67,7 +67,7 @@ describe("ColumnChart — rendering", () => {
 });
 
 describe("ColumnChart — empty + edge cases", () => {
-  it("renders ASCII empty state when data is []", () => {
+  it("renders empty state when data is []", () => {
     render(<ColumnChart data={[]} />);
     expect(screen.getByRole("img")).toHaveAccessibleName(
       "No data available for this period",
@@ -1497,7 +1497,7 @@ describe("synthesizeSVG — editorial layers", () => {
 /* ─── Slots (headless customization) ──────────────────────────────── */
 
 describe("ColumnChart — slots", () => {
-  it("slots.empty replaces the default ASCII empty state", () => {
+  it("slots.empty replaces the default empty state", () => {
     render(
       <ColumnChart
         data={[]}
@@ -1533,7 +1533,7 @@ describe("ColumnChart — slots", () => {
     expect(container.querySelector(".brock-skeleton-bar")).toBeFalsy();
   });
 
-  it("slots.error replaces the default ▲▲▲ error block and receives the Error", () => {
+  it("slots.error replaces the default error block and receives the Error", () => {
     const onRetry = vi.fn();
     render(
       <ColumnChart
@@ -1676,7 +1676,7 @@ describe("ColumnChart — slots", () => {
     expect(container.querySelector('[data-testid="custom-empty"]')).toBeFalsy();
   });
 
-  it("slots.empty wins over the ASCII default even with source preserved", () => {
+  it("slots.empty wins over the default empty state even with source preserved", () => {
     render(
       <ColumnChart
         data={[]}

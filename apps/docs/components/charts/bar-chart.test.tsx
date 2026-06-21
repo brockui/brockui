@@ -65,7 +65,7 @@ describe("BarChart — rendering", () => {
 });
 
 describe("BarChart — empty + edge cases", () => {
-  it("renders ASCII empty state when data is []", () => {
+  it("renders empty state when data is []", () => {
     render(<BarChart data={[]} />);
     expect(screen.getByRole("img")).toHaveAccessibleName(
       "No data available for this period",
@@ -1659,7 +1659,7 @@ describe("BarChart — meta passthrough", () => {
 });
 
 describe("BarChart — slots", () => {
-  it("slots.empty replaces the default ASCII empty state", () => {
+  it("slots.empty replaces the default empty state", () => {
     render(
       <BarChart
         data={[]}

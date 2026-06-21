@@ -129,7 +129,7 @@ describe("LineChart — gaps", () => {
 /* ─── Empty / loading / error states ────────────────────────────────── */
 
 describe("LineChart — state machine", () => {
-  it("renders the ASCII empty state when data is []", () => {
+  it("renders the empty state when data is []", () => {
     render(<LineChart data={[]} />);
     expect(screen.getByRole("img")).toHaveAccessibleName(
       "No data available for this period",

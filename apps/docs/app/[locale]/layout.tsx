@@ -38,9 +38,9 @@ const departureMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Brock UI — opinionated React components for data & AI products",
+  title: "Brock UI – editable React components for charts and data",
   description:
-    "Micrographics-first, density-with-discipline, monospace where data lives.",
+    "Editable, open-source React components for charts and data, installable straight from the shadcn registry. Built on the Tufte and Financial Times data-visualization canon.",
 };
 
 // Runs synchronously in <head> before React hydrates to prevent

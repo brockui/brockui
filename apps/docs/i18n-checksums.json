@@ -1,7 +1,7 @@
 {
   "app/[locale]/installation/content.ts": "75151684f1af9464",
-  "app/[locale]/components/column-chart/content.ts": "50de978f1cffa0d3",
-  "app/[locale]/components/bar-chart/content.ts": "8a86529cbf8b486e",
-  "app/[locale]/components/line-chart/content.ts": "77369d2a4a679d28",
+  "app/[locale]/components/column-chart/content.ts": "327b86d5951fb80f",
+  "app/[locale]/components/bar-chart/content.ts": "6233b1aa3605286e",
+  "app/[locale]/components/line-chart/content.ts": "b57cd1ee1866f74d",
   "messages/en.json": "f7cf513bd624cb03"
 }

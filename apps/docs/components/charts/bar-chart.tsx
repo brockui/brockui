@@ -15,8 +15,8 @@
  *     CSS-only entry animation (bars grow from the baseline: scaleX,
  *     origin-left for positives, origin-right for negatives) that honors
  *     prefers-reduced-motion.
- *  3. ASCII "no data" empty state; dashed horizontal ghost-bar skeleton with
- *     LOADING badge; ▲▲▲ error state with optional Retry button — same
+ *  3. accessible "no data" empty state; solid horizontal skeleton with
+ *     accessible loading label; error state with optional Retry button — same
  *     Tufte-friendly visual language as Column Chart.
  *  4. Hatching as a Tufte encoding via per-bar `pattern: 'hatched'` + 5
  *     pattern styles (diagonal / reverse / vertical / horizontal / dots).
@@ -602,7 +602,7 @@ export type BarChartProps = {
    * Mark the chart as loading. Behavior depends on whether data is also present:
    *
    *  - `loading=true` + empty data → **full skeleton** (dashed horizontal
-   *    ghost bars, pixel-font LOADING badge, ARIA `role="status"
+   *    ghost bars, accessible loading label, ARIA `role="status"
    *    aria-live="polite"`). Use for initial fetch.
    *  - `loading=true` + populated data → **dim overlay** on top of the existing
    *    chart with a small corner spinner. Use for background refresh / polling.
@@ -618,7 +618,7 @@ export type BarChartProps = {
    * the chart entirely — even if data is also present — because stale data next
    * to an error is misleading.
    *
-   * Renders the ASCII warning pattern + the message + an optional retry button
+   * Renders the warning icon pattern + the message + an optional retry button
    * (only when `onRetry` is also provided). ARIA `role="alert"` so screen
    * readers announce it immediately.
    */
@@ -631,7 +631,7 @@ export type BarChartProps = {
   onRetry?: () => void;
 
   /**
-   * Label rendered next to the LOADING pixel badge and used as the ARIA label
+   * Label rendered next to the accessible loading label and used as the ARIA label
    * for the skeleton state. Default `"Loading…"`. Override for localization.
    */
   loadingLabel?: string;
@@ -736,9 +736,9 @@ export type BarChartProps = {
    * default sub-component:
    *
    *  - `tooltip`   — hover/focus tooltip anchored to the focused bar's row
-   *  - `empty`     — replaces the ASCII empty state
+   *  - `empty`     — replaces the empty state
    *  - `loading`   — replaces the dashed skeleton (no-data + loading case)
-   *  - `error`     — replaces the ▲▲▲ error UI
+   *  - `error`     — replaces the error UI
    *  - `toolbar`   — replaces the PNG/SVG/CSV/COPY chip bar (slot receives
    *                  bound action handlers + an `enabled` map)
    *  - `caption`   — extra editorial caption rendered below the source line
@@ -1844,7 +1844,7 @@ function Spinner({ className }: { className?: string }) {
  *
  * Visual: a stack of dashed HORIZONTAL ghost bars at varying widths (Tufte
  * "in-progress" dashed pattern, see Brock UI design thesis) anchored to a
- * left baseline + a pixel-font LOADING badge in the top-right corner. The
+ * left baseline + a accessible loading label in the top-right corner. The
  * ghost rows use the same barThickness/gap the real chart would, so the
  * skeleton's footprint matches the ready state for typical data. Honors
  * `prefers-reduced-motion` via the `.brock-hbar-skeleton` class.
@@ -1904,8 +1904,8 @@ function LoadingState({
  * ErrorState — terminal state. Replaces the chart even when data is present:
  * showing stale data next to an error message is misleading.
  *
- * Visual: ASCII warning pattern in Departure Mono (consistent with the empty
- * state's visual language, swapped glyph), pixel ERROR badge, the error message
+ * Visual: a warning icon (consistent with the empty
+ * state's visual language), the error message
  * in body text, and an optional retry button (only when `onRetry` is given).
  *
  * A11y: `role="alert"` + `aria-live="assertive"` so screen readers interrupt

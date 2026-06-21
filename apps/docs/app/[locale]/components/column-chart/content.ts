@@ -42,7 +42,7 @@ const en: ColumnChartPageContent = {
   kicker: "Charts · Column Chart",
   title: "Column Chart",
   intro:
-    "Vertical bars for ordered categories – time buckets or ranked categories. Data-ink discipline (Tufte) – one accent, no gridlines, monospace numerics, direct value labels by default. Built-in source attribution and ASCII empty state.",
+    "Vertical bars for ordered categories – time buckets or ranked categories. Data-ink discipline (Tufte): one accent, no gridlines, monospace numerics, direct value labels by default, built-in source attribution, and accessible empty / loading / error states.",
   studio: {
     title: "Studio · Code, chart, settings",
     lead: "Three-panel workbench. Tweak any setting on the right – chart in the middle updates live and the code on the left regenerates ready to paste into your app.",
@@ -93,13 +93,13 @@ const en: ColumnChartPageContent = {
       animation:
         "Staggered bar-rise on mount. Disabled automatically when prefers-reduced-motion is set",
       loading:
-        "Loading state. With no data → full skeleton (dashed ghost bars + LOADING badge, ARIA role=status). With data → dim overlay on top of the chart for background refresh. Honors prefers-reduced-motion",
+        "Loading state. With no data → a full skeleton (solid placeholder bars + an accessible loading label, ARIA role=status). With data → a dim overlay with a small spinner for background refresh. Honors prefers-reduced-motion",
       error:
         "Terminal error state. Replaces the chart even when data is present (stale data next to an error is misleading). Accepts an Error, a string message, or null. ARIA role=alert",
       onRetry:
         "Callback for the retry button in the default error state. The button is rendered only when this prop is provided",
       loadingLabel:
-        "Label rendered next to the LOADING badge and used as the ARIA label for the skeleton state. Override for localization",
+        "Accessible label for the skeleton (loading) state, used as its ARIA label. Override for localization",
       errorLabel:
         "Label rendered above the error message and used as the ARIA label. Override for localization",
       retryLabel:
@@ -216,13 +216,13 @@ const en: ColumnChartPageContent = {
         " prop renders FT/Bloomberg-style attribution line below the chart.",
       ],
       [
-        "ASCII empty state (",
-        { code: "▒▒▒ no data" },
-        ") when the dataset is empty; full state machine via ",
+        "A clear empty state (icon + ",
+        { code: "No data" },
+        " message) when the dataset is empty; a full state machine via ",
         { code: "loading" },
         " / ",
         { code: "error" },
-        " (skeleton, refresh overlay, retry) in the same visual language.",
+        " (solid skeleton, refresh overlay with a spinner, retry) in the same visual language.",
       ],
     ],
   },
@@ -253,7 +253,7 @@ const ru: ColumnChartPageContent = {
   kicker: "Графики · Column Chart",
   title: "Column Chart",
   intro:
-    "Вертикальные столбцы для упорядоченных категорий – временных интервалов или рейтингов. Дисциплина data-ink (Тафти): один акцент, без сетки, моноширинные цифры, прямые подписи значений по умолчанию. Встроенная строка источника и ASCII-состояние «нет данных».",
+    "Вертикальные столбцы для упорядоченных категорий – временных интервалов или рейтингов. Дисциплина data-ink (Тафти): один акцент, без сетки, моноширинные цифры, прямые подписи значений по умолчанию, встроенная строка источника и доступные состояния пустоты / загрузки / ошибки.",
   studio: {
     title: "Studio · Код, график, настройки",
     lead: "Трёхпанельный верстак. Меняйте любую настройку справа – график в центре обновляется вживую, а код слева перегенерируется, готовый к вставке в ваш проект.",
@@ -305,13 +305,13 @@ const ru: ColumnChartPageContent = {
       animation:
         "Каскадный подъём столбцов при монтировании. Автоматически отключается при prefers-reduced-motion",
       loading:
-        "Состояние загрузки. Без данных → полный скелетон (пунктирные столбцы-призраки + плашка LOADING, ARIA role=status). С данными → полупрозрачный оверлей поверх графика для фонового обновления. Уважает prefers-reduced-motion",
+        "Состояние загрузки. Без данных → полный скелетон (сплошные столбцы-плейсхолдеры + доступная подпись загрузки, ARIA role=status). С данными → полупрозрачный оверлей со спиннером для фонового обновления. Уважает prefers-reduced-motion",
       error:
         "Терминальная ошибка. Замещает график даже при наличии данных (устаревшие данные рядом с ошибкой вводят в заблуждение). Принимает Error, строку или null. ARIA role=alert",
       onRetry:
         "Коллбэк кнопки повтора в дефолтном состоянии ошибки. Кнопка рендерится только когда проп передан",
       loadingLabel:
-        "Подпись рядом с плашкой LOADING и ARIA-метка скелетона. Переопределите для локализации",
+        "Доступная подпись состояния загрузки (скелетона), используется как его ARIA-метка. Переопределите для локализации",
       errorLabel:
         "Подпись над сообщением об ошибке и ARIA-метка. Переопределите для локализации",
       retryLabel:
@@ -429,13 +429,13 @@ const ru: ColumnChartPageContent = {
         " рендерит строку атрибуции в стиле FT/Bloomberg под графиком.",
       ],
       [
-        "ASCII-состояние «нет данных» (",
-        { code: "▒▒▒ no data" },
-        "); полная машина состояний через ",
+        "Понятное пустое состояние (иконка + сообщение ",
+        { code: "No data" },
+        ") при пустом наборе; полная машина состояний через ",
         { code: "loading" },
         " / ",
         { code: "error" },
-        " (скелетон, оверлей обновления, повтор) в том же визуальном языке.",
+        " (сплошной скелетон, оверлей обновления со спиннером, повтор) в том же визуальном языке.",
       ],
     ],
   },

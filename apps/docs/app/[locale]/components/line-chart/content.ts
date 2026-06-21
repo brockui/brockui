@@ -108,13 +108,13 @@ const en: LineChartPageContent = {
       bands:
         "Shaded x-range bands – low-opacity vertical zones (the FT recession-shading pattern). Sit behind the lines; reproduced in export",
       loading:
-        "Loading state. With no data → full skeleton (dashed ghost line + LOADING badge, ARIA role=status). With data → dim overlay for background refresh. Honors prefers-reduced-motion",
+        "Loading state. With no data → a full skeleton (solid placeholder line + an accessible loading label, ARIA role=status). With data → a dim overlay with a small spinner for background refresh. Honors prefers-reduced-motion",
       error:
         "Terminal error state. Replaces the chart even when data is present (stale data next to an error is misleading). Accepts an Error, a string message, or null. ARIA role=alert",
       onRetry:
         "Callback for the retry button in the default error state. The button is rendered only when this prop is provided",
       loadingLabel:
-        "Label for the LOADING badge and the ARIA label of the skeleton state. Override for localization",
+        "Accessible label for the skeleton (loading) state, used as its ARIA label. Override for localization",
       errorLabel:
         "Label rendered above the error message and used as the ARIA label. Override for localization",
       retryLabel:
@@ -237,9 +237,9 @@ const en: LineChartPageContent = {
         " series for forecasts – all reproduced in the SVG export.",
       ],
       [
-        "ASCII empty state (",
-        { code: "▒▒▒ no data" },
-        ") and a dashed-line loading skeleton in the same Tufte-friendly visual language.",
+        "A clear empty state (icon + ",
+        { code: "No data" },
+        " message) and a solid loading skeleton in the same Tufte-friendly visual language.",
       ],
     ],
   },
@@ -336,13 +336,13 @@ const ru: LineChartPageContent = {
       bands:
         "Затенённые зоны по диапазону x – вертикальные зоны низкой непрозрачности (паттерн FT с затенением рецессий). За линиями; воспроизводится в экспорте",
       loading:
-        "Состояние загрузки. Без данных → полный скелетон (пунктирная линия-призрак + плашка LOADING, ARIA role=status). С данными → полупрозрачный оверлей для фонового обновления. Уважает prefers-reduced-motion",
+        "Состояние загрузки. Без данных → полный скелетон (сплошная линия-плейсхолдер + доступная подпись загрузки, ARIA role=status). С данными → полупрозрачный оверлей со спиннером для фонового обновления. Уважает prefers-reduced-motion",
       error:
         "Терминальная ошибка. Замещает график даже при наличии данных (устаревшие данные рядом с ошибкой вводят в заблуждение). Принимает Error, строку или null. ARIA role=alert",
       onRetry:
         "Коллбэк кнопки повтора в дефолтном состоянии ошибки. Кнопка рендерится только когда проп передан",
       loadingLabel:
-        "Подпись плашки LOADING и ARIA-метка скелетона. Переопределите для локализации",
+        "Доступная подпись состояния загрузки (скелетона), используется как его ARIA-метка. Переопределите для локализации",
       errorLabel:
         "Подпись над сообщением об ошибке и ARIA-метка. Переопределите для локализации",
       retryLabel:
@@ -469,9 +469,9 @@ const ru: LineChartPageContent = {
         "-ряд для прогнозов – всё воспроизводится в SVG-экспорте.",
       ],
       [
-        "ASCII-состояние «нет данных» (",
-        { code: "▒▒▒ no data" },
-        ") и скелетон загрузки из пунктирной линии в том же визуальном языке Тафти.",
+        "Понятное пустое состояние (иконка + сообщение ",
+        { code: "No data" },
+        ") и сплошной скелетон загрузки в том же визуальном языке Тафти.",
       ],
     ],
   },
