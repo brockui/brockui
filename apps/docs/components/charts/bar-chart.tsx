@@ -2,7 +2,7 @@
  * Bar Chart — horizontal ranking bars, editorial-grade.
  *
  * Second component of the Brock UI chart family, inheriting the canonical
- * template from Column Chart (see docs/canon-spec.md §13). Everything in the
+ * template from Column Chart. Everything in the
  * template-core column is implemented 1:1; the column-specific surface was
  * consciously re-decided for the horizontal shape.
  *

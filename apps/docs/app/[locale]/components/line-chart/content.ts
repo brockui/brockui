@@ -4,7 +4,7 @@ import type { Rich } from "@/lib/rich-text";
 /**
  * Line Chart page content, both locales. TypeScript enforces structural
  * parity (drift-guard v1); the EN-hash manifest enforces freshness (v2).
- * RU: draft – awaiting founder proofread (см. docs/glossary-ru.md).
+ * RU: draft.
  *
  * Prop NAMES/types/defaults stay in page.tsx (technical, never translated);
  * only the human descriptions live here.

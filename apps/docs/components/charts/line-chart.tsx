@@ -2,7 +2,7 @@
  * Line Chart — multi-series time-series lines, editorial-grade.
  *
  * Third component of the Brock UI chart family, inheriting the canonical
- * template from Column Chart (see docs/canon-spec.md §13). Everything in the
+ * template from Column Chart. Everything in the
  * template-core column is implemented 1:1; the line-specific surface — a
  * continuous X axis, multiple series, and the FT / John Burn-Murdoch canon —
  * was consciously re-decided for the shape.

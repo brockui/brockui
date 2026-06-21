@@ -1,7 +1,7 @@
 /**
  * Shared chart data transforms — the math core every Brock UI chart imports.
  *
- * Lives in its own file (canon-spec §4 + §13: one implementation for the live
+ * Lives in its own file (one implementation for the live
  * render AND the static render path of every component — no fidelity drift,
  * and the honest "math core vs view" boundary for registry upgrades).
  * Shipped through the shadcn registry alongside each chart component; both

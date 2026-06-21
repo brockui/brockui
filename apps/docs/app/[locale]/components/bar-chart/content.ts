@@ -4,7 +4,7 @@ import type { Rich } from "@/lib/rich-text";
 /**
  * Bar Chart page content, both locales. TypeScript enforces structural parity
  * (drift-guard v1); the EN-hash manifest enforces freshness (v2).
- * RU: draft – awaiting founder proofread (см. docs/glossary-ru.md).
+ * RU: draft.
  */
 export type BarChartPageContent = {
   kicker: string;
