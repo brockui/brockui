@@ -752,7 +752,7 @@ export function LineChartStudio() {
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_260px] lg:gap-0">
       {/* ── Code panel (left) ─────────────────────────────────────── */}
-      <div className="border border-border bg-card lg:border-r-0">
+      <div className="rounded-lg border border-border bg-card lg:rounded-r-none lg:border-r-0">
         <PanelHeader label={t("panels.code")}>
           <CopyButton text={code} />
         </PanelHeader>
@@ -762,7 +762,7 @@ export function LineChartStudio() {
       </div>
 
       {/* ── Chart panel (center) ──────────────────────────────────── */}
-      <div className="border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card lg:rounded-none">
         <PanelHeader label={t("panels.chart")}>
           <StudioThemeToggle mode={previewMode} onChange={setPreviewMode} />
         </PanelHeader>
@@ -923,7 +923,7 @@ export function LineChartStudio() {
       </div>
 
       {/* ── Settings panel (right) ────────────────────────────────── */}
-      <aside className="border border-border bg-card lg:border-l-0">
+      <aside className="rounded-lg border border-border bg-card lg:rounded-l-none lg:border-l-0">
         <PanelHeader label={t("panels.settings")} />
         <div className="divide-y divide-border">
           <Accordion label={t("sections.data")} defaultOpen>

@@ -1,6 +1,27 @@
 /** Shared chrome icons (founder-supplied, Iconly) — fill/currentColor so they
  *  inherit the surrounding text colour and theme automatically. */
 
+/** Disclosure caret — points down; rotate −90° (right) when collapsed. The one
+ *  canonical chevron for every expandable element (sidebar nav, studio
+ *  accordions, selects) so they all read the same. */
+export function CaretIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M15 11L12 14L9 11" />
+    </svg>
+  );
+}
+
 /** Search loupe. */
 export function SearchIcon({ className }: { className?: string }) {
   return (

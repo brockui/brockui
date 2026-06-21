@@ -4,28 +4,9 @@ import { useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { components, type ComponentItem } from "@/lib/components-catalog";
 import { MotionIcon } from "./motion-icon";
+import { CaretIcon } from "./icons";
 import filesMotion from "./icons/files-motion.json";
 import workflowMotion from "./icons/workflow-motion.json";
-
-/** Static disclosure caret — points down; rotated −90° (right) when collapsed.
- *  currentColor, so it themes itself with the row's text colour. */
-function CaretIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M15 11L12 14L9 11" />
-    </svg>
-  );
-}
 
 const SECTION_LABEL =
   "hidden px-5 pt-5 pb-2 font-sans text-[11px] font-medium text-muted-foreground/60 group-hover/sidebar:block";

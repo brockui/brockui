@@ -25,10 +25,10 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { HexColorPicker } from "react-colorful";
 import { Tooltip } from "radix-ui";
 import { useTranslations } from "next-intl";
+import { CaretIcon } from "../chrome/icons";
 
 /* ─── Shared colour constants + helpers ──────────────────────────────── */
 
@@ -115,11 +115,10 @@ export function Accordion({
         aria-expanded={open}
       >
         <span>{label}</span>
-        <ChevronDown
-          className={`h-3 w-3 text-muted-foreground transition-transform ${
-            open ? "rotate-180" : ""
+        <CaretIcon
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+            open ? "" : "-rotate-90"
           }`}
-          aria-hidden
         />
       </button>
       {open && <div className="space-y-2.5 px-3 pb-3">{children}</div>}
@@ -530,9 +529,8 @@ export function Select({
           </option>
         ))}
       </select>
-      <ChevronDown
-        className="pointer-events-none absolute top-1/2 right-2 h-3 w-3 -translate-y-1/2 text-muted-foreground"
-        aria-hidden
+      <CaretIcon
+        className="pointer-events-none absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
       />
     </div>
   );
