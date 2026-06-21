@@ -8,6 +8,7 @@ import { routing } from "@/i18n/routing";
 import "../globals.css";
 import { Sidebar } from "@/components/chrome/sidebar";
 import { Header } from "@/components/chrome/header";
+import { Footer } from "@/components/chrome/footer";
 import { LocaleNotice } from "@/components/chrome/locale-notice";
 
 const geistSans = Geist({
@@ -87,7 +88,12 @@ export default async function RootLayout({
           <Header />
           <div className="flex min-h-0 flex-1">
             <Sidebar />
-            <main className="min-w-0 flex-1 overflow-auto">{children}</main>
+            <main className="min-w-0 flex-1 overflow-auto">
+              <div className="flex min-h-full flex-col">
+                <div className="flex-1">{children}</div>
+                <Footer />
+              </div>
+            </main>
           </div>
           <LocaleNotice />
         </NextIntlClientProvider>

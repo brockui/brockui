@@ -21,6 +21,12 @@
     "dismiss": "Hide"
   },
   "copy": "Скопировать",
+  "footer": {
+    "description": "Brock UI — открытая система редактируемых React-компонентов для графиков и данных, с установкой прямо из реестра shadcn.",
+    "colophon": "Открытый код под MIT · на базе shadcn, Radix и Tailwind.",
+    "components": "Компоненты",
+    "installation": "Установка"
+  },
   "studio": {
     "panels": {
       "code": "Код",

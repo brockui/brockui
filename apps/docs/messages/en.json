@@ -21,6 +21,12 @@
     "dismiss": "Скрыть"
   },
   "copy": "Copy",
+  "footer": {
+    "description": "Brock UI is an open-source system of editable React components for charts and data, installable straight from the shadcn registry.",
+    "colophon": "Open-source under MIT · built on shadcn, Radix, and Tailwind.",
+    "components": "Components",
+    "installation": "Installation"
+  },
   "studio": {
     "panels": {
       "code": "Code",
