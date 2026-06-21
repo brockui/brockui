@@ -10,14 +10,14 @@ export const metadata = {
 
 const COPY = {
   en: {
-    lead: "Brock UI is an open registry of opinionated React components for charts and data — built by Almas Kasymzhanov: a graphics-studio designer, data journalist, and analyst-entrepreneur. New tools land here as they ship, and every chart is one he reaches for in his own work.",
+    lead: "Editable React components for charts and data — grab the code and drop it straight into your project. Built by Almas Kasymzhanov, an analyst, developer, data journalist, and entrepreneur, for the people who do that work too: journalists, frontend developers, and data-viz designers. New components land as the project grows — and every one is a tool he uses in his own daily work.",
     components: "Components",
     componentsLead:
       "Open-source and installable through the shadcn registry. Open any card for its live studio, code, and docs.",
     soon: "Coming soon",
   },
   ru: {
-    lead: "Brock UI — открытый реестр выразительных React-компонентов для графиков и данных. Его собирает Алмас Касымжанов: дизайнер графической студии, дата-журналист и аналитик-предприниматель. Сюда добавляются новые инструменты по мере выхода, и каждый график он использует в собственной работе.",
+    lead: "Редактируемые React-компоненты для графиков и данных — забирайте код и вставляйте прямо в свой проект. Разработка Алмаса Касымжанова — аналитика, разработчика, дата-журналиста и предпринимателя — для тех, кто занимается тем же: журналистов, фронтенд-разработчиков и визуализаторов данных. Компоненты добавляются по мере развития проекта, и каждый из них он использует в своей ежедневной работе.",
     components: "Компоненты",
     componentsLead:
       "Открытый код, установка через shadcn-реестр. Откройте карточку — живая студия, код и документация.",
@@ -39,20 +39,13 @@ export default async function Home({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12 lg:py-16">
-      {/* ── Hero: logo + who-and-why ───────────────────────────────── */}
-      <section className="flex flex-col gap-6 sm:flex-row sm:items-center">
-        <Logo
-          variant="mark"
-          className="h-14 w-auto shrink-0 text-foreground"
-        />
-        <div className="max-w-2xl">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Brock UI
-          </h1>
-          <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-            {c.lead}
-          </p>
-        </div>
+      {/* ── Hero: wordmark + who-and-why ───────────────────────────── */}
+      <section className="max-w-2xl">
+        <h1 className="sr-only">Brock UI</h1>
+        <Logo variant="lockup" className="h-7 w-auto text-foreground" />
+        <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
+          {c.lead}
+        </p>
       </section>
 
       {/* ── Components ─────────────────────────────────────────────── */}
