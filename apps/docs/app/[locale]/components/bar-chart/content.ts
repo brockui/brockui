@@ -4,7 +4,7 @@ import type { Rich } from "@/lib/rich-text";
 /**
  * Bar Chart page content, both locales. TypeScript enforces structural parity
  * (drift-guard v1); the EN-hash manifest enforces freshness (v2).
- * RU: draft — awaiting founder proofread (см. docs/glossary-ru.md).
+ * RU: draft – awaiting founder proofread (см. docs/glossary-ru.md).
  */
 export type BarChartPageContent = {
   kicker: string;
@@ -32,10 +32,10 @@ const en: BarChartPageContent = {
   kicker: "Charts · Bar Chart",
   title: "Bar Chart",
   intro:
-    "Horizontal bars for ranked categories — the ranking shape. Long category labels read horizontally (the reason bar charts exist), height derives from the data, negatives grow left of an always-visible zero baseline. Same Tufte discipline as Column Chart: one accent, no gridlines, direct value labels by default.",
+    "Horizontal bars for ranked categories – the ranking shape. Long category labels read horizontally (the reason bar charts exist), height derives from the data, negatives grow left of an always-visible zero baseline. Same Tufte discipline as Column Chart: one accent, no gridlines, direct value labels by default.",
   studio: {
     title: "Studio · Code, chart, settings",
-    lead: "Three-panel workbench. Tweak any setting on the right — chart in the middle updates live and the code on the left regenerates ready to paste into your app.",
+    lead: "Three-panel workbench. Tweak any setting on the right – chart in the middle updates live and the code on the left regenerates ready to paste into your app.",
   },
   installation: "Installation",
   usage: "Usage",
@@ -46,14 +46,14 @@ const en: BarChartPageContent = {
       labels:
         "Category labels (left column + tooltip). Only used when data is number[]",
       barThickness:
-        "Height of each bar in pixels (default 24 — the WCAG 2.5.8 pointer-target floor). Together with gap it DERIVES the chart height: there is no height prop, the data decides",
+        "Height of each bar in pixels (default 24 – the WCAG 2.5.8 pointer-target floor). Together with gap it DERIVES the chart height: there is no height prop, the data decides",
       gap: "Vertical gap between bars in pixels (default 8)",
       maxHeight:
-        "Cap on the bars-area height. When the derived height exceeds it AND scroll='auto', rows scroll vertically in a keyboard-focusable container. Without scroll='auto' it is a documented no-op — every category stays visible",
+        "Cap on the bars-area height. When the derived height exceeds it AND scroll='auto', rows scroll vertically in a keyboard-focusable container. Without scroll='auto' it is a documented no-op – every category stays visible",
       labelWidth:
-        "Width of the left category-label column in pixels (default 96). Labels truncate with ellipsis — full text lives in the tooltip and sr-table; in narrow containers (≤420px) the column clamps, ≤240px it hides (CSS-only, canon §11)",
+        "Width of the left category-label column in pixels (default 96). Labels truncate with ellipsis – full text lives in the tooltip and sr-table; in narrow containers (≤420px) the column clamps, ≤240px it hides (CSS-only, canon §11)",
       referenceLine:
-        "Dashed VERTICAL reference line — a fixed threshold ('Plan') or a computed statistic over the ORIGINAL input data (sort/topN must not move a statistic). Stats auto-label Mean/Median. Participates in the scale on both sides, so negative and break-even (0) references stay visible",
+        "Dashed VERTICAL reference line – a fixed threshold ('Plan') or a computed statistic over the ORIGINAL input data (sort/topN must not move a statistic). Stats auto-label Mean/Median. Participates in the scale on both sides, so negative and break-even (0) references stay visible",
       source: "Attribution line rendered below the chart (FT pattern)",
       accent:
         "Override the bar fill color (any CSS color or var). Defaults to Brock orange",
@@ -68,8 +68,8 @@ const en: BarChartPageContent = {
       className: "Extra classes on the figure element",
       header: "Title + subtitle block above the chart",
       xAxis:
-        "X-axis (VALUE axis) configuration. There is deliberately no min — a bar chart's baseline is always zero (truncated bars lie). max is extend-only headroom: values below the data max are ignored with a dev warning",
-      yAxis: "Y-axis (CATEGORY axis) configuration — title, hide labels",
+        "X-axis (VALUE axis) configuration. There is deliberately no min – a bar chart's baseline is always zero (truncated bars lie). max is extend-only headroom: values below the data max are ignored with a dev warning",
+      yAxis: "Y-axis (CATEGORY axis) configuration – title, hide labels",
       numberFormat:
         "Number formatter applied to X-axis ticks, tooltip, and data labels. Supports BCP-47 locale, Intl.NumberFormat notation ('compact' → 1.2K), style ('currency' / 'percent'), and ISO 4217 currency. Explicit formatValue/xAxisFormat win",
       dataLabels:
@@ -81,8 +81,8 @@ const en: BarChartPageContent = {
       patternStyle:
         "Visual style of hatched bars (chart-level). Per-bar pattern still controls whether a bar is hatched; this controls how each hatched bar looks. Use 'dots' for grayscale/print",
       scroll:
-        "Overflow behavior when the derived height exceeds maxHeight. 'none' (default) — the chart is as tall as the data, every category visible. 'auto' — rows scroll vertically in a keyboard-focusable container",
-      sort: "Reorder bars by value (stable). 'none' preserves input order; desc/asc turn the chart into a ranking — the bar chart's natural mode",
+        "Overflow behavior when the derived height exceeds maxHeight. 'none' (default) – the chart is as tall as the data, every category visible. 'auto' – rows scroll vertically in a keyboard-focusable container",
+      sort: "Reorder bars by value (stable). 'none' preserves input order; desc/asc turn the chart into a ranking – the bar chart's natural mode",
       topN: "Keep the N largest bars, roll the tail into one 'Other' aggregate (summed). Defaults: pinned last regardless of sort, muted --brock-other fill. Callbacks receive isOther + the collapsed items[]. Number shorthand = all defaults",
       loading:
         "Loading state. With no data → full skeleton (dashed ghost rows + LOADING badge, ARIA role=status). With data → dim overlay on top of the chart for background refresh. Honors prefers-reduced-motion",
@@ -114,11 +114,11 @@ const en: BarChartPageContent = {
       onBarFocus:
         "Fires on keyboard focus changes between bars (arrow keys, Home/End, Tab in, and programmatic focusBar()). Tracks the roving-tabindex position",
       slots:
-        "Headless slot dictionary: tooltip, empty, loading, error, toolbar, caption, watermark — each receives typed props. Slots win over loadingFallback / errorFallback shortcuts",
+        "Headless slot dictionary: tooltip, empty, loading, error, toolbar, caption, watermark – each receives typed props. Slots win over loadingFallback / errorFallback shortcuts",
       caption:
-        "Short editorial caption — italic muted text with a start border, rendered below the source line. FT/Stripe-Letters print-margin pattern. slots.caption wins over this",
+        "Short editorial caption – italic muted text with a start border, rendered below the source line. FT/Stripe-Letters print-margin pattern. slots.caption wins over this",
       watermark:
-        "Diagonal watermark text — faint pixel-font overlay over the chart. A document-lifecycle marker (DRAFT, CONFIDENTIAL) — not branding. Deliberately KEPT in print. slots.watermark wins over this",
+        "Diagonal watermark text – faint pixel-font overlay over the chart. A document-lifecycle marker (DRAFT, CONFIDENTIAL) – not branding. Deliberately KEPT in print. slots.watermark wins over this",
       chartType:
         "Machine-readable identifier stamped on the figure as data-chart-type (default 'bar'). Included in toJSON() output",
       dataDescription:
@@ -155,7 +155,7 @@ const en: BarChartPageContent = {
       [
         "Height derives from the data: N bars × ",
         { code: "barThickness" },
-        " + gaps. No height prop — a ranking never crops its categories.",
+        " + gaps. No height prop – a ranking never crops its categories.",
       ],
       [
         "Category labels in a fixed-width left column (",
@@ -170,13 +170,13 @@ const en: BarChartPageContent = {
       [
         "Direct value labels at the outer end by default (",
         { code: "dataLabels: \"auto\"" },
-        ") — the X axis hides when every value is printed; deep bars flip the label inside in background color.",
+        ") – the X axis hides when every value is printed; deep bars flip the label inside in background color.",
       ],
       [
         "Vertical reference line (fixed or mean/median over the original input) with its chip at the top.",
       ],
       [
-        "Deliberate v1 scope cuts per canon §13: no bands / trend / hatch-index shortcuts (temporal, column-specific) and no free annotations — per-datum ",
+        "Deliberate v1 scope cuts per canon §13: no bands / trend / hatch-index shortcuts (temporal, column-specific) and no free annotations – per-datum ",
         { code: "note" },
         " covers ranking callouts.",
       ],
@@ -184,7 +184,7 @@ const en: BarChartPageContent = {
   },
   whenTo: {
     title: "When to use",
-    body: "Ranked categorical comparisons — traffic by channel, revenue by region, contribution by product (negatives are first-class). Reach for Bar over Column whenever category labels are words, not timestamps: horizontal labels read at any length. sort + topN turn raw data into an honest ranking with an explicit 'Other'.",
+    body: "Ranked categorical comparisons – traffic by channel, revenue by region, contribution by product (negatives are first-class). Reach for Bar over Column whenever category labels are words, not timestamps: horizontal labels read at any length. sort + topN turn raw data into an honest ranking with an explicit 'Other'.",
   },
   whenNot: {
     title: "When not to use",
@@ -194,11 +194,11 @@ const en: BarChartPageContent = {
     title: "Inspired by",
     items: [
       [
-        "Financial Times Visual Journalism — ranked bars with sparse axes and direct labels",
+        "Financial Times Visual Journalism – ranked bars with sparse axes and direct labels",
       ],
-      ["Datawrapper — bars over columns whenever labels are words"],
+      ["Datawrapper – bars over columns whenever labels are words"],
       [
-        "Edward Tufte, The Visual Display of Quantitative Information — data-ink discipline",
+        "Edward Tufte, The Visual Display of Quantitative Information – data-ink discipline",
       ],
     ],
   },
@@ -208,33 +208,33 @@ const ru: BarChartPageContent = {
   kicker: "Графики · Bar Chart",
   title: "Bar Chart",
   intro:
-    "Горизонтальные полосы для ранжированных категорий — форма рейтинга. Длинные подписи категорий читаются горизонтально (ради этого bar chart и существует), высота выводится из данных, отрицательные значения растут влево от всегда видимой нулевой базы. Та же дисциплина Тафти, что и в Column Chart: один акцент, без сетки, прямые подписи значений по умолчанию.",
+    "Горизонтальные полосы для ранжированных категорий – форма рейтинга. Длинные подписи категорий читаются горизонтально (ради этого bar chart и существует), высота выводится из данных, отрицательные значения растут влево от всегда видимой нулевой базы. Та же дисциплина Тафти, что и в Column Chart: один акцент, без сетки, прямые подписи значений по умолчанию.",
   studio: {
     title: "Studio · Код, график, настройки",
-    lead: "Трёхпанельный верстак. Меняйте любую настройку справа — график в центре обновляется вживую, а код слева перегенерируется, готовый к вставке в ваш проект.",
+    lead: "Трёхпанельный верстак. Меняйте любую настройку справа – график в центре обновляется вживую, а код слева перегенерируется, готовый к вставке в ваш проект.",
   },
   installation: "Установка",
   usage: "Использование",
   props: {
     title: "Пропы",
     descriptions: {
-      data: "Значения полос. Две формы: number[] (с пропом labels) или { key?, label?, value, meta?, pattern?, color?, highlight?, note? }[] (объектная форма). key — стабильный адрес для focusBar (по умолчанию label); meta — ваши данные, возвращаются нетронутыми в каждом коллбэке; отрицательные растут ВЛЕВО от нулевой базы. Синтетическая полоса «Other» несёт isOther + items[] (только на выходе)",
+      data: "Значения полос. Две формы: number[] (с пропом labels) или { key?, label?, value, meta?, pattern?, color?, highlight?, note? }[] (объектная форма). key – стабильный адрес для focusBar (по умолчанию label); meta – ваши данные, возвращаются нетронутыми в каждом коллбэке; отрицательные растут ВЛЕВО от нулевой базы. Синтетическая полоса «Other» несёт isOther + items[] (только на выходе)",
       labels:
         "Подписи категорий (левая колонка + тултип). Используются только при data: number[]",
       barThickness:
-        "Высота каждой полосы в пикселях (по умолчанию 24 — минимум pointer-target по WCAG 2.5.8). Вместе с gap ВЫВОДИТ высоту графика: пропа height нет, данные решают сами",
+        "Высота каждой полосы в пикселях (по умолчанию 24 – минимум pointer-target по WCAG 2.5.8). Вместе с gap ВЫВОДИТ высоту графика: пропа height нет, данные решают сами",
       gap: "Вертикальный зазор между полосами в пикселях (по умолчанию 8)",
       maxHeight:
-        "Потолок высоты области полос. Когда выведенная высота превышает его И scroll='auto', строки скроллятся вертикально в фокусируемом с клавиатуры контейнере. Без scroll='auto' — документированный no-op: каждая категория остаётся видимой",
+        "Потолок высоты области полос. Когда выведенная высота превышает его И scroll='auto', строки скроллятся вертикально в фокусируемом с клавиатуры контейнере. Без scroll='auto' – документированный no-op: каждая категория остаётся видимой",
       labelWidth:
-        "Ширина левой колонки подписей категорий в пикселях (по умолчанию 96). Подписи обрезаются многоточием — полный текст в тултипе и sr-таблице; в узких контейнерах (≤420px) колонка сжимается, ≤240px — скрывается (только CSS, канон §11)",
+        "Ширина левой колонки подписей категорий в пикселях (по умолчанию 96). Подписи обрезаются многоточием – полный текст в тултипе и sr-таблице; в узких контейнерах (≤420px) колонка сжимается, ≤240px – скрывается (только CSS, канон §11)",
       referenceLine:
-        "Пунктирная ВЕРТИКАЛЬНАЯ референсная линия — фиксированный порог («План») или статистика по ИСХОДНЫМ данным (sort/topN не должны двигать статистику). Статистики подписываются Mean/Median автоматически. Участвует в шкале с обеих сторон — отрицательные и нулевые референсы остаются видимыми",
+        "Пунктирная ВЕРТИКАЛЬНАЯ референсная линия – фиксированный порог («План») или статистика по ИСХОДНЫМ данным (sort/topN не должны двигать статистику). Статистики подписываются Mean/Median автоматически. Участвует в шкале с обеих сторон – отрицательные и нулевые референсы остаются видимыми",
       source: "Строка атрибуции под графиком (паттерн FT)",
       accent:
-        "Переопределение цвета заливки (любой CSS-цвет или var). По умолчанию — оранжевый Brock",
+        "Переопределение цвета заливки (любой CSS-цвет или var). По умолчанию – оранжевый Brock",
       barRadius:
-        "Радиус внешних углов в px. Углы у базовой линии остаются плоскими; позитивные полосы скругляют ПРАВЫЕ углы, негативные — ЛЕВЫЕ",
+        "Радиус внешних углов в px. Углы у базовой линии остаются плоскими; позитивные полосы скругляют ПРАВЫЕ углы, негативные – ЛЕВЫЕ",
       description:
         "Доступное описание для скринридеров (figcaption + подпись таблицы). По умолчанию: 'Bar chart with N data points. Highest: …; lowest: …'",
       xAxisFormat:
@@ -244,8 +244,8 @@ const ru: BarChartPageContent = {
       className: "Дополнительные классы на элементе figure",
       header: "Блок заголовка и подзаголовка над графиком",
       xAxis:
-        "Настройка оси X (ЗНАЧЕНИЙ). min намеренно отсутствует — база bar chart всегда ноль (обрезанные полосы лгут). max только расширяет шкалу: значения ниже максимума данных игнорируются с предупреждением в dev",
-      yAxis: "Настройка оси Y (КАТЕГОРИЙ) — заголовок, скрытие подписей",
+        "Настройка оси X (ЗНАЧЕНИЙ). min намеренно отсутствует – база bar chart всегда ноль (обрезанные полосы лгут). max только расширяет шкалу: значения ниже максимума данных игнорируются с предупреждением в dev",
+      yAxis: "Настройка оси Y (КАТЕГОРИЙ) – заголовок, скрытие подписей",
       numberFormat:
         "Форматирование чисел для делений оси X, тултипа и подписей значений. Поддерживает локаль BCP-47, notation Intl.NumberFormat ('compact' → 1,2 тыс.), style ('currency' / 'percent') и валюту ISO 4217. Явные formatValue/xAxisFormat сильнее",
       dataLabels:
@@ -255,10 +255,10 @@ const ru: BarChartPageContent = {
       pattern:
         "Заливка всех полос по умолчанию. Per-bar pattern на точке данных сильнее. Штриховка кодирует «оценка/в работе» без второго цвета (Тафти)",
       patternStyle:
-        "Вид штриховки (на уровне графика). Per-bar pattern решает, штрихуется ли полоса; этот проп — как выглядит штриховка. 'dots' — для печати",
+        "Вид штриховки (на уровне графика). Per-bar pattern решает, штрихуется ли полоса; этот проп – как выглядит штриховка. 'dots' – для печати",
       scroll:
-        "Поведение при превышении maxHeight. 'none' (дефолт) — график высотой с данные, каждая категория видна. 'auto' — строки скроллятся вертикально в фокусируемом контейнере",
-      sort: "Сортировка полос по значению (стабильная). 'none' сохраняет исходный порядок; desc/asc превращают график в рейтинг — естественный режим bar chart",
+        "Поведение при превышении maxHeight. 'none' (дефолт) – график высотой с данные, каждая категория видна. 'auto' – строки скроллятся вертикально в фокусируемом контейнере",
+      sort: "Сортировка полос по значению (стабильная). 'none' сохраняет исходный порядок; desc/asc превращают график в рейтинг – естественный режим bar chart",
       topN: "Оставить N крупнейших полос, свернув хвост в агрегат «Other» (сумма). По умолчанию: закреплён последним независимо от sort, приглушённая заливка --brock-other. Коллбэки получают isOther + items[]. Число = все дефолты",
       loading:
         "Состояние загрузки. Без данных → полный скелетон (пунктирные строки-призраки + плашка LOADING, ARIA role=status). С данными → полупрозрачный оверлей для фонового обновления. Уважает prefers-reduced-motion",
@@ -277,9 +277,9 @@ const ru: BarChartPageContent = {
       errorFallback:
         "Полная замена дефолтного UI ошибки. React-нода или функция, получающая нормализованный Error",
       exportable:
-        "Показать тулбар экспорта (справа сверху). true — все 4 действия; объектная форма — выборочно. Императивные методы ref работают в любом случае",
+        "Показать тулбар экспорта (справа сверху). true – все 4 действия; объектная форма – выборочно. Императивные методы ref работают в любом случае",
       exportFileName:
-        "Базовое имя файла выгрузки. Строка — фиксированное, функция — по формату. Расширение добавляется автоматически",
+        "Базовое имя файла выгрузки. Строка – фиксированное, функция – по формату. Расширение добавляется автоматически",
       onExport:
         "Срабатывает после завершения экспорта. Получает формат ('png'|'svg'|'csv'|'copy') и артефакт (Blob или строку)",
       ref: "Императивный API: { exportSVG, exportPNG, exportCSV, copyImage, focusBar, getSelection }. Экспорт работает даже в loading/error/empty. focusBar(target) принимает экранный индекс ИЛИ стабильный key (неизвестный key → -1). getSelection() возвращает { index, key, point } или null",
@@ -290,11 +290,11 @@ const ru: BarChartPageContent = {
       onBarFocus:
         "Срабатывает при смене клавиатурного фокуса между полосами (стрелки, Home/End, Tab, программный focusBar())",
       slots:
-        "Словарь headless-слотов: tooltip, empty, loading, error, toolbar, caption, watermark — каждый получает типизированные пропы. Слоты сильнее шорткатов loadingFallback / errorFallback",
+        "Словарь headless-слотов: tooltip, empty, loading, error, toolbar, caption, watermark – каждый получает типизированные пропы. Слоты сильнее шорткатов loadingFallback / errorFallback",
       caption:
-        "Короткая редакционная подпись-примечание — курсив с боковой границей, под строкой источника. slots.caption сильнее",
+        "Короткая редакционная подпись-примечание – курсив с боковой границей, под строкой источника. slots.caption сильнее",
       watermark:
-        "Диагональная вотермарка — едва заметный пиксельный текст поверх графика. Маркер жизненного цикла документа (DRAFT, CONFIDENTIAL) — не брендинг. Намеренно ПЕЧАТАЕТСЯ. slots.watermark сильнее",
+        "Диагональная вотермарка – едва заметный пиксельный текст поверх графика. Маркер жизненного цикла документа (DRAFT, CONFIDENTIAL) – не брендинг. Намеренно ПЕЧАТАЕТСЯ. slots.watermark сильнее",
       chartType:
         "Машиночитаемый идентификатор на фигуре как data-chart-type (по умолчанию 'bar'). Входит в toJSON()",
       dataDescription:
@@ -317,13 +317,13 @@ const ru: BarChartPageContent = {
       ". Тот же базис, что у Column Chart: sr-таблица с объявлением трансформаций, forced-colors, авто-описание с максимумом/минимумом.",
     ],
     localeNote:
-      "Честное ограничение: автогенерируемые ARIA-описания компонента — на английском. Если ваш продукт для русскоязычных пользователей, передайте собственный description и локализуйте loadingLabel/errorLabel/retryLabel — locale-pack компонента в планах.",
+      "Честное ограничение: автогенерируемые ARIA-описания компонента – на английском. Если ваш продукт для русскоязычных пользователей, передайте собственный description и локализуйте loadingLabel/errorLabel/retryLabel – locale-pack компонента в планах.",
     keyboardTitle: "Клавиатура",
     keyboard: [
       { key: "Tab", action: "Фокус внутрь графика (одна точка останова)" },
       {
         key: "↑ ↓ ← →",
-        action: "Навигация между полосами (roving tabindex; вертикаль — основная ось)",
+        action: "Навигация между полосами (roving tabindex; вертикаль – основная ось)",
       },
       { key: "Home", action: "К первой полосе" },
       { key: "End", action: "К последней полосе" },
@@ -335,12 +335,12 @@ const ru: BarChartPageContent = {
       [
         "Высота выводится из данных: N полос × ",
         { code: "barThickness" },
-        " + зазоры. Пропа height нет — рейтинг никогда не обрезает свои категории.",
+        " + зазоры. Пропа height нет – рейтинг никогда не обрезает свои категории.",
       ],
       [
         "Подписи категорий в колонке фиксированной ширины (",
         { code: "labelWidth" },
-        ") с явной лестницей обрезки: многоточие → полный текст в тултипе и sr-таблице → сжатие через container queries. Длинные подписи — причина существования bar chart.",
+        ") с явной лестницей обрезки: многоточие → полный текст в тултипе и sr-таблице → сжатие через container queries. Длинные подписи – причина существования bar chart.",
       ],
       [
         "Один ",
@@ -350,13 +350,13 @@ const ru: BarChartPageContent = {
       [
         "Прямые подписи значений у внешнего конца по умолчанию (",
         { code: "dataLabels: \"auto\"" },
-        ") — ось X скрывается, когда каждое значение напечатано; глубокие полосы переносят подпись внутрь цветом фона.",
+        ") – ось X скрывается, когда каждое значение напечатано; глубокие полосы переносят подпись внутрь цветом фона.",
       ],
       [
         "Вертикальная референсная линия (фиксированная или mean/median по исходным данным) с плашкой сверху.",
       ],
       [
-        "Осознанные вырезы v1 по канону §13: без bands / trend / hatch-шорткатов (временна́я семантика Column) и без свободных аннотаций — per-datum ",
+        "Осознанные вырезы v1 по канону §13: без bands / trend / hatch-шорткатов (временна́я семантика Column) и без свободных аннотаций – per-datum ",
         { code: "note" },
         " покрывает выноски рейтинга.",
       ],
@@ -364,21 +364,21 @@ const ru: BarChartPageContent = {
   },
   whenTo: {
     title: "Когда использовать",
-    body: "Ранжированные категориальные сравнения — трафик по каналам, выручка по регионам, вклад по продуктам (отрицательные значения полноправны). Берите Bar вместо Column всегда, когда подписи категорий — слова, а не временные метки: горизонтальные подписи читаются при любой длине. sort + topN превращают сырые данные в честный рейтинг с явным «Other».",
+    body: "Ранжированные категориальные сравнения – трафик по каналам, выручка по регионам, вклад по продуктам (отрицательные значения полноправны). Берите Bar вместо Column всегда, когда подписи категорий – слова, а не временные метки: горизонтальные подписи читаются при любой длине. sort + topN превращают сырые данные в честный рейтинг с явным «Other».",
   },
   whenNot: {
     title: "Когда не использовать",
-    body: "Для временных интервалов — Column Chart (время читается слева направо). Для непрерывных трендов — Line Chart. Для крошечных встроенных графиков — Sparkline. Для состава целого — Stacked Bar Chart (скоро).",
+    body: "Для временных интервалов – Column Chart (время читается слева направо). Для непрерывных трендов – Line Chart. Для крошечных встроенных графиков – Sparkline. Для состава целого – Stacked Bar Chart (скоро).",
   },
   inspiredBy: {
     title: "Источники",
     items: [
       [
-        "Financial Times Visual Journalism — ранжированные полосы с разреженными осями и прямыми подписями",
+        "Financial Times Visual Journalism – ранжированные полосы с разреженными осями и прямыми подписями",
       ],
-      ["Datawrapper — bars вместо columns всегда, когда подписи — слова"],
+      ["Datawrapper – bars вместо columns всегда, когда подписи – слова"],
       [
-        "Эдвард Тафти, The Visual Display of Quantitative Information — дисциплина data-ink",
+        "Эдвард Тафти, The Visual Display of Quantitative Information – дисциплина data-ink",
       ],
     ],
   },

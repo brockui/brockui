@@ -7,7 +7,7 @@ export type ComponentItem = {
   category: ComponentCategory;
   status: ComponentStatus;
   href: string;
-  /** Per-locale description — names stay English (technical identifiers). */
+  /** Per-locale description – names stay English (technical identifiers). */
   description: { en: string; ru: string };
 };
 
@@ -32,7 +32,7 @@ export const components: ComponentItem[] = [
     href: "/components/column-chart",
     description: {
       en: "Time-series vertical bars for activity, volume, and counts.",
-      ru: "Вертикальные столбцы для упорядоченных категорий — время и рейтинги.",
+      ru: "Вертикальные столбцы для упорядоченных категорий – время и рейтинги.",
     },
   },
   {
@@ -75,8 +75,8 @@ export const components: ComponentItem[] = [
     status: "SOON",
     href: "/components/stacked-bar-chart",
     description: {
-      en: "Composition over categories — segments stacked per bar.",
-      ru: "Состав по категориям — сегменты в одном столбце.",
+      en: "Composition over categories – segments stacked per bar.",
+      ru: "Состав по категориям – сегменты в одном столбце.",
     },
   },
   {
@@ -87,7 +87,7 @@ export const components: ComponentItem[] = [
     href: "/components/pie-chart",
     description: {
       en: "Proportional slices for share-of-whole comparisons.",
-      ru: "Доли целого — пропорциональные сектора.",
+      ru: "Доли целого – пропорциональные сектора.",
     },
   },
   {
@@ -120,7 +120,7 @@ export const components: ComponentItem[] = [
     href: "/components/scatter-plot",
     description: {
       en: "Point-cloud for correlation between two variables.",
-      ru: "Облако точек — корреляция двух переменных.",
+      ru: "Облако точек – корреляция двух переменных.",
     },
   },
   {
@@ -131,7 +131,7 @@ export const components: ComponentItem[] = [
     href: "/components/heatmap",
     description: {
       en: "Matrix of cells encoding intensity by color.",
-      ru: "Матрица ячеек — интенсивность цветом.",
+      ru: "Матрица ячеек – интенсивность цветом.",
     },
   },
   {

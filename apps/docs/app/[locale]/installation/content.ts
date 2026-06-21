@@ -4,7 +4,7 @@ import type { Rich } from "@/lib/rich-text";
 /**
  * Installation page content, both locales. TypeScript enforces structural
  * parity (drift-guard v1); the EN-hash manifest enforces freshness (v2).
- * RU: draft — awaiting founder proofread (см. docs/glossary-ru.md).
+ * RU: draft – awaiting founder proofread (см. docs/glossary-ru.md).
  */
 export type InstallationContent = {
   kicker: string;
@@ -25,7 +25,7 @@ const en: InstallationContent = {
   kicker: "Get Started · Installation",
   title: "Installation",
   intro:
-    "Brock UI uses the shadcn registry format. Components are copied into your project — you own the code. No runtime dependency on a Brock UI package.",
+    "Brock UI uses the shadcn registry format. Components are copied into your project – you own the code. No runtime dependency on a Brock UI package.",
   quickStart: {
     title: "Quick start",
     lead: "Add any component to your project with one command:",
@@ -72,7 +72,7 @@ const en: InstallationContent = {
     body: [
       "One variable controls all accents across every Brock UI component. Change ",
       { code: "--brock-accent" },
-      " once — every chart, every highlight, every active state updates. We recommend a single, distinct color in OKLCH for predictable behavior across themes.",
+      " once – every chart, every highlight, every active state updates. We recommend a single, distinct color in OKLCH for predictable behavior across themes.",
     ],
   },
   whatYouGet: {
@@ -80,7 +80,7 @@ const en: InstallationContent = {
     items: [
       {
         strong: "Source files in your repo",
-        rest: " — fully editable, no black-box package",
+        rest: " – fully editable, no black-box package",
       },
       {
         strong: "Typed props, zero runtime dependencies",
@@ -102,7 +102,7 @@ const ru: InstallationContent = {
   kicker: "Начало работы · Установка",
   title: "Установка",
   intro:
-    "Brock UI использует формат shadcn registry: компоненты копируются прямо в ваш проект — код принадлежит вам. Никакой runtime-зависимости от пакета Brock UI.",
+    "Brock UI использует формат shadcn registry: компоненты копируются прямо в ваш проект – код принадлежит вам. Никакой runtime-зависимости от пакета Brock UI.",
   quickStart: {
     title: "Быстрый старт",
     lead: "Любой компонент добавляется в проект одной командой:",
@@ -116,7 +116,7 @@ const ru: InstallationContent = {
       [
         "Настроенный ",
         { code: "components.json" },
-        " (если его нет — выполните ",
+        " (если его нет – выполните ",
         { code: "npx shadcn init" },
         ")",
       ],
@@ -149,7 +149,7 @@ const ru: InstallationContent = {
     body: [
       "Одна переменная управляет акцентами во всех компонентах Brock UI. Поменяйте ",
       { code: "--brock-accent" },
-      " один раз — обновится каждый график, каждое выделение, каждое активное состояние. Рекомендуем один выразительный цвет в OKLCH: он предсказуемо ведёт себя в обеих темах.",
+      " один раз – обновится каждый график, каждое выделение, каждое активное состояние. Рекомендуем один выразительный цвет в OKLCH: он предсказуемо ведёт себя в обеих темах.",
     ],
   },
   whatYouGet: {
@@ -157,7 +157,7 @@ const ru: InstallationContent = {
     items: [
       {
         strong: "Исходники в вашем репозитории",
-        rest: " — правьте свободно, никакого «чёрного ящика»",
+        rest: " – правьте свободно, никакого «чёрного ящика»",
       },
       {
         strong: "Типизированные пропы, ноль runtime-зависимостей",
