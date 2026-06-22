@@ -45,7 +45,7 @@ const en: LineChartPageContent = {
     "Multi-series lines for continuous time-series – change over time, indexed comparisons, forecasts. The FT / John Burn-Murdoch canon: direct line-end labels instead of a legend, one emphasized series in the accent while the rest mute to grey (never a rainbow), faint gridlines (the deliberate, correct deviation from the no-gridline bar rule), honest gaps where data is missing, and a Y domain that reads change – not magnitude-from-zero.",
   studio: {
     title: "Studio · Code, chart, settings",
-    lead: "Three-panel workbench. Tweak any setting on the right – the multi-series chart in the middle updates live and the code on the left regenerates ready to paste into your app.",
+    lead: "A three-panel workbench. Tweak any setting on the right – the multi-series chart in the middle updates live, and the code on the left regenerates, ready to paste into your app.",
   },
   installation: "Installation",
   usage: "Usage",

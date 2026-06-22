@@ -10,14 +10,14 @@ export const metadata = {
 
 const COPY = {
   en: {
-    lead: "Editable React components for charts and data: copy the code and paste it straight into your project. Built by Almas Kasymzhanov, a data journalist, analyst, developer, and entrepreneur, for the people who do that work too: journalists, frontend developers, and data-viz designers. The collection grows with the project, and every component is one he relies on in his own daily work.",
+    lead: "Editable React components for charts and data — copy the code and paste it straight into your project. Built by Almas Kasymzhanov — a data journalist, analyst, developer, and entrepreneur — for the people who do that work too: journalists, frontend developers, and data-viz designers. Every component is one he reaches for in his own daily work, and the collection grows as that work does.",
     components: "Components",
     componentsLead:
       "Open-source and installable through the shadcn registry. Open any card for its live studio, code, and docs.",
     soon: "Coming soon",
   },
   ru: {
-    lead: "Редактируемые React-компоненты для графиков и данных: забирайте код и вставляйте прямо в свой проект. Их делает Алмас Касымжанов, дата-журналист, аналитик, разработчик и предприниматель, для тех, кто работает так же: журналистов, фронтенд-разработчиков и визуализаторов данных. Набор пополняется по мере развития проекта, и каждый компонент он использует в своей повседневной работе.",
+    lead: "Редактируемые React-компоненты для графиков и данных — заберите код и вставьте прямо в свой проект. Их делает Алмас Касымжанов — дата-журналист, аналитик, разработчик и предприниматель — для тех, кто занимается тем же: журналистов, фронтенд-разработчиков и дизайнеров дата-визуализации. Каждый компонент он использует в своей повседневной работе, а набор растёт вместе с ней.",
     components: "Компоненты",
     componentsLead:
       "Открытый код, установка через shadcn-реестр. Откройте карточку, чтобы увидеть живую студию, код и документацию.",

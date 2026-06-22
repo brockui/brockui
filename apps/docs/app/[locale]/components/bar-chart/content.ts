@@ -32,10 +32,10 @@ const en: BarChartPageContent = {
   kicker: "Charts · Bar Chart",
   title: "Bar Chart",
   intro:
-    "Horizontal bars for ranked categories – the ranking shape. Long category labels read horizontally (the reason bar charts exist), height derives from the data, negatives grow left of an always-visible zero baseline. Same Tufte discipline as Column Chart: one accent, no gridlines, direct value labels by default.",
+    "Horizontal bars for ranked categories – the ranking shape. Long category labels read horizontally (the reason bar charts exist); height derives from the data; negatives grow to the left of an always-visible zero baseline. Same Tufte discipline as Column Chart: one accent, no gridlines, direct value labels by default.",
   studio: {
     title: "Studio · Code, chart, settings",
-    lead: "Three-panel workbench. Tweak any setting on the right – chart in the middle updates live and the code on the left regenerates ready to paste into your app.",
+    lead: "A three-panel workbench. Tweak any setting on the right – the chart in the middle updates live, and the code on the left regenerates, ready to paste into your app.",
   },
   installation: "Installation",
   usage: "Usage",

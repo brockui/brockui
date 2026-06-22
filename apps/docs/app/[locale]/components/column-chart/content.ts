@@ -42,10 +42,10 @@ const en: ColumnChartPageContent = {
   kicker: "Charts · Column Chart",
   title: "Column Chart",
   intro:
-    "Vertical bars for ordered categories – time buckets or ranked categories. Data-ink discipline (Tufte): one accent, no gridlines, monospace numerics, direct value labels by default, built-in source attribution, and accessible empty / loading / error states.",
+    "Vertical bars for ordered categories – time buckets or rankings. Data-ink discipline (Tufte): one accent, no gridlines, monospace numerics, direct value labels by default, built-in source attribution, and accessible empty / loading / error states.",
   studio: {
     title: "Studio · Code, chart, settings",
-    lead: "Three-panel workbench. Tweak any setting on the right – chart in the middle updates live and the code on the left regenerates ready to paste into your app.",
+    lead: "A three-panel workbench. Tweak any setting on the right – the chart in the middle updates live, and the code on the left regenerates, ready to paste into your app.",
   },
   installation: "Installation",
   usage: "Usage",
